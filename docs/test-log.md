@@ -20,6 +20,11 @@ This was automated local-server QA; browser and real-device QA were not rerun.
 | --- | --- |
 | Repository syntax and focused checks | passed |
 | `node_modules` is ignored and the sibling-checkout symlink is no longer tracked | passed |
+## 2026-11-09: search dedupe, memory fallback and cold-model timeout, automated
+
+- `/api/search` and `/api/find` now drop repeated captions by normalized text (case, whitespace, punctuation), keeping the highest-ranked copy; "because you heard" lines use the same deduped input.
+- `/api/search` returns the in-memory transcript when Elasticsearch errors or times out instead of `[]`; all search `es.raw` calls use the 8000 ms search deadline.
+- `npm run check` (including the new dedupe assert in `find-check`) and `node scripts/smoke.js` passed. A server run against an unreachable `ELASTIC_URL` returned unique memory rows from `/api/search`.
 
 ## 2026-11-09: answeredSeq persistence, automated (Gitar)
 
