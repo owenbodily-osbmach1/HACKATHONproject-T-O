@@ -17,29 +17,44 @@ export function connectRoom({ room, role, key, onMessage, onStatus }) {
 
   function open() {
     onStatus?.(attempt === 0 ? 'connecting' : 'reconnecting');
+    let sock;
     try {
-      ws = new WebSocket(url());
+      sock = new WebSocket(url());
     } catch {
       return schedule();
     }
-    ws.onopen = () => {
+    ws = sock;
+    // Ignore events from a socket that has been replaced by a newer one.
+    sock.onopen = () => {
+      if (ws !== sock) return;
       attempt = 0;
       onStatus?.('live');
     };
-    ws.onmessage = (ev) => {
-      if (typeof ev.data !== 'string') return; // JSON socket only
+    sock.onmessage = (ev) => {
+      if (ws !== sock || typeof ev.data !== 'string') return; // JSON socket only
       let msg;
       try { msg = JSON.parse(ev.data); } catch { return; }
       if (msg.t === 'ping') { send({ t: 'pong' }); return; }
       if (msg.t === 'pong') return;
       onMessage?.(msg);
     };
-    ws.onclose = (ev) => {
-      if (closedByUs) return;
+    sock.onclose = (ev) => {
+      if (closedByUs || ws !== sock) return;
       if (ev.code === 4401) { onStatus?.('unauthorized'); return; }
       schedule();
     };
-    ws.onerror = () => { /* onclose follows */ };
+    sock.onerror = () => { /* onclose follows */ };
+  }
+
+  // Replace a dead or dying socket right away (phone back online, tab woken up).
+  function reopenNow() {
+    if (closedByUs || (ws && ws.readyState <= WebSocket.OPEN)) return;
+    attempt = 0;
+    clearTimeout(retryTimer);
+    const old = ws;
+    ws = null; // the old socket's late onclose is now ignored
+    try { old?.close(); } catch { /* ignore */ }
+    open();
   }
 
   function schedule() {
@@ -58,14 +73,9 @@ export function connectRoom({ room, role, key, onMessage, onStatus }) {
     return false;
   }
 
-  // Reconnect immediately when the phone comes back online or the tab wakes up.
-  window.addEventListener('online', () => {
-    if (!ws || ws.readyState > WebSocket.OPEN) { attempt = 0; clearTimeout(retryTimer); open(); }
-  });
+  window.addEventListener('online', reopenNow);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && (!ws || ws.readyState > WebSocket.OPEN)) {
-      attempt = 0; clearTimeout(retryTimer); open();
-    }
+    if (document.visibilityState === 'visible') reopenNow();
   });
 
   open();
