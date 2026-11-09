@@ -12,7 +12,7 @@ const FRAME = Math.random().toString(36).slice(2, 8); // one fake voter per fram
 
 const LINES = [
   "Raise your hand if you've ever sat at the back of a talk and couldn't hear.",
-  'Scan the code on the screen. No app, no login.',
+  'Scan the code on the screen. No app to install.',
   'You should be reading my words on your phone right now.',
   "If the room is too quiet, tap Speak up. One vote each.",
   'When three different people vote, the AV tech sees one red block.',

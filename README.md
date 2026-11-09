@@ -89,7 +89,8 @@ Details, message flows, failure modes and security: [`docs/ARCHITECTURE.md`](doc
 
 ## Privacy
 
-- Sign-in (`SIGNIN=on`, the default): before joining, a phone gives first and last name, company / occupation and email. These stay in the server's memory only (gone on restart), are never written to Elasticsearch, logs or telemetry, never shown to other attendees, and never linked to `clientId`. The AV console (tech key) sees a count and can export a CSV for the event team. `SIGNIN=off` turns the form off.
+- Sign-in (`SIGNIN=on`, the default): before joining, a phone gives first and last name, company / occupation and email. These stay in the server's memory only (gone on restart), are never written to Elasticsearch, logs or telemetry, never shown to other attendees, and never linked to `clientId`. The AV console (tech key) sees a count and can export a CSV for the event team; the booth key cannot. `SIGNIN=off` turns the form off.
+- Telemetry to Dash0 carries no client IP, user agent, query string or host name (`server/telemetry-scrub.js`, checked by `scripts/telemetry-check.js`).
 - Votes and questions stay anonymous: `clientId` is a random id created by the phone, and sponsor data never contains a name or email.
 - Sponsor reports hide any bucket with fewer than 3 devices (k>=3).
 - Microphone access is limited to the podium page by `Permissions-Policy`; attendee pages never call `getUserMedia`.

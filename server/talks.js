@@ -90,7 +90,8 @@ module.exports = {
     // The speaker (Go live / mic page) or the AV tech can end a talk.
     const speakerOrTech = (req, res, next) => {
       const k = req.get('x-pulse-key');
-      return ctx.auth.ok('SPEAKER_KEY', k) || ctx.auth.ok('TECH_KEY', k) ? next() : res.status(401).json({ error: 'unauthorized' });
+      if (ctx.auth.ok('SPEAKER_KEY', k) || ctx.auth.ok('TECH_KEY', k)) return next();
+      return ctx.auth.ok('BOOTH_KEY', k) ? res.status(403).json({ error: 'forbidden' }) : res.status(401).json({ error: 'unauthorized' });
     };
     app.post('/api/talks/:talkId/end', speakerOrTech, (req, res) => {
       const talk = state.talks.get(req.params.talkId);

@@ -8,17 +8,24 @@ function same(a, b) {
   return x.length === y.length && crypto.timingSafeEqual(x, y);
 }
 
-// keyName: 'TECH_KEY' | 'SPEAKER_KEY'. An unset key locks the route rather than opening it.
+// keyName: 'TECH_KEY' | 'SPEAKER_KEY' | 'BOOTH_KEY'. An unset key locks the route rather than opening it.
 const ok = (keyName, given) => same(given, config[keyName]);
 
+// A real key, but for something else (e.g. the booth key on a tech route): 403, not 401.
+const KEYS = ['TECH_KEY', 'SPEAKER_KEY', 'BOOTH_KEY'];
+const otherKey = (keyName, given) => KEYS.some((k) => k !== keyName && ok(k, given));
+
 // HTTP API routes: header only.
-const api = (keyName) => (req, res, next) =>
-  ok(keyName, req.get('x-pulse-key')) ? next() : res.status(401).json({ error: 'unauthorized' });
+const api = (keyName) => (req, res, next) => {
+  const given = req.get('x-pulse-key');
+  if (ok(keyName, given)) return next();
+  return otherKey(keyName, given) ? res.status(403).json({ error: 'forbidden' }) : res.status(401).json({ error: 'unauthorized' });
+};
 
 // Pages: ?key= in the URL. A missing or wrong key gets a friendly page, never the key back.
 const page = (keyName) => (req, res, next) => {
   if (ok(keyName, req.query.key)) return next();
-  res.status(401).type('html').send(`<!doctype html>
+  res.status(otherKey(keyName, req.query.key) ? 403 : 401).type('html').send(`<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -38,4 +45,4 @@ const page = (keyName) => (req, res, next) => {
 </html>`);
 };
 
-module.exports = { ok, api, page };
+module.exports = { ok, api, page, otherKey };

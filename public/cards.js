@@ -58,7 +58,7 @@ function addCard(kind, id, name, sub) {
 
   const promise = document.createElement('p');
   promise.className = 'card-promise';
-  promise.textContent = 'No app, no login, no personal data.';
+  promise.textContent = 'No app to install. Votes and questions are anonymous.';
 
   card.append(qr, kindLine, title, subLine, urlLine, promise);
   cardsEl.append(card);

@@ -2,6 +2,20 @@
 
 What has been tested, how, what broke and what is still open. Newest first. Add to it when you test something.
 
+## 2026-11-09 16:10: privacy fixes from the data map (Claude)
+
+| Check | Result |
+| --- | --- |
+| `scripts/telemetry-check.js` (new, runs in CI): real server → local OTLP sink, requests with a test IP (`x-forwarded-for`), user agent, `?q=` search term, `?ref=` value and a clientId in the path and query; grep every exported span, metric and log | ✅ none of them, and no host name or OS user; spans still exported, paths with ids use the route template |
+| Same check against `main` before the fix | ❌ all seven leaked (IP, user agent, search term, query value, clientId, host name, OS user) |
+| Booth key: sign-in CSV, claim, `/api/config`, room settings, broadcast, start/end a talk, `/tech`, `/go` | ✅ `403` each; tech socket closed `4401` |
+| Booth key: `/booth/:booth`, booth report, `role=booth` socket (gets `booth_request`, no room or AV data) | ✅ |
+| Tech key on the booth report `403`, tech key sign-in export still `200`, no key `401` | ✅ |
+| `BOOTH_KEY` unset: booth page, report and socket | ✅ locked (`401` / `4401`) |
+| Booth staff screen in headless Chrome on the booth key | ✅ Live, no warnings |
+| Stale claims (`no sign-up`, `no login`, `no personal data`, `personalData: false`, `No identity is collected`, …) across `public/`, `server/`, `docs/`, `README.md`, `CONTRACT.md`, `.gitar/` | ✅ none left (only the rule title "No personal data in Elasticsearch", which is true) |
+| `npm run smoke` and every `scripts/*-check.js` | ✅ |
+
 ## 2026-11-09 15:40: video scenes (`scripts/video-scenes.js`), each driven end to end (Claude)
 
 Each scene ran with `--no-windows` while a headless Chrome made the clicks the guide asks for (`docs/video-shoot.md`). The window path was run once for real: the projector window opened and closed with the take, with no Chrome or server left over.

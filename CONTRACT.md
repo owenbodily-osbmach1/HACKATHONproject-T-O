@@ -53,7 +53,7 @@ Every change goes in as a pull request. Gitar reviews it; merge only after Gitar
 - A live talk ends by itself when no keyed `mic` socket has been in the room and no caption has arrived for `AUTO_END_MIN` minutes (default 10, `0` = never): a presenter who walked off doesn't leave it live for the next speaker. A caption with an unknown `talkId` (the server restarted mid-talk) re-creates that talk from the caption's `title`/`speaker`.
 - `POST /api/questions`: one question per phone every 20 s (`429 {error:'too_fast'}`), keyed on `clientId` and the visitor cookie. `ticket_status` reaches phones only when a ticket's status changes. `GET /api/report/:talkId` fills `signalsByMinute` from memory when Elasticsearch is off.
 - Going live again after a talk ended starts a **new** talk (Go live and the mic page resume only a talk whose `status` is `live`), so phones flip from Ended back to Live.
-- Demo room: on start the server seeds room `MOCK_ROOM` (default `255`, `off` disables) with a live talk, a transcript that keeps growing, a fake mic level, 3 questions and a "can't see" ticket. It is `simulated: true` in `/api/rooms` and is never written to Elasticsearch.
+- Demo room: on start the server seeds room `MOCK_ROOM` (default `255`, `off` disables) with a live talk, a transcript that keeps growing, a fake mic level, 3 questions and a "can't see" ticket. It is `simulated: true` in `/api/rooms`. Its captions are never written to Elasticsearch; its seeded votes and questions go through the public routes, so they are indexed like any other (anonymous) vote or question.
 - Room switches: `POST /api/rooms/:room/settings` `{captions, listen, slides, capacity?}` (tech only; `capacity` = seats, for the room-fill bar). Server sends `room_settings` to every role in the room.
 - Scans: `GET /r/:room` sets a server-issued cookie `pulse_v` = `<random id>.<HMAC>` (httpOnly, 1 day; the server only accepts ids it signed, secret `VISITOR_SECRET` or random per start) and counts each visitor once per room (`joined`). The phone never reports a count; a scan never creates a room. `here` = open attendee sockets. Default capacity `ROOM_CAPACITY` (120).
 
@@ -75,6 +75,7 @@ One mechanism everywhere. Keyed **pages** are opened with `?key=...` in the URL 
 | Key | HTTP routes and pages that require it |
 | --- | --- |
 | `TECH_KEY` | `POST /api/talks/:talkId/end` (also `SPEAKER_KEY`) · `POST /api/rooms/:room/demo/restart` · `POST /api/tickets/:id/claim` · `/fixed` · `/dismiss` · `POST /api/config` · `POST /api/rooms/:room/settings` · `POST /api/questions/:qid/*` · `POST /api/rooms/:room/broadcast` · `POST /api/clients/:clientId/mute` · page `/tech` |
+| `BOOTH_KEY` | page `/booth/:booth` · `POST /api/booths/:booth/requests/:id/done` · `GET /api/booths/:booth/report` · socket `role=booth`. Nothing else: the booth key gets `403` on every tech or speaker route (including the sign-in export). Unset = booth pages and routes locked. |
 | `SPEAKER_KEY` | `POST /api/talks` · `POST /api/talks/:talkId/end` · `POST /api/rooms/:room/slide-frame` · pages `/mic/:room`, `/present/:room`, `/relay/:room` and `/go/:room` |
 | none | `GET /api/rooms`, `PUT /api/votes`, `POST /api/questions`, `POST /api/feedback`, `GET /api/report/:talkId`, `GET /api/config`, transcript routes, `/healthz`, `/privacy`, `/api/privacy`, `/cards`, `/metrics`, pages `/r/:room`, `/t/:talkId`, `/room/:room`, `/org`, `/find` |
 
@@ -84,7 +85,7 @@ Attendee sockets also send `&clientId=<anonymous per-phone id>` (from `public/li
 
 `viewer` (no key) is for transcript/report pages: it receives `caption`, `caption_interim` and `caption_backlog` like `attendee` but is not counted in `listeners`.
 
-All messages are JSON with a `t` field. `role=mic` and `role=present` must also pass `&key=SPEAKER_KEY`; `role=tech` must pass `&key=TECH_KEY`.
+All messages are JSON with a `t` field. `role=mic` and `role=present` must also pass `&key=SPEAKER_KEY`; `role=tech` must pass `&key=TECH_KEY`; `role=booth` (booth staff screen) must pass `&key=BOOTH_KEY`. A key that is valid but for another route gets HTTP `403` (a missing or wrong key: `401`).
 
 **Sender check:** the server relays `caption` and `caption_interim` only from a keyed `mic` socket, and `slide` only from a keyed `mic` or `present` socket. The same messages from any other role are dropped (not relayed, not stored).
 
@@ -158,7 +159,7 @@ Set `inference_id` explicitly from `ES_INFERENCE_ID`. If inference isn't availab
 
 ## Privacy
 
-Public page `/privacy` (`public/privacy.html`, no key) and `GET /api/privacy`. The page states plainly: no names, email addresses, phone numbers, IP addresses or accounts are stored; `clientId` is a random id generated on the phone; booth reports hide any group under 3 devices; the technician and speaker keys are never logged or traced.
+Public page `/privacy` (`public/privacy.html`, no key) and `GET /api/privacy`. The page states: Elasticsearch, logs, dashboards and sponsor reports hold no names, email addresses, phone numbers, IP addresses or accounts; with sign-in on, a phone gives name, company or occupation and email once, kept in server memory only and exportable only with `TECH_KEY`; the sign-in rate limiter keeps recent network addresses in memory; `clientId` is a random id generated on the phone; booth reports hide any group under 3 devices; browser monitoring (if on) and Chrome's speech recognition are disclosed; the keys are never logged or traced.
 
 `GET /api/privacy` returns:
 
@@ -168,7 +169,8 @@ Public page `/privacy` (`public/privacy.html`, no key) and `GET /api/privacy`. T
   "elasticsearch": true,
   "indices": [{ "index": "pulse-captions", "fields": [{ "field": "talkId", "type": "keyword" }] }],
   "privacy": {
-    "personalData": false,
+    "personalData": true,
+    "signIn": { "enabled": true, "collects": ["first name", "last name", "company or occupation", "email address"], "storage": "server memory only, cleared on restart", "inElasticsearch": false, "linkedToClientId": false, "export": "event team, staff key" },
     "identifier": "clientId",
     "clientIdRandom": true,
     "clientIdGeneratedOnDevice": true,
@@ -181,6 +183,7 @@ Public page `/privacy` (`public/privacy.html`, no key) and `GET /api/privacy`. T
 
 - Every index Pulse writes is listed. Fields are read live from `GET /<index>/_mapping` when Elasticsearch is enabled. When it is disabled, or a mapping cannot be read, fields come from `scripts/es-setup.js` (`mappings`), so the list cannot drift.
 - `source`: `elasticsearch` when every mapping was read live, `mixed` when only some were, `static` when none were (including Elasticsearch disabled).
+- `personalData` is `true` while `SIGNIN` is on (the default) and `false` with `SIGNIN=off`.
 - The response must not contain a field named `name`, `email`, `phone` or `ip`; `scripts/extras-check.js` asserts this.
 
 ## Metrics
@@ -204,7 +207,7 @@ OTLP (Dash0): marking a booth request done records histogram `pulse.booth.reques
 
 Kubernetes Secret (entered in the Radar UI) or local `.env`. **Never committed.** See `.env.example`.
 
-`PORT` · `MOCK_ROOM=255` · `ROOM_CAPACITY=120` · `SIGNIN=on` · `AUTO_END_MIN=10` · `VISITOR_SECRET` · `PUBLIC_BASE_URL` · `SPEAKER_KEY` · `TECH_KEY` · `ALERT_THRESHOLD=3` · `ALERT_WINDOW_SEC=60` · `CAPTIONS_DEFAULT=on` · `ELASTIC_URL` · `ELASTIC_API_KEY` · `ES_INFERENCE_ID` · `OTEL_SERVICE_NAME=pulse` · `OTEL_EXPORTER_OTLP_ENDPOINT` · `OTEL_EXPORTER_OTLP_HEADERS` · `DASH0_RUM_TOKEN` (public, ingest-only) · `DASH0_RUM_ENDPOINT=https://ingress.us-west-2.aws.dash0.com`
+`PORT` · `BOOTH_KEY` · `MOCK_ROOM=255` · `ROOM_CAPACITY=120` · `SIGNIN=on` · `AUTO_END_MIN=10` · `VISITOR_SECRET` · `PUBLIC_BASE_URL` · `SPEAKER_KEY` · `TECH_KEY` · `ALERT_THRESHOLD=3` · `ALERT_WINDOW_SEC=60` · `CAPTIONS_DEFAULT=on` · `ELASTIC_URL` · `ELASTIC_API_KEY` · `ES_INFERENCE_ID` · `OTEL_SERVICE_NAME=pulse` · `OTEL_EXPORTER_OTLP_ENDPOINT` · `OTEL_EXPORTER_OTLP_HEADERS` · `DASH0_RUM_TOKEN` (public, ingest-only) · `DASH0_RUM_ENDPOINT=https://ingress.us-west-2.aws.dash0.com`
 
 ## Booths (expo floor)
 
@@ -214,7 +217,7 @@ A booth is a place like a room, keyed by a short id (`gitar`, `dash0`, …). Boo
 | Page | Key | What |
 | --- | --- | --- |
 | `/b/:booth` | none | Attendee booth page (QR on the table): sponsor, pitch, passport progress, next-booth card, "Talk to an engineer" / "Send me resources" |
-| `/booth/:booth?key=TECH_KEY` | `TECH_KEY` | Booth staff screen: live request queue, visits, "talks that sent people here" |
+| `/booth/:booth?key=BOOTH_KEY` | `BOOTH_KEY` | Booth staff screen: live request queue, visits, "talks that sent people here" |
 
 ### HTTP
 | Method | Path | Body | Returns |
@@ -222,14 +225,14 @@ A booth is a place like a room, keyed by a short id (`gitar`, `dash0`, …). Boo
 | GET | `/api/booths` | — | `[{id, sponsor, table, pitch, resourcesUrl}]` |
 | POST | `/api/booths/:booth/checkin` | `{clientId}` | `{booth, stamps, total, suspect, next: {id, sponsor, table, because} \| null}` |
 | POST | `/api/booths/:booth/requests` | `{clientId, kind}` (`talk_to_engineer` \| `send_resources`) | `{requestId, position}` |
-| POST | `/api/booths/:booth/requests/:id/done` (TECH_KEY) | `{by}` | `{status}` |
-| GET | `/api/booths/:booth/report` (TECH_KEY) | — | `{visits, uniqueDevices, dwell: {medianMin, p90Min, n} \| null, open: [requests], fromTalks: [{talkId, title, devices}], topics: [{text, devices}]}` |
+| POST | `/api/booths/:booth/requests/:id/done` (BOOTH_KEY) | `{by}` | `{status}` |
+| GET | `/api/booths/:booth/report` (BOOTH_KEY) | — | `{visits, uniqueDevices, dwell: {medianMin, p90Min, n} \| null, open: [requests], fromTalks: [{talkId, title, devices}], topics: [{text, devices}]}` |
 
 - **Passport:** one stamp per `clientId` per booth. `suspect: true` if the same device stamped another booth less than 30 s earlier (not counted toward `stamps`).
 - **Next booth:** from the captions this device actually received in rooms it joined as `attendee` (last 20 lines across rooms). Elastic semantic search of those lines against booth `about` (`pulse-booths.about_sem`, RRF with a match query); fallback is word overlap in memory. Never suggest a booth already stamped. `because` is the caption line (≤ 120 chars) that matched best.
-- **Privacy:** the report never names a device. Any `fromTalks`, `topics` or dwell group with fewer than 3 devices is dropped or null (k ≥ 3). No identity is collected.
+- **Privacy:** the report never names a device. Any `fromTalks`, `topics` or dwell group with fewer than 3 devices is dropped or null (k ≥ 3). Booths never receive sign-in details.
 - **Dwell:** for each device's consecutive stamps (booth A at t1, next booth at t2), `dwell_upper(A) = min(t2 - t1, 15 min)`. The report field `dwell` is `{medianMin, p90Min, n}` computed from those upper bounds, only when n ≥ 3, else `null`: time to next stop, an upper bound; shown as a range with n. Consecutive stamps include rejected (suspect) stamps — they still mark a stop — and a device's last stop has no next stamp, so it contributes no sample.
-- WebSocket: booth staff connect `/ws?room=<booth>&role=tech&key=TECH_KEY` and get `{t:'booth_request', requestId, kind, position, ts}` and `{t:'booth_request_done', requestId}`.
+- WebSocket: booth staff connect `/ws?room=<booth>&role=booth&key=BOOTH_KEY` (the `booth` role gets booth requests, never room or AV data) and get `{t:'booth_request', requestId, kind, position, ts}` and `{t:'booth_request_done', requestId}`.
 - Elastic: `pulse-booths` (`id`, `sponsor`, `about` → `about_sem` semantic_text), `pulse-checkins` (`booth`, `clientId`, `ts`, `suspect`, `fromTalks` keyword[]).
 
 ## Find the right talk

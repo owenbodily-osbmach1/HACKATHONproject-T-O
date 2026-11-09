@@ -34,7 +34,8 @@ spec:
               value: "pulse"
             - name: PUBLIC_BASE_URL
               value: "https://pulse.cnh.radarhq.io"
-          # Keys live only in this Secret (created in Radar Cloud or by kubectl), never in git.
+          # Keys live only in this Secret (created in Radar Cloud or by kubectl), never in git:
+          # SPEAKER_KEY, TECH_KEY, BOOTH_KEY (booth staff; unset = booth pages locked), plus ELASTIC_* / OTEL_*.
           envFrom:
             - secretRef:
                 name: app-credentials

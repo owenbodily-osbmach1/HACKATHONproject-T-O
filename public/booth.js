@@ -1,4 +1,4 @@
-// Booth staff screen /booth/:booth?key=TECH_KEY
+// Booth staff screen /booth/:booth?key=BOOTH_KEY (booth staff's own key: no sign-ins, no AV actions)
 // Live request queue over WebSocket, totals and privacy-filtered report over HTTP.
 import { connectRoom } from '/lib/socket.js';
 
@@ -72,7 +72,7 @@ async function api(path, body, method = 'GET') {
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (res.status === 401) {
-    warn('The server rejected the staff key. Open /booth/' + boothId + '?key=YOUR_TECH_KEY', 'unauthorized');
+    warn('The server rejected the booth key. Open /booth/' + boothId + '?key=YOUR_BOOTH_KEY', 'unauthorized');
     const err = new Error('401');
     err.unauthorized = true;
     throw err;
@@ -190,7 +190,7 @@ function renderQueue() {
   const box = $('queue');
   if (!list.length) {
     const text = !boothId ? 'No booth id in this address.'
-      : !key ? 'Staff key needed. Add ?key=YOUR_TECH_KEY.'
+      : !key ? 'Booth key needed. Add ?key=YOUR_BOOTH_KEY.'
       : unavailable ? 'Booth service not available.'
       : 'No one waiting.';
     box.replaceChildren(Object.assign(document.createElement('p'), { className: 'booth-empty', textContent: text }));
@@ -293,13 +293,13 @@ function start() {
   document.title = boothId ? `Pulse · ${boothId} booth staff` : 'Pulse · Booth staff';
 
   if (!boothId) {
-    warn('This page needs a booth id. Open /booth/gitar?key=YOUR_TECH_KEY', 'missing');
+    warn('This page needs a booth id. Open /booth/gitar?key=YOUR_BOOTH_KEY', 'missing');
     setConn('unauthorized', 'No booth id');
     renderAll();
     return;
   }
   if (!key) {
-    warn('No staff key in the URL. Open /booth/' + boothId + '?key=YOUR_TECH_KEY', 'missing');
+    warn('No booth key in the URL. Open /booth/' + boothId + '?key=YOUR_BOOTH_KEY', 'missing');
     setConn('unauthorized', 'No key');
     renderAll();
     return;
@@ -307,7 +307,7 @@ function start() {
 
   connectRoom({
     room: boothId,
-    role: 'tech',
+    role: 'booth',
     key,
     onStatus: (s) => {
       setConn(s);

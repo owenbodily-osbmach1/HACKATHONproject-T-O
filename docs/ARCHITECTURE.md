@@ -82,13 +82,13 @@ The Deployment uses `strategy: Recreate` so two pods never overlap during a roll
 
 ## Security
 
-- **Keys.** `SPEAKER_KEY` protects `/mic/:room`, `/present/:room`, `POST /api/talks` and `/api/talks/:talkId/end`. `TECH_KEY` protects `/tech` and every crew action. Pages take `?key=`, API calls send `x-pulse-key`, and WebSockets send `&key=`. Comparison is constant time. An unset key locks the route instead of opening it.
+- **Keys.** `SPEAKER_KEY` protects `/mic/:room`, `/present/:room`, `POST /api/talks` and `/api/talks/:talkId/end`. `TECH_KEY` protects `/tech`, every crew action and the sign-in export. `BOOTH_KEY` protects only the booth staff screen and its queue; it gets `403` everywhere else. Pages take `?key=`, API calls send `x-pulse-key`, and WebSockets send `&key=`. Comparison is constant time. An unset key locks the route instead of opening it.
 - **Mic lock.** Every page except `/mic/:room` is served with `Permissions-Policy: microphone=(), camera=()`. Only the podium page gets `microphone=(self)`. Attendee pages never call `getUserMedia`.
 - **Sender check.** The server relays `caption` and `caption_interim` only from a keyed `mic` socket, and `slide` only from a keyed `mic` or `present` socket. Other roles are dropped.
 - **Audio isolation.** `/ws/audio-in` requires `SPEAKER_KEY`. `/ws/audio-out` is send-only and ignores anything a phone sends. A binary frame on any other socket closes that connection.
 - **Container.** No service-account token, read-only root filesystem, no privilege escalation, all capabilities dropped, non-root user.
 - **Secrets.** Keys and credentials come from `.env` locally or the Kubernetes Secret in the cluster. Nothing secret is committed.
-- **Privacy.** No personal data. `clientId` is an anonymous random id. Booth sponsor reports suppress buckets under 3 devices.
+- **Privacy.** Sign-in (on unless the event sets `SIGNIN=off`): before joining a room, a phone gives first and last name, company or occupation, and email once. These stay in the server's memory only (gone on restart), are never written to Elasticsearch, logs or telemetry, and only the AV tech key can export them (CSV). Votes and questions stay anonymous. `clientId` is a random id from the phone, never linked to a sign-in. Booth sponsor reports suppress buckets under 3 devices. Telemetry is scrubbed of client IP, user agent, query strings and host details before export.
 
 ## What we would do next
 

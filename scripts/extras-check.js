@@ -78,7 +78,7 @@ async function checkin(base, boothId, clientId) {
 }
 
 async function report(base, boothId) {
-  const res = await http(base, 'GET', `/api/booths/${encodeURIComponent(boothId)}/report`, { key: 'tk' });
+  const res = await http(base, 'GET', `/api/booths/${encodeURIComponent(boothId)}/report`, { key: 'bk' });
   assert.equal(res.status, 200, `booth report must return 200, got ${res.status}`);
   return res.json;
 }
@@ -94,6 +94,7 @@ async function main() {
       PORT: String(port),
       SPEAKER_KEY: 'sk',
       TECH_KEY: 'tk',
+      BOOTH_KEY: 'bk',
       ELASTIC_URL: '',
       ELASTIC_API_KEY: '',
       OTEL_EXPORTER_OTLP_ENDPOINT: '',

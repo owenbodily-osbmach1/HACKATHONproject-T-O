@@ -295,7 +295,9 @@ function register(app, ctx) {
     for (const booth of booths) indexBooth(ctx, booth).catch(() => {});
   }
 
-  const tech = ctx.auth.api('TECH_KEY');
+  // Booth staff hold BOOTH_KEY: the booth queue and report only. TECH_KEY (sign-in export, AV
+  // actions) is not accepted here, and the booth key is refused (403) everywhere else.
+  const tech = ctx.auth.api('BOOTH_KEY');
   const boothOf = (req, res) => {
     const booth = byId.get(String(req.params.booth));
     if (!booth) res.status(404).json({ error: 'unknown booth' });
@@ -362,7 +364,7 @@ function register(app, ctx) {
     if (mRequests) mRequests.add(1, { 'pulse.kind': kind });
     log.info('booth.request', { booth: booth.id, requestId, kind, position });
 
-    ctx.hub.send(booth.id, { t: 'booth_request', requestId, kind, position, ts }, ['tech']);
+    ctx.hub.send(booth.id, { t: 'booth_request', requestId, kind, position, ts }, ['booth']);
     res.json({ requestId, position });
   });
 
@@ -376,7 +378,7 @@ function register(app, ctx) {
       request.done = true;
       request.doneAt = Date.now();
       if (mAck) mAck.record(Math.max(0, (request.doneAt - request.ts) / 1000), { 'pulse.booth': booth.id });
-      ctx.hub.send(booth.id, { t: 'booth_request_done', requestId: request.requestId }, ['tech']);
+      ctx.hub.send(booth.id, { t: 'booth_request_done', requestId: request.requestId }, ['booth']);
     }
     res.json({ status: 'done' });
   });

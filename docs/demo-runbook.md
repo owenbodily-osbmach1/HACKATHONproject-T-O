@@ -109,7 +109,7 @@ The sections below are the long version, for when the podium mic or the AV tech 
 ## E. Audience and judges: join (about 20 seconds)
 
 1. Open the **camera** and point it at the QR code on the screen.
-2. Tap the link that pops up. The **Room 151** page opens; no app or login is needed.
+2. Tap the link that pops up. Fill in the one-time sign-in (name, company or occupation, email) and tap **Join the room**; no app is needed.
 3. Check the dot at the top right says **Live**.
 4. At the top, tap **Both** to see the slide and the captions, or **Slides** or **Captions**.
 5. Optional: plug in earbuds and tap **🎧 Listen with earbuds** to hear the speaker.
@@ -121,7 +121,7 @@ The sections below are the long version, for when the podium mic or the AV tech 
 
 ## The demo moment (about 4 minutes)
 
-1. **Join slide on screen:** "Scan this. No app, no login." Judges scan the QR code (E).
+1. **Join slide on screen:** "Scan this. No app, one quick sign-in." Judges scan the QR code (E).
 2. **Speaker talks:** captions appear on their phones; the presenter clicks to the next slide and it appears on their phones about 1 s later.
 3. **Hand one judge the listen phone** with earbuds: they hear the podium mic.
 4. **"Pinch the slide on your phone"**: it zooms on their phone while the projector stays the same.
