@@ -120,9 +120,10 @@ function addCaption({ seq, text }) {
   if (seq) state.lastSeq = seq;
   $('captionEmpty')?.remove();
   const p = document.createElement('p');
-  p.className = 'line';
+  p.className = 'line enter'; // .enter = slide-in for the Both crawl
   p.textContent = text;
   capEl.appendChild(p);
+  setTimeout(() => p.classList.remove('enter'), 500);
   while (capEl.children.length > MAX_LINES) capEl.firstElementChild.remove();
   $('interim').textContent = '';
   if (!state.autoScroll && Date.now() - lastCaptionScroll > BACK_TO_LIVE_MS) state.autoScroll = true;
