@@ -41,7 +41,7 @@
       <p class="status-line"><span id="dbText">— dBFS</span> · <span id="audioState">Listen-in off</span></p>
       <dl class="stats">
         <div><dt>Words captioned</dt><dd id="statWords">0</dd></div>
-        <div><dt>Phones listening</dt><dd id="statListeners">—</dd></div>
+        <div><dt>Phones connected</dt><dd id="statListeners">—</dd></div>
         <div><dt>Transcript</dt><dd id="statSaving">Not saving</dd></div>
       </dl>
       <p class="last-line" id="lastLine" aria-live="off"></p>
@@ -49,8 +49,10 @@
 
     <section class="card qr-card" aria-labelledby="qrH">
       <h2 id="qrH">QR code for slide 1</h2>
+      <p class="warn" id="qrWarn" hidden>This code points at <b>localhost</b>, which phones can't open. Open this page through the public URL (team URL or tunnel), set <code>PUBLIC_BASE_URL</code>, or add <code>&amp;base=https://your-url</code>.</p>
       <div class="qr" id="qr"></div>
-      <p class="qr-url" id="qrUrl"></p>
+      <a class="qr-dl" id="qrDl" hidden>Download QR image</a>
+      <p><a class="qr-url" id="qrUrl" target="_blank" rel="noopener"></a></p>
       <p class="hint-small">Right-click the code → "Copy image" and paste it into slide 1, or download it.</p>
     </section>
 

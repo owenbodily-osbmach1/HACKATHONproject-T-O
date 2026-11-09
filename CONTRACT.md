@@ -29,7 +29,7 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 | POST | `/api/feedback` | `{ticketId, clientId, better}` | `{better, stillBad}` |
 | POST | `/api/tickets/:id/claim` · `/fixed` · `/dismiss` | `{by}` | `{status}` |
 | GET | `/api/report/:talkId` | — | `{transcript[], signalsByMinute[], questions[]}` |
-| GET / POST | `/api/config` | `{alertThreshold}` | `{alertThreshold, nudgeThreshold}` |
+| GET / POST | `/api/config` | `{alertThreshold}` | `{alertThreshold, nudgeThreshold, publicBaseUrl}` (`publicBaseUrl` = `PUBLIC_BASE_URL`; the mic page builds the QR code from it) |
 | GET | `/healthz` | — | `ok` |
 
 - Vote `type`: `cant_hear` | `cant_see` (`room_full` is a stretch goal).
@@ -68,12 +68,13 @@ All messages are JSON with a `t` field. `role=mic` and `role=present` must also 
 | `caption` | mic → server → room | `talkId, seq, text, ts` | attendee, tech |
 | `caption_interim` | mic → server → room | `text` | attendee |
 | `caption_backlog` | server → (on join) | `lines[]` (last 50) | attendee, tech |
+| `ticket` (snapshot) | server → (on join) | one `ticket` message per open / claimed / reopened ticket in the room, plus the current `question_groups` | tech, org |
 | `vote_count` | server → | `type, count, windowSec` | attendee |
 | `ticket` | server → | `id, room, type, people, status, openedAt, cause, steps[]` | tech, org |
 | `ticket_status` | server → | `ticketId, type, status` | attendee |
 | `room_status` (every 2 s) | server → | `room, listeners, micDb, captionGapSec, openTickets` | tech, org, mic |
 | `room_settings` | server → | `captions, listen, slides` | all |
-| `question_groups` | server → | `groups[{groupId, text, count, answered}]` | tech |
+| `question_groups` | server → | `groups[{groupId, qid, text, count, answered}]` (`qid` = first question in the group; tech actions use it) | tech |
 | `question_update` | server → | `qid, pinned, hidden, answered` | tech |
 | `question_reply` | server → | `qid, text` | the askers only |
 | `broadcast` | server → | `text` | attendee |

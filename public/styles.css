@@ -21,8 +21,24 @@
   --font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-head: "Space Grotesk", var(--font);
   --font-mark: Unbounded, "Space Grotesk", var(--font);
+  /* Old names kept so pages written before the redesign (org, present, transcript)
+     pick up the new palette instead of breaking. New code should use the names above. */
+  --panel: var(--surface);
+  --panel-2: var(--raised);
+  --accent: var(--blue);
+  --amber: var(--yellow);
+  --green: var(--text);
   color-scheme: dark;
 }
+
+/* Fonts are served from /fonts (same origin), so a slow or filtered venue network
+   never blocks the page. font-display: swap shows system text until they load. */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url(/fonts/inter-latin-400-normal.woff2) format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url(/fonts/inter-latin-600-normal.woff2) format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 700; font-display: swap; src: url(/fonts/inter-latin-700-normal.woff2) format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 800; font-display: swap; src: url(/fonts/inter-latin-800-normal.woff2) format("woff2"); }
+@font-face { font-family: "Space Grotesk"; font-style: normal; font-weight: 700; font-display: swap; src: url(/fonts/space-grotesk-latin-700-normal.woff2) format("woff2"); }
+@font-face { font-family: "Unbounded"; font-style: normal; font-weight: 800; font-display: swap; src: url(/fonts/unbounded-latin-800-normal.woff2) format("woff2"); }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
@@ -42,6 +58,13 @@ button:disabled { opacity: .4; cursor: default; }
 .ghost { background: var(--bg); border: 1px solid var(--line-strong); border-radius: 10px; min-width: 44px; min-height: 40px; padding: 0 10px; font-weight: 700; }
 .pill { background: var(--blue); color: var(--on-color); border: 0; border-radius: 999px; padding: 8px 14px; font-weight: 800; min-height: 40px; }
 
+/* =====================================================================
+   ATTENDEE PAGE /r/:room
+   Written phone-first. The rules below are the PHONE view (default).
+   The COMPUTER view (laptop, tablet landscape, projector) is one block
+   further down: search for "ATTENDEE · COMPUTER VIEW".
+   Check both in /dev/preview.html (Phones tab and Computer tab).
+   ===================================================================== */
 /* ---------- attendee layout ---------- */
 .attendee #app {
   display: flex; flex-direction: column; gap: 14px;
@@ -202,6 +225,7 @@ button:disabled { opacity: .4; cursor: default; }
 .zoom-scroll { flex: 1; overflow: auto; touch-action: pan-x pan-y pinch-zoom; display: grid; place-items: center; }
 .zoom-scroll img { max-width: 100%; max-height: 100%; background: #fff; }
 
+/* ---------- ATTENDEE · PHONE VIEW tweaks ---------- */
 /* Small phones: keep both vote buttons on one row, tighten spacing */
 @media (max-width: 360px) {
   .attendee #app { padding-left: 12px; padding-right: 12px; }
@@ -215,6 +239,43 @@ button:disabled { opacity: .4; cursor: default; }
   .vote { min-height: 64px; }
 }
 
+/* ---------- ATTENDEE · COMPUTER VIEW (900 px and wider) ----------
+   WATCH gets a big left column that fills the screen height; LISTEN, TELL THE CREW
+   and ASK stack in a fixed right column. Same HTML, same order for screen readers. */
+@media (min-width: 900px) and (min-height: 561px) {
+  .attendee #app {
+    display: grid; max-width: 1440px; overflow: hidden;
+    grid-template-columns: minmax(0, 1fr) clamp(340px, 30vw, 420px);
+    grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "top    top"
+      "banner banner"
+      "watch  listen"
+      "watch  crew"
+      "watch  ask"
+      "watch  ."
+      "watch  foot";
+    column-gap: clamp(20px, 2.5vw, 40px); row-gap: 18px;
+    padding: 24px clamp(20px, 3vw, 48px);
+  }
+  .attendee .top { grid-area: top; flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: 6px 18px; }
+  .attendee .top .brand-row { gap: 18px; }
+  .attendee .banner { grid-area: banner; }
+  .attendee .group-watch { grid-area: watch; min-height: 0; }
+  .attendee #app > section:nth-of-type(2) { grid-area: listen; }
+  .attendee #app > section:nth-of-type(3) { grid-area: crew; }
+  .attendee #app > section:nth-of-type(4) { grid-area: ask; }
+  .attendee .footnote { grid-area: foot; align-self: end; }
+  .wordmark { font-size: 32px; }
+  .stage { min-height: 0; }
+  .stage[data-mode="both"] .slide-frame { height: min(46vh, 520px); width: auto; }
+  .stage[data-mode="both"] .caption-pane { min-height: 160px; }
+  .group-watch:has(.stage[data-mode="both"]) { flex-shrink: 1; }
+}
+
+/* =====================================================================
+   PODIUM MIC PAGE /mic/:room (laptop first; stacks on narrow screens)
+   ===================================================================== */
 /* ---------- podium mic page /mic/:room (laptop) ---------- */
 .podium-wrap { max-width: 880px; margin: 0 auto; padding: 20px 16px 40px; display: grid; gap: 14px; grid-template-columns: 1fr; }
 @media (min-width: 820px) { .podium-wrap { grid-template-columns: 1.4fr 1fr; } .podium-top, .warn, .podium-wrap > .card:first-of-type { grid-column: 1 / -1; } }
@@ -248,8 +309,110 @@ button:disabled { opacity: .4; cursor: default; }
 .qr { background: #fff; border-radius: 12px; padding: 10px; width: min(260px, 100%); margin: 0 auto; }
 .qr img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
 .qr-dl { display: inline-block; margin-top: 8px; color: var(--blue); font-weight: 700; }
-.qr-url { margin: 8px 0 0; font-size: 20px; font-weight: 800; word-break: break-all; }
+.qr-card .warn { margin-bottom: 10px; text-align: left; font-weight: 500; }
+.qr-url { display: inline-block; color: var(--text); text-decoration: none; margin: 8px 0 0; font-size: 20px; font-weight: 800; word-break: break-all; }
 .hint-small { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 .hint-small code { color: var(--text); }
 .slide-ctl { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
 .ghost.big { min-height: 56px; min-width: 110px; font-size: 18px; font-weight: 800; }
+
+/* =====================================================================
+   AV TECH CONSOLE /tech
+   COMPUTER view: blocks on the left, room details in a sticky right column (980 px+).
+   PHONE / TABLET view: everything stacks, blocks first. See "TECH · PHONE VIEW" below.
+   ===================================================================== */
+/* ---------- AV tech console /tech (laptop or tablet) ---------- */
+.techpage { min-height: 100vh; }
+.tech-top { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 18px; padding: 12px 18px; background: rgba(0,0,0,.96); border-bottom: 1px solid var(--line); }
+.tech-brand { display: flex; align-items: baseline; gap: 10px; }
+.tech-brand .wordmark { font-size: 22px; }
+.tech-brand .role { font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.counters { display: flex; gap: 10px; flex-wrap: wrap; }
+.ctr { display: inline-flex; align-items: baseline; gap: 8px; padding: 6px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.ctr b { font-family: var(--font-head); font-size: 28px; letter-spacing: 0; color: var(--text); font-variant-numeric: tabular-nums; }
+.ctr.red { border-color: var(--red); } .ctr.red b { color: var(--red); }
+.ctr.amber { border-color: var(--yellow); } .ctr.amber b { color: var(--yellow); }
+.tech-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 15px; color: var(--muted); }
+.tech-tools select, .tech-tools input { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; min-height: 38px; padding: 0 8px; font: inherit; }
+.tech-tools input { width: 110px; }
+.sound-btn { background: var(--yellow); color: var(--on-color); border: 0; border-radius: 10px; min-height: 40px; padding: 0 14px; font-weight: 800; }
+.sound-btn[aria-pressed="true"] { background: var(--bg); color: var(--text); border: 1px solid var(--line-strong); }
+.tech-warn { margin: 12px 18px 0; }
+.tech-main { display: grid; grid-template-columns: 1fr; gap: 16px; padding: 16px 18px 40px; }
+@media (min-width: 980px) { .tech-main { grid-template-columns: 1fr 400px; align-items: start; } .drawer { position: sticky; top: 76px; max-height: calc(100vh - 92px); overflow-y: auto; } }
+
+.blocks { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.all-clear { grid-column: 1 / -1; margin: 0; padding: 28px; text-align: center; font-family: var(--font-head); font-size: 24px; font-weight: 700; color: var(--text); background: var(--surface); border: 1px dashed var(--line-strong); border-radius: var(--radius); }
+.block { background: var(--surface); border: 2px solid var(--line); border-radius: var(--radius); overflow: hidden; cursor: pointer; }
+.block.red { border-color: var(--red); }
+.block.amber { border-color: var(--yellow); }
+.block.sel { box-shadow: 0 0 0 3px var(--blue); }
+.band { display: flex; justify-content: space-between; gap: 8px; padding: 8px 14px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: 15px; }
+.block.red .band { background: var(--red); color: var(--on-color); }
+.block.amber .band { background: var(--yellow); color: var(--on-color); }
+.age { font-variant-numeric: tabular-nums; }
+.b-head { display: flex; align-items: baseline; justify-content: space-between; padding: 10px 14px 0; }
+.b-room { font-family: var(--font-head); font-size: 32px; font-weight: 700; }
+.b-votes { font-size: 20px; font-weight: 800; }
+.b-cause { margin: 4px 14px 0; font-size: 18px; }
+.b-steps { margin: 6px 0 0; padding: 0 14px 0 32px; color: var(--muted); font-size: 15px; }
+.b-actions { display: flex; gap: 10px; padding: 12px 14px 14px; }
+.act { flex: 1; min-height: 56px; border: 0; border-radius: 12px; font-size: 20px; font-weight: 800; }
+.act.claim { background: var(--red); color: var(--on-color); }
+.act.fixed { background: var(--text); color: var(--on-color); }
+.ghost.small { min-height: 36px; font-size: 14px; padding: 0 10px; }
+.b-actions .ghost.small { min-height: 56px; }
+.ok-tiles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.ok-tile { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; min-height: 44px; padding: 0 14px; color: var(--text); font-size: 16px; font-weight: 700; }
+.ok-tile.sel { box-shadow: 0 0 0 3px var(--blue); }
+
+.drawer { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.drawer-head { display: flex; justify-content: space-between; align-items: center; }
+.drawer h2 { margin: 0; font-family: var(--font-head); font-size: 26px; }
+.drawer h3 { display: flex; align-items: center; gap: 10px; margin: 20px 0 10px; font-size: 16px; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: .06em; }
+/* same big-label + colour-bar headings as the attendee page */
+.drawer h3::before { content: ""; width: 6px; height: 18px; border-radius: 3px; background: var(--text); flex: none; }
+.drawer h3.h-blue::before { background: var(--blue); }
+.drawer h3.h-yellow::before { background: var(--yellow); }
+.drawer h3 .muted { font-weight: 600; letter-spacing: 0; text-transform: none; }
+.d-talk { margin: 4px 0 10px; color: var(--muted); }
+.d-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+.d-stats div { background: var(--raised); border-radius: 10px; padding: 8px; }
+.d-stats .k { display: block; font-size: 12px; color: var(--muted); }
+.d-stats b { font-size: 17px; }
+.d-stats b[data-zone="bad"] { color: var(--amber); }
+.d-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.d-captions { margin: 0; padding-left: 20px; font-size: 15px; }
+.d-captions li { margin-bottom: 4px; }
+.muted { color: var(--muted); }
+.switches { display: grid; gap: 8px; }
+.switches label { display: flex; align-items: center; gap: 10px; font-size: 16px; min-height: 36px; }
+.switches input { width: 22px; height: 22px; accent-color: var(--accent); }
+.bcast { display: flex; gap: 8px; }
+.bcast input { flex: 1; min-width: 0; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px; min-height: 42px; padding: 0 10px; font: inherit; }
+.bcast button { background: var(--blue); color: var(--on-color); border: 0; border-radius: 10px; padding: 0 16px; font-weight: 800; }
+.quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { background: var(--raised); border: 1px solid var(--line-strong); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+.flash { margin: 6px 0 0; color: var(--text); font-size: 14px; font-weight: 700; }
+.questions { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.q-item { background: var(--raised); border-radius: 10px; padding: 10px 12px; border-left: 4px solid var(--blue); }
+.q-item.pinned { border-left-color: var(--yellow); }
+.q-item.answered { opacity: .6; border-left-color: var(--line-strong); }
+.q-text { margin: 0; font-weight: 600; }
+.q-meta { margin: 2px 0 6px; color: var(--muted); font-size: 13px; }
+.q-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.q-item form { margin-top: 8px; }
+
+/* ---------- TECH · PHONE VIEW (under 600 px) ----------
+   A tech walking the halls with a phone: one column, big counters, actions full width. */
+@media (max-width: 600px) {
+  .tech-top { padding: 10px 12px; gap: 10px; }
+  .tech-brand .wordmark { font-size: 18px; }
+  .counters { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .ctr { flex-direction: column; align-items: flex-start; gap: 0; padding: 6px 10px; font-size: 11px; }
+  .tech-tools { width: 100%; }
+  .tech-main { padding: 12px 12px 32px; gap: 12px; }
+  .blocks { grid-template-columns: 1fr; }
+  .b-room { font-size: 28px; }
+  .d-stats { grid-template-columns: 1fr 1fr 1fr; }
+}
