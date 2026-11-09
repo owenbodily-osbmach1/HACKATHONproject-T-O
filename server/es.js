@@ -1,6 +1,6 @@
 // Elasticsearch client over global fetch. Every write is fire-and-forget:
 // it must never throw into or delay the live caption/audio path. With no ELASTIC_URL it is a no-op.
-// Interface: index(indexName, doc), search(indexName, body) -> hits[] (empty on any error), raw(method, path, body), enabled -> bool.
+// Interface: index(indexName, doc, id?), updateByQuery(indexName, query, doc), search(indexName, body) -> hits[] (empty on any error), raw(method, path, body), enabled -> bool.
 const config = require('./config');
 const log = require('./log');
 
@@ -13,6 +13,7 @@ const headers = {
 
 let lastWriteWarn = 0;
 let lastSearchWarn = 0;
+const pendingWrites = new Map();
 
 function warnOnce(slot) {
   const now = Date.now();
@@ -47,12 +48,42 @@ async function raw(method, path, body, timeoutMs = 3000) {
   return text ? JSON.parse(text) : null;
 }
 
-// Fire-and-forget write. Never throws, never awaited.
-function index(name, doc) {
+// Writes are non-blocking by default and always absorb Elasticsearch errors.
+function index(name, doc, id) {
   if (!enabled) return;
   // Writes run ELSER inference for semantic_text fields; a cold model can take several seconds.
   // Fire-and-forget, so a longer timeout never touches the live path (Radar investigation found 3 s too short).
-  raw('POST', `/${name}/_doc`, doc, 15000).catch((err) => warn('write', err, name));
+  const write = () => raw(
+    id == null ? 'POST' : 'PUT',
+    id == null ? `/${name}/_doc` : `/${name}/_doc/${encodeURIComponent(String(id))}`,
+    doc,
+    15000
+  );
+  if (id == null) return write().catch((err) => warn('write', err, name));
+  return queueWrite(`${name}:${id}`, name, write);
+}
+
+// Update every matching question document, including older documents with auto-generated _ids.
+// Serialize by qid so a hide queued just after question creation cannot race the initial index write.
+function updateByQuery(name, query, doc) {
+  if (!enabled) return Promise.resolve();
+  const qid = query && query.term && query.term.qid;
+  const write = () => raw('POST', `/${name}/_update_by_query`, {
+    query,
+    script: { lang: 'painless', source: 'ctx._source.putAll(params.doc)', params: { doc } },
+  }, 15000);
+  if (qid == null) return write().catch((err) => warn('write', err, name));
+  return queueWrite(`${name}:${qid}`, name, write);
+}
+
+function queueWrite(key, name, write) {
+  const previous = pendingWrites.get(key) || Promise.resolve();
+  const current = previous.catch(() => {}).then(write).catch((err) => warn('write', err, name));
+  pendingWrites.set(key, current);
+  current.then(() => {
+    if (pendingWrites.get(key) === current) pendingWrites.delete(key);
+  });
+  return current;
 }
 
 async function search(name, body) {
@@ -66,4 +97,4 @@ async function search(name, body) {
   }
 }
 
-module.exports = { enabled, index, search, raw };
+module.exports = { enabled, index, updateByQuery, search, raw };
