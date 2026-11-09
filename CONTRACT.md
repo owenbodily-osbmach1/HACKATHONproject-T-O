@@ -23,7 +23,7 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 | --- | --- | --- | --- |
 | POST | `/api/talks` | `{room, title, speaker}` | `{talkId}` |
 | POST | `/api/talks/:talkId/end` | — | `{reportUrl}` |
-| GET | `/api/rooms` | — | `[{room, talkId, title, listeners, openTickets, simulated}]` |
+| GET | `/api/rooms` | — | `[{room, talkId, title, speaker?, listeners, openTickets, simulated}]` |
 | PUT | `/api/votes` | `{room, talkId, type, clientId, on}` | `{count, ticketStatus}` |
 | POST | `/api/questions` | `{room, talkId, text, clientId}` | `{qid, groupId}` |
 | POST | `/api/feedback` | `{ticketId, clientId, better}` | `{better, stillBad}` |
