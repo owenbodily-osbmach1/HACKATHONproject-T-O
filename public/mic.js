@@ -42,8 +42,26 @@ const api = (path, opts = {}) => fetch(path, {
 });
 
 // ---------- QR code for slide 1 ----------
-function renderQr() {
-  const url = `${location.origin}/r/${room}`;
+// The QR must point at an address phones can open: ?base= override, then the server's
+// PUBLIC_BASE_URL (GET /api/config → publicBaseUrl), then this page's own origin.
+const LOCAL_HOST = /^(localhost|127\.\d+\.\d+\.\d+|\[::1\]|0\.0\.0\.0)$/i;
+
+async function qrBase() {
+  const override = params.get('base');
+  if (override) return override.replace(/\/+$/, '');
+  try {
+    const c = await (await fetch('/api/config')).json();
+    if (c && c.publicBaseUrl) return String(c.publicBaseUrl).replace(/\/+$/, '');
+  } catch { /* fall back to origin */ }
+  return location.origin;
+}
+
+async function renderQr() {
+  const base = await qrBase();
+  const url = `${base}/r/${room}`;
+  let host = '';
+  try { host = new URL(base).hostname; } catch { /* bad override */ }
+  $('qrWarn').hidden = !LOCAL_HOST.test(host);
   try {
     const qr = window.qrcode(0, 'M');
     qr.addData(url);
@@ -51,17 +69,16 @@ function renderQr() {
     const img = document.createElement('img');
     img.src = qr.createDataURL(10, 4); // GIF: right-click "Copy image" pastes into Slides/Keynote
     img.alt = `QR code for ${url}`;
-    const dl = document.createElement('a');
+    $('qr').replaceChildren(img);
+    const dl = $('qrDl');
     dl.href = img.src;
     dl.download = `pulse-room-${room}-qr.gif`;
-    dl.textContent = 'Download QR image';
-    dl.className = 'qr-dl';
-    $('qr').replaceChildren(img);
-    $('qr').after(dl);
+    dl.hidden = false;
   } catch {
     $('qr').textContent = 'QR code failed to load.';
   }
   $('qrUrl').textContent = url.replace(/^https?:\/\//, '');
+  $('qrUrl').href = url;
 }
 renderQr();
 
