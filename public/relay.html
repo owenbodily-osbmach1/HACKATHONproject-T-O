@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pulse · Slide relay</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="podium">
+  <main class="podium-wrap relay-wrap">
+    <header class="podium-top">
+      <div>
+        <p class="eyebrow">Slide relay · open on the presenting computer</p>
+        <h1 id="roomTitle">Room —</h1>
+      </div>
+      <span class="conn" id="state" data-status="connecting"><span class="dot"></span><span class="conn-word">Not sharing</span></span>
+    </header>
+
+    <p class="warn" id="warn" role="alert" hidden></p>
+
+    <section class="card">
+      <h2>1 · Share your slides</h2>
+      <p class="hint-small">Works with PowerPoint, Google Slides, Keynote, Canva or a PDF. When asked, pick the <b>screen or window where the slideshow plays</b> (the projector screen if you have two). Don't pick a window with your speaker notes.</p>
+      <div class="big-btns">
+        <button type="button" class="start" id="shareBtn">▶ Share slides with phones</button>
+      </div>
+      <div class="relay-ctl" id="ctl" hidden>
+        <button type="button" class="ghost big" id="pauseBtn">❚❚ Pause</button>
+        <button type="button" class="ghost big" id="forceBtn">⟳ Send now</button>
+        <button type="button" class="ghost big" id="stopBtn">■ Stop</button>
+      </div>
+      <p class="status-line" id="status">Nothing shared yet.</p>
+    </section>
+
+    <section class="card">
+      <h2>2 · What phones see</h2>
+      <div class="relay-previews">
+        <figure>
+          <figcaption>Being watched (live)</figcaption>
+          <video id="live" muted playsinline></video>
+        </figure>
+        <figure>
+          <figcaption id="sentCap">Last slide sent to phones</figcaption>
+          <img id="sentImg" alt="Last slide sent to phones" hidden>
+        </figure>
+      </div>
+      <dl class="stats">
+        <div><dt>Slides sent</dt><dd id="statSent">0</dd></div>
+        <div><dt>Checking every</dt><dd id="statEvery">2 s</dd></div>
+        <div><dt>Last upload</dt><dd id="statBytes">—</dd></div>
+      </dl>
+      <p class="hint-small">Keep this window open; you can put it behind the slideshow or minimize it. Nothing here clicks or types into your presentation.</p>
+    </section>
+  </main>
+  <script type="module" src="/relay.js"></script>
+</body>
+</html>
