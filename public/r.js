@@ -105,20 +105,50 @@ $('fontDown').onclick = () => { sizeIdx = Math.max(0, sizeIdx - 1); applySize();
 $('fontUp').onclick = () => { sizeIdx = Math.min(SIZES.length - 1, sizeIdx + 1); applySize(); };
 applySize();
 
+// Looking back is temporary: after BACK_TO_LIVE_MS without touching the slide controls,
+// the next slide (or caption) brings the phone back to live by itself.
+const BACK_TO_LIVE_MS = 10000;
+let lastSlideTouch = 0;
+let lastCaptionScroll = 0;
+
 const capEl = $('captions');
 const MAX_LINES = 400;
+
+// Split a caption into lines of at most 8 words, breaking after punctuation when it can.
+// A short tail (1–2 words) joins the line before it.
+function captionChunks(text, max = 8) {
+  const words = String(text).trim().split(/\s+/).filter(Boolean);
+  if (words.length <= max + 2) return [words.join(' ')];
+  const out = [];
+  let cur = [];
+  for (const w of words) {
+    cur.push(w);
+    if (cur.length >= max || (cur.length >= 5 && /[,.;:!?]$/.test(w))) { out.push(cur); cur = []; }
+  }
+  if (cur.length) {
+    if (cur.length <= 2 && out.length) out[out.length - 1].push(...cur);
+    else out.push(cur);
+  }
+  return out.map((c) => c.join(' '));
+}
 
 function addCaption({ seq, text }) {
   if (!text) return;
   if (seq && seq <= state.lastSeq) return; // duplicate after reconnect/backlog
   if (seq) state.lastSeq = seq;
   $('captionEmpty')?.remove();
-  const p = document.createElement('p');
-  p.className = 'line';
-  p.textContent = text;
-  capEl.appendChild(p);
+  // A Web Speech final can be a long sentence. Short lines keep the Both crawl box
+  // from ever clipping the newest line, and read better as live captions anyway.
+  for (const chunk of captionChunks(text)) {
+    const p = document.createElement('p');
+    p.className = 'line enter'; // .enter = slide-in for the Both crawl
+    p.textContent = chunk;
+    capEl.appendChild(p);
+    setTimeout(() => p.classList.remove('enter'), 500);
+  }
   while (capEl.children.length > MAX_LINES) capEl.firstElementChild.remove();
   $('interim').textContent = '';
+  if (!state.autoScroll && Date.now() - lastCaptionScroll > BACK_TO_LIVE_MS) state.autoScroll = true;
   if (state.autoScroll) scrollCaptionsToEnd();
   else $('jumpLive').hidden = false;
 }
@@ -133,6 +163,7 @@ capEl.addEventListener('scroll', () => {
   const atBottom = capEl.scrollHeight - capEl.scrollTop - capEl.clientHeight < 40;
   state.autoScroll = atBottom;
   if (atBottom) $('jumpLive').hidden = true;
+  else lastCaptionScroll = Date.now();
 });
 $('jumpLive').onclick = scrollCaptionsToEnd;
 
@@ -159,8 +190,10 @@ function onSlide({ n, total, url, alt, talkId }) {
   if (!n || !url) return;
   state.slides[n - 1] = { n, total, url, alt };
   state.liveN = n;
+  // Not while the full-screen viewer is open: that would swap the slide being read and drop its zoom.
+  if (!state.followLive && $('zoom').hidden && Date.now() - lastSlideTouch > BACK_TO_LIVE_MS) state.followLive = true;
   if (state.followLive) showSlide(n);
-  else $('slideLive').hidden = false;
+  else showSlide(state.viewN); // refresh "Back to live" and the arrows for the new live slide
   // First slide arrives while on captions-only: offer Both once.
   if (!store.get('pulse.slidesOffered') && $('stage').dataset.mode === 'captions' && state.settings.slides) {
     store.set('pulse.slidesOffered', true);
@@ -171,6 +204,7 @@ function onSlide({ n, total, url, alt, talkId }) {
 function step(dir) {
   const target = state.viewN + dir;
   if (!state.slides[target - 1]) return;
+  lastSlideTouch = Date.now();
   state.followLive = target === state.liveN;
   showSlide(target);
 }
@@ -178,14 +212,20 @@ $('slidePrev').onclick = () => step(-1);
 $('slideNext').onclick = () => step(1);
 $('slideLive').onclick = () => { state.followLive = true; showSlide(state.liveN); };
 
-// Swipe left/right on the slide to step through slides seen so far.
-let touchX = null;
-$('slideFrame').addEventListener('touchstart', (e) => { touchX = e.touches.length === 1 ? e.touches[0].clientX : null; }, { passive: true });
+// Swipe left/right on the slide to step through slides seen so far. Only a quick, clearly
+// sideways swipe counts: scrolling the page up/down over the slide must never leave live.
+let touch = null;
+$('slideFrame').addEventListener('touchstart', (e) => {
+  touch = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() } : null;
+}, { passive: true });
+$('slideFrame').addEventListener('touchmove', (e) => { if (e.touches.length > 1) touch = null; }, { passive: true });
 $('slideFrame').addEventListener('touchend', (e) => {
-  if (touchX === null) return;
-  const dx = e.changedTouches[0].clientX - touchX;
-  touchX = null;
-  if (Math.abs(dx) > 50) step(dx < 0 ? 1 : -1);
+  if (!touch) return;
+  const dx = e.changedTouches[0].clientX - touch.x;
+  const dy = e.changedTouches[0].clientY - touch.y;
+  const quick = Date.now() - touch.t < 700;
+  touch = null;
+  if (quick && Math.abs(dx) > 70 && Math.abs(dx) > 2.5 * Math.abs(dy)) step(dx < 0 ? 1 : -1);
 });
 
 // Tap the slide: full screen, pinch to zoom.
