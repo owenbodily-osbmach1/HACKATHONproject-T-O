@@ -36,6 +36,7 @@ function setTalk({ talkId, title, speaker }) {
   if (talkId && talkId !== state.talkId) {
     const hadTalk = state.talkId !== null;
     state.talkId = talkId;
+    state.lastSeq = 0; // seq restarts per talk, even if the backlog came from an earlier one
     if (hadTalk) resetForNewTalk();
     loadVotes();
     if (!title) loadRoomInfo(); // a new talk started after this phone joined

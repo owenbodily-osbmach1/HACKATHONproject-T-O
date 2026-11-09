@@ -71,7 +71,7 @@ All messages are JSON with a `t` field. `role=mic` and `role=present` must also 
 | `vote_count` | server → | `type, count, windowSec` | attendee |
 | `ticket` | server → | `id, room, type, people, status, openedAt, cause, steps[]` | tech, org |
 | `ticket_status` | server → | `ticketId, type, status` | attendee |
-| `room_status` (every 2 s) | server → | `room, listeners, micDb, captionGapSec, openTickets` | tech, org |
+| `room_status` (every 2 s) | server → | `room, listeners, micDb, captionGapSec, openTickets` | tech, org, mic |
 | `room_settings` | server → | `captions, listen, slides` | all |
 | `question_groups` | server → | `groups[{groupId, text, count, answered}]` | tech |
 | `question_update` | server → | `qid, pinned, hidden, answered` | tech |
