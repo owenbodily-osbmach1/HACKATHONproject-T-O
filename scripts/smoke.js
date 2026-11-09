@@ -195,7 +195,8 @@ async function main() {
     sockets.push(mic);
     await mic.opened;
 
-    const captionPromise = attendee.wait((m) => m.t === 'caption' && m.text === 'smoke caption');
+    // server/wordfix.js tidies the line on the way through (capital first letter).
+    const captionPromise = attendee.wait((m) => m.t === 'caption' && m.text === 'Smoke caption');
     mic.send({ t: 'caption', talkId, seq: 1, text: 'smoke caption', ts: Date.now() });
     const caption = await captionPromise;
     assert.equal(caption.talkId, talkId, 'relayed caption must carry the talkId');
