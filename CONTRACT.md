@@ -3,7 +3,7 @@
 Source of truth for names shared between the UI (Owen) and the backend (Ty).
 **After both of us accept this file, nobody renames a route, message, field or index without telling the other person in the PR description.**
 
-Plain HTML + vanilla JS, no build step. Node 20, Express + `ws`. One pod (`replicas: 1`): rooms, sockets and vote windows live in memory.
+Plain HTML + vanilla JS, no build step. Node 22, Express + `ws`. One pod (`replicas: 1`): rooms, sockets and vote windows live in memory.
 
 ## Who owns what
 
