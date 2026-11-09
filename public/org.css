@@ -1,0 +1,99 @@
+
+/* ---------- CARD O: organizer overview (org.html) ---------- */
+.org-app {
+  max-width: 1440px; margin: 0 auto;
+  padding: env(safe-area-inset-top) 12px calc(env(safe-area-inset-bottom) + 24px);
+}
+.org-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 2px 2px; }
+.org-kicker { margin: 0; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.org-top h1 { margin: 2px 0 0; font-size: 24px; line-height: 1.15; }
+.org-conn { margin: 0 0 4px; flex: 0 0 auto; }
+
+.org-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0 14px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; min-width: 0; }
+.stat[data-alert="true"] { border: 2px solid var(--red); padding: 9px 11px; }
+.stat-num { display: block; font-size: 32px; line-height: 1.1; font-weight: 800; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat[data-alert="true"] .stat-num { color: var(--red); }
+.stat-label { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; }
+.org-layout { display: flex; flex-direction: column; gap: 18px; }
+.org-h2 { margin: 0 0 8px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.org-empty { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
+.org-foot { margin: 16px 0 0; color: var(--muted); font-size: 12px; }
+
+.room-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; align-items: stretch; }
+.room-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.room-card.has-ticket { border: 2px dashed var(--red); padding: 11px; }
+.room-card-head { min-width: 0; }
+.room-heading { margin: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 16px; }
+.room-num { font-size: 20px; font-weight: 800; letter-spacing: .02em; }
+.sim-badge { border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.room-title { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.room-title.muted { color: var(--muted); font-weight: 400; }
+.alert-badge { align-self: flex-start; margin: 0; background: var(--red); color: var(--bg); border-radius: 6px; padding: 3px 8px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+
+.room-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 10px; margin: 0; }
+.room-fact { min-width: 0; }
+.room-facts dt { color: var(--muted); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+.room-facts dd { margin: 1px 0 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.room-facts dd.muted, .mic-text.muted { color: var(--muted); font-weight: 400; }
+.room-facts dd.warn { color: var(--amber); }
+.db-row { display: flex; align-items: center; gap: 7px; }
+.db-meter { flex: 0 0 auto; width: 48px; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); }
+.db-meter span { display: block; width: 0; height: 100%; background: var(--green); transition: width .15s linear; }
+
+.card-tickets { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.ticket { border-top: 1px solid var(--line); padding-top: 7px; }
+.ticket:first-child { border-top: 0; padding-top: 0; }
+.ticket-top { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 5px 7px; }
+.ticket-badge { border: 1px solid var(--red); border-radius: 4px; padding: 1px 5px; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.ticket[data-status="claimed"] .ticket-badge { border-color: var(--amber); }
+.ticket-type { font-size: 14px; font-weight: 700; }
+.ticket-people { color: var(--muted); font-size: 13px; }
+.ticket-meta { margin: 2px 0 0; color: var(--muted); font-size: 13px; line-height: 1.3; overflow-wrap: anywhere; }
+.ticket-pending .ticket-badge { border-style: dashed; }
+.card-link {
+  display: flex; align-items: center; justify-content: center; min-height: 44px; margin-top: auto;
+  padding: 0 12px; background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 10px; color: var(--text); font-weight: 700; text-decoration: none; text-align: center;
+}
+.card-link:hover { border-color: var(--accent); }
+
+.feed-list {
+  list-style: none; margin: 0; padding: 0; background: var(--panel);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  max-height: min(60vh, 560px); overflow-y: auto; overscroll-behavior: contain;
+}
+.feed-item {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 8px 10px 8px 9px; border-bottom: 1px solid var(--line); border-left: 3px solid var(--line);
+  font-size: 14px; line-height: 1.3;
+}
+.feed-item:last-child { border-bottom: 0; }
+.feed-item[data-status="open"], .feed-item[data-status="reopened"] { border-left-color: var(--red); }
+.feed-item[data-status="claimed"] { border-left-color: var(--amber); }
+.feed-item[data-status="fixed"] { border-left-color: var(--green); }
+.feed-time { flex: 0 0 auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.feed-text { min-width: 0; overflow-wrap: anywhere; }
+
+@media (min-width: 700px) {
+  .org-top h1 { font-size: 28px; }
+  .org-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .stat-num { font-size: 38px; }
+  .room-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+}
+@media (min-width: 1000px) {
+  .org-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; align-items: start; }
+  .org-feed { position: sticky; top: 12px; }
+  .feed-list { max-height: calc(100dvh - 180px); }
+}
+@media (max-width: 340px) {
+  .org-stats { gap: 6px; }
+  .stat { padding: 8px 10px; }
+  .stat-num { font-size: 28px; }
+  .room-grid { grid-template-columns: 1fr; }
+  .room-card { padding: 10px; }
+  .room-card.has-ticket { padding: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .db-meter span { transition: none; }
+}
