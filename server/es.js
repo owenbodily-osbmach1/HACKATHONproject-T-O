@@ -76,6 +76,14 @@ function updateByQuery(name, query, doc) {
   return queueWrite(`${name}:${qid}`, name, write);
 }
 
+// Partial update of one document by id. Unlike _update_by_query this does not depend on the
+// index refresh, so a hide right after the question is created still lands.
+function update(name, id, doc) {
+  if (!enabled) return Promise.resolve();
+  const write = () => raw('POST', `/${name}/_update/${encodeURIComponent(String(id))}`, { doc }, 15000);
+  return queueWrite(`${name}:${id}`, name, write);
+}
+
 function queueWrite(key, name, write) {
   const previous = pendingWrites.get(key) || Promise.resolve();
   const current = previous.catch(() => {}).then(write).catch((err) => warn('write', err, name));
@@ -97,4 +105,4 @@ async function search(name, body) {
   }
 }
 
-module.exports = { enabled, index, updateByQuery, search, raw };
+module.exports = { enabled, index, update, updateByQuery, search, raw };
