@@ -21,8 +21,8 @@ const updatedEl = $('updated');
 const connEl = $('conn');
 
 const rooms = new Map(); // room -> record
-const fixes = []; // durations in ms, one per ticket fixed this session
-const fixedIds = new Set();
+const fixes = []; // ms per fix event; a reopened ticket adds a new sample
+const fixStarts = new Map(); // ticket id -> ms it last opened or reopened
 let polling = false;
 
 // ---------- formatting ----------
@@ -326,11 +326,25 @@ function addFeed(r, ticket) {
 }
 
 function noteFix(ticket) {
-  if (ticket.status !== 'fixed' || fixedIds.has(ticket.id)) return;
-  const opened = Date.parse(ticket.openedAt);
-  if (!Number.isFinite(opened)) return;
-  fixedIds.add(ticket.id);
-  fixes.push(Math.max(0, Date.now() - opened));
+  if (ticket.status === 'fixed') {
+    const started = fixStarts.get(ticket.id);
+    fixStarts.delete(ticket.id);
+    const opened = Date.parse(ticket.openedAt);
+    const start = Number.isFinite(started) ? started : opened;
+    if (Number.isFinite(start)) fixes.push(Math.max(0, Date.now() - start));
+    return;
+  }
+  if (!ACTIVE.has(ticket.status)) return;
+  // A reopened ticket keeps its original openedAt on the server, so its new
+  // window starts when this page sees the reopening.
+  if (ticket.status === 'reopened') {
+    fixStarts.set(ticket.id, Date.now());
+    return;
+  }
+  if (!fixStarts.has(ticket.id)) {
+    const opened = Date.parse(ticket.openedAt);
+    if (Number.isFinite(opened)) fixStarts.set(ticket.id, opened);
+  }
 }
 
 // Server truth: a room_status/poll count of zero means no tracked ticket can still be open.
