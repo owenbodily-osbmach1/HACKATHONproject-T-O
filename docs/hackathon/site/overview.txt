@@ -1,0 +1,265 @@
+Cloud Native Hackathon | WeMakeDevs 
+ Prizes
+ Sponsors
+ Judges
+ Venue
+ FAQ
+ After-Party 🎉
+ Sign in
+ Register free
+ Prizes
+ Sponsors
+ Judges
+ Venue
+ FAQ
+ After-Party 🎉
+ Register free
+ Mon, Nov 9
+ Salt Lake City · In person
+ Free entry
+ Cloud Native Hackathon 
+ Conferences, the easy way.
+ $20,000 in cash prizes including an NVIDIA DGX Spark Supercomputer . Everyone who comes gets a free Keychron keyboard .
+ Register free 
+ Prizes and tracks 
+ Build with Kelsey Hightower 
+ $ 0 
+ Prize pool
+ Sponsored by
+ Radar 
+ elasticsearch 
+ Overview
+ Schedule
+ Resources
+ Rules
+ Community partners
+ 01 / Prizes and tracks
+ A $20,000 prize pool
+ You can participate in multiple tracks at once.
+ Best project overall, from any track
+ NVIDIA DGX Spark
+ Personal AI Supercomputer
+ Everyone who attends in person
+ Keychron mechanical keyboard
+ $4,000 in cash 
+ Track 1 · AI code review
+ Never Merge Broken
+ Gitar reviews every pull request against your conventions, fixes what it finds and diagnoses failing CI.
+ $4,000 in cash 
+ Track 2 · Observability
+ Stop Flying Blind
+ Logs, metrics, traces, profiles and real-user monitoring in one place, built natively on OpenTelemetry, with AI agents that find out what broke, why, and how to fix it for you.
+ Radar 
+ $4,000 in cash 
+ Track 3 · Kubernetes UI
+ AI SRE
+ An open-source Kubernetes UI with an AI SRE that finds the root cause when something breaks, from the UI or your coding agent.
+ elasticsearch 
+ $4,000 in cash 
+ Track 4 · Search and vector database
+ Find the Right Talk
+ The open source search engine and vector database: keyword, vector or hybrid search behind your app's data and your agents' RAG.
+ Merge Forward track · iPad
+ Conferences for Everyone
+ For the project that makes conferences more inclusive and accessible.
+ About Merge Forward
+ Top 10 projects
+ Signed copy of Kubernetes: Up & Running
+ The top 10 teams each take home a copy of the book, signed by Kelsey Hightower himself.
+ Everyone who takes part
+ Certificates & Swags
+ 02 / Sponsors and ideas
+ Who you're building with
+ Hover for ideas 
+ AI code review · Track 1
+ Gitar is Sonar's AI code verification agent. It reviews your pull requests against your project's conventions, finds problems, generates fixes and diagnoses CI failures. With auto-apply turned on, it commits fixes and keeps iterating against your pipeline, while you stay in control of what gets applied and what can merge.
+ Ideas for Sonar
+ A schedule builder where every feature lands through a Gitar-reviewed PR, with review instructions that make sure session times always handle time zones properly. 
+ A repository rule that kicks in whenever your API changes and checks your frontend still matches it. 
+ Breaking your CI on purpose and letting auto-apply fix it live during your demo. 
+ Get started with Gitar 
+ All resources 
+ Ideas for Dash0
+ Self-diagnosing microservice app. Build a small multi-service app (a storefront, a booking system, a chat app) and instrument it end to end with OpenTelemetry. Add a "chaos" button that injects latency or errors, then show Agent0 finding the cause in your demo. 
+ A live crowd map where check-ins become metrics and a Dash0 dashboard shows which rooms are filling up. 
+ A schedule app instrumented end to end, where your demo shows Agent0 explaining why "My agenda" slowed down when everyone opened it after the keynote. 
+ An AI assistant for attendees traced with OpenLIT, so you can see every LLM call, token and cost in Dash0. 
+ Hover for ideas 
+ Observability · Track 2
+ Dash0 is an observability platform built natively on OpenTelemetry, so everything your applications and infrastructure emit can be explored together instead of across separate tools. Ask Agent0, our AI SRE agent, a question in plain English and get an answer grounded in your live telemetry. Its MCP server lets Claude Code, Cursor and other AI assistants tap into the same data while you build, so they work from facts instead of guesses.
+ Ideas for Dash0
+ Self-diagnosing microservice app. Build a small multi-service app (a storefront, a booking system, a chat app) and instrument it end to end with OpenTelemetry. Add a "chaos" button that injects latency or errors, then show Agent0 finding the cause in your demo. 
+ A live crowd map where check-ins become metrics and a Dash0 dashboard shows which rooms are filling up. 
+ A schedule app instrumented end to end, where your demo shows Agent0 explaining why "My agenda" slowed down when everyone opened it after the keynote. 
+ An AI assistant for attendees traced with OpenLIT, so you can see every LLM call, token and cost in Dash0. 
+ Start a free trial 
+ All resources 
+ Ideas for Sonar
+ A schedule builder where every feature lands through a Gitar-reviewed PR, with review instructions that make sure session times always handle time zones properly. 
+ A repository rule that kicks in whenever your API changes and checks your frontend still matches it. 
+ Breaking your CI on purpose and letting auto-apply fix it live during your demo. 
+ Radar Hover for ideas 
+ Kubernetes UI · Track 3
+ Radar is an open-source Kubernetes UI from Skyhook. It shows everything running in your cluster in one place, and its AI SRE finds the root cause when something breaks, either from the Radar UI or from your coding agent (Claude Code, Codex, Cursor and others) through Radar's MCP server.
+ Ideas for Radar, any of these on Kubernetes
+ Talk picker . Reads your GitHub, builds your schedule and reshuffles it when a room fills up. 
+ Hallway track matchmaker . Finds the people in the building working on the same problem as you. 
+ Live crowd map . Shows which rooms are packed and which coffee line is shortest. 
+ Radar on GitHub 
+ All resources 
+ Ideas for Elasticsearch
+ A talk search where "something on eBPF and security" finds the right session even when those words aren't in the title. 
+ A hallway matchmaker that stores what everyone is working on as vectors and finds the closest matches in the building. 
+ A conference assistant that answers questions about the schedule using RAG over every talk abstract. 
+ elasticsearch Hover for ideas 
+ Search and vector database · Track 4
+ Elasticsearch is the open source search engine and vector database. Store your app's data in it and search it by keyword, by meaning with vector search, or both at once with hybrid search, so it can be the database behind your search, recommendations and the RAG for your AI agents.
+ Ideas for Elasticsearch
+ A talk search where "something on eBPF and security" finds the right session even when those words aren't in the title. 
+ A hallway matchmaker that stores what everyone is working on as vectors and finds the closest matches in the building. 
+ A conference assistant that answers questions about the schedule using RAG over every talk abstract. 
+ Run Elasticsearch locally 
+ All resources 
+ Ideas for Radar, any of these on Kubernetes
+ Talk picker . Reads your GitHub, builds your schedule and reshuffles it when a room fills up. 
+ Hallway track matchmaker . Finds the people in the building working on the same problem as you. 
+ Live crowd map . Shows which rooms are packed and which coffee line is shortest. 
+ $50
+ In OpenAI credits for every participant.
+ 03 / Judging
+ Who you'll be presenting to
+ Kelsey Hightower
+ Distinguished Engineer (retired) at Google Cloud, co-founder of KubeCon
+ LinkedIn
+ Wes Novack
+ SVP, Engineering
+ LinkedIn
+ Joseph Sandoval
+ Principal Product Manager at Adobe, Vice Chair of the CNCF End User Technical Advisory Board
+ LinkedIn
+ Saiyam Pathak
+ Founder of Kubesimplify and CNCF Ambassador, teaching Kubernetes to developers
+ LinkedIn
+ Phil Estes
+ Principal Engineer at Amazon Web Services (AWS)
+ LinkedIn
+ Jacquie Capur
+ Developer Relations at Nebius
+ LinkedIn
+ Tomás Martín Barreiro Iffernet
+ Software Engineer at Cline
+ LinkedIn
+ Simon Schrottner
+ Fractional Developer Advocate at Flagsmith
+ LinkedIn
+ Julia Furst Morgado
+ Principal Developer Relations Engineer at Dash0
+ LinkedIn
+ Justin Garrison
+ Field CTO at Sidero Labs
+ LinkedIn
+ Nadav Erell
+ CEO at Skyhook Radar
+ LinkedIn
+ Kunal Kushwaha
+ Founder, WeMakeDevs
+ LinkedIn
+ What the judges look for
+ Never Merge Broken
+ Gitar is part of how you built, with features landing through PRs it reviewed, not one PR at the end.
+ Project-aware setup, with review instructions and repository rules that reflect how your team actually works.
+ Using CI failure diagnosis and auto-apply to fix real problems.
+ How well your project makes conferences easier.
+ Stop Flying Blind
+ Depth of instrumentation across your app, including traces, logs, metrics and real-user monitoring if you have a frontend.
+ Using Agent0 or the MCP server to find and fix something real during the day, and showing it in your demo.
+ Observability that's part of the product experience, not bolted on at the end.
+ Bonus point if you can create a dashboard or an SLO that shows how healthy your app is.
+ How well your project makes conferences easier.
+ Radar 
+ AI SRE
+ Run your project on Kubernetes with Radar connected, in the cluster and namespace we provide your team, or on your own cluster.
+ Use Radar's UI and MCP throughout building and operating your project. Show how Radar helped you ship, troubleshoot, or improve your app.
+ Use Radar's AI investigations to investigate a real issue or question about your running app. Show what you learned and what you did with the findings.
+ Build something that makes conferences easier.
+ elasticsearch 
+ Find the Right Talk
+ Elasticsearch is the core data layer of your app, not a side feature.
+ Smart use of search, whether that's keyword, semantic, vector or hybrid.
+ How well your project makes conferences easier.
+ 04 / Venue
+ The Shop Workspace, downtown Salt Lake City
+ The Shop Workspace
+ 350 E 400 S, Salt Lake City, UT 84111
+ Open in Google Maps 
+ The venue holds 170 to 200 people at most. For security reasons we can't let anyone in once it's full, so come early to secure your spot.
+ This is an in-person event, and we can't cover travel or accommodation.
+ Photos: The Shop Workspace, Austen Diamond Photography
+ 05 / FAQ
+ Questions, answered
+ Is it in person or online? In person only, at The Shop Workspace in downtown Salt Lake City on Monday, November 9. We can't cover travel or accommodation.
+ Who can take part? Everyone is welcome, whether it's your first hackathon or your fiftieth. Register and come along.
+ Can I enter more than one track? Yes. Your project enters every sponsor track whose tool it genuinely uses, and the Merge Forward track as well. Every project is in the running for best overall.
+ Do I need a team? No. Come on your own or with a team. There's time at kickoff to find people to build with.
+ What should I bring? Your laptop and charger. Set up your Gitar, Dash0 and Radar Cloud accounts before you arrive, and have Docker and a Kubernetes cluster ready if you're entering the Elasticsearch track. The Radar track just needs a GitHub account and a coding agent.
+ Is food provided? Yes. Breakfast at 10:00 AM, lunch at 2:00 PM and coffee through the day.
+ Does everyone really get a keyboard? Yes. Everyone who attends in person gets a Keychron mechanical keyboard, plus $50 in OpenAI credits, swag and a certificate.
+ How do I get into the After-Party? Sign up for House of Kube on Luma. It's invite only, but your registration is confirmed right away and the venue address shows up once you sign up. Entry is free.
+ Monday, November 9 · Salt Lake City
+ Make conferences better. Share $20,000 in prizes doing it.
+ Register 
+ Resources 
+ After-Party 🎉 · Same night
+ House of Kube
+ Once the winners are announced, come hang out with us at the KubeCon After-Party. Free entry, no KubeCon ticket needed.
+ Sign up on Luma 
+ Helping great developer tools reach the builders who will shape the future.
+ Keep in touch
+ Developers
+ Hackathons 
+ Meetups 
+ Scholarships 
+ Event Calendar 
+ Feedback 
+ Businesses
+ Partners 
+ Contact Us 
+ Company
+ Blog 
+ Careers 
+ Code of Conduct 
+ Privacy Policy 
+ Terms of Service 
+ © 2026 WeMakeDevs. All rights reserved. Cookie preferences
+ llms.txt
+
+## Links
+https://calendar.google.com/calendar/u/3?cid=Y19lMjYzNjA1NTgyNDA5NjJhODRlMWI2ZGRkNTViZWMyNjI4YjQ1YzVlZjYxMmUzZGM0ODY4NWJhNTcxMTEyZjJjQGdyb3VwLmNhbGVuZGFyLmdvb2dsZS5jb20
+https://discord.gg/wemakedevs
+https://github.com/elastic/start-local?utm_source=wemakedevs
+https://github.com/skyhook-io/radar?utm_source=wemakedevs
+https://luma.com/9p2oc1k5?utm_source=wemakedevs
+https://luma.com/cnh
+https://ocgroups.dev/cncf/group/merge-forward
+https://whatsapp.com/channel/0029Va4vHhJ5Ejxvi1qEBs1F
+https://www.dash0.com/sign-up?utm_source=wemakedevs
+https://www.google.com/maps/search/?api=1&amp;query=40.7603608%2C-111.8810977&amp;query_place_id=ChIJfYXiVCH1UocRONvZUZFwyqU
+https://www.instagram.com/wemakedevs/
+https://www.linkedin.com/company/wemakedevs
+https://www.linkedin.com/in/aepfli
+https://www.linkedin.com/in/barreiro-iffernet/
+https://www.linkedin.com/in/estesp/
+https://www.linkedin.com/in/jacquie-capur/
+https://www.linkedin.com/in/josephrsandoval
+https://www.linkedin.com/in/juliafmorgado/
+https://www.linkedin.com/in/justingarrison/
+https://www.linkedin.com/in/kelsey-hightower-849b342b1/
+https://www.linkedin.com/in/kunal-kushwaha/
+https://www.linkedin.com/in/nadav-erell/
+https://www.linkedin.com/in/saiyampathak/
+https://www.linkedin.com/in/wesnovack/
+https://www.reddit.com/user/wemakedevs/
+https://www.sonarsource.com/resources/library/get-started-with-gitar/?utm_source=wemakedevs
+https://www.wemakedevs.org/hackathons/cnh
+https://x.com/WeMakeDevs
+https://youtube.com/@WeMakeDevs

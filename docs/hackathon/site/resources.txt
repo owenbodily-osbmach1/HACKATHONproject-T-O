@@ -1,0 +1,149 @@
+Resources | Cloud Native Hackathon | WeMakeDevs 
+ Prizes
+ Sponsors
+ Judges
+ Venue
+ FAQ
+ After-Party 🎉
+ Sign in
+ Register free
+ Prizes
+ Sponsors
+ Judges
+ Venue
+ FAQ
+ After-Party 🎉
+ Register free
+ Overview
+ Schedule
+ Resources
+ Rules
+ Community partners
+ Docs, quickstarts and repos
+ Everything you need, per track
+ The links each sponsor points to, and the commands worth copying. Every link opens in a new tab.
+ Before you arrive
+ Gitar, Dash0 and Radar Cloud accounts. Create them before you arrive to save time on the day. Radar Cloud sign-up
+ A Kubernetes cluster, and Docker, for the Elasticsearch track: cloud, or local with kind, k3d or minikube, and Docker if you're running things locally. For the Radar track, just a GitHub account and a coding agent. A cluster is optional: you'll get your own environment on Radar's cluster for the hackathon if you need one. 
+ Never Merge Broken
+ Read
+ Get started with Gitar 
+ Gitar quickstart and free trial 
+ Gitar docs 
+ Project-aware reviews with review instructions and rules 
+ Multilayered verification with Gitar and SonarQube Cloud 
+ Extend Gitar with org instructions, Jira and Slack 
+ Copy and run
+ Where your review instructions live in the repo. .gitar/review/ Copy 
+ How to use it
+ Install Gitar as a GitHub App on your hackathon repo and ship every feature as a pull request, so Gitar catches logic errors and bugs before you merge. Write your project's conventions as review instructions in .gitar/review/, add repository rules for repeatable workflow actions, and turn on auto-apply so Gitar diagnoses failing CI and pushes the fix. It all runs in the browser, so there's nothing to install locally. The free 14-day Gitar Pro trial needs no credit card and includes auto-apply and custom rules.
+ Stop Flying Blind
+ Read
+ Start a free trial 
+ OpenTelemetry For Dummies, Dash0 Special Edition 
+ Dash0 docs 
+ Integrations Hub, with setup guides per language 
+ Try it on the OpenTelemetry demo app 
+ Agent0 
+ Dash0 MCP server 
+ Dash0 CLI quickstart 
+ Website monitoring with OpenTelemetry and Dash0 
+ Dash0 Operator for Kubernetes 
+ Features to use
+ Agent0
+ Dash0 MCP
+ Bonus: Dash0 CLI, dashboards, alerts, synthetic monitoring
+ How to use it
+ Point OpenTelemetry auto-instrumentation at your app in the first hour and every request shows up in Dash0 within minutes. When something is slow or broken, ask Agent0 why and it shows you the root cause, then have it open a pull request with the fix. Connect the MCP server to your AI coding assistant and it reads your live traces and logs, so it fixes what's actually wrong instead of guessing.
+ Radar 
+ AI SRE
+ Read
+ Radar on GitHub 
+ Radar docs 
+ Install guide 
+ AI investigations 
+ Radar's MCP server for AI agents 
+ Radar Discord 
+ Starter repo 
+ Sign up for Radar Cloud, free 
+ Connect a cluster to Radar Cloud 
+ Copy and run
+ Connect your coding agent to Radar Cloud's MCP server. It signs you in through your browser: $ claude mcp add radar-cloud --scope user --transport http https://api.radarhq.io/mcp Copy 
+ Features to use
+ AI investigations, which trace a failure or a question about your app to its cause, with the evidence.
+ Radar's MCP, so your coding agent ships, syncs Argo CD and checks each rollout through Radar.
+ Issues, the timeline and Checks: what's broken, what changed, and what to fix before your demo.
+ How to use it
+ Get your team its own environment on our cluster at join.cnh.radarhq.io
+ (join code at the kickoff and the Radar table), or connect your own cluster to a free Radar Cloud org. Copy the starter repo, connect your coding agent, and ship through Radar's MCP: every push deploys through Argo CD. When something breaks or puzzles you, start an AI investigation in Radar Cloud.
+ Get your team's environment 
+ elasticsearch 
+ Find the Right Talk
+ Read
+ Run Elasticsearch locally 
+ Get started with search 
+ Elasticsearch on GitHub 
+ Copy and run
+ Run Elasticsearch and Kibana locally. Needs Docker. $ curl -fsSL https://elastic.co/start-local | sh Copy 
+ How to use it
+ Run it locally (you'll need Docker), which gives you Elasticsearch and Kibana with every feature unlocked for a month, or start a free Elasticsearch cloud trial. Then load in your data (talks, speakers, attendees, side events) and query it from Python, JavaScript or any other client.
+ Helping great developer tools reach the builders who will shape the future.
+ Keep in touch
+ Developers
+ Hackathons 
+ Meetups 
+ Scholarships 
+ Event Calendar 
+ Feedback 
+ Businesses
+ Partners 
+ Contact Us 
+ Company
+ Blog 
+ Careers 
+ Code of Conduct 
+ Privacy Policy 
+ Terms of Service 
+ © 2026 WeMakeDevs. All rights reserved. Cookie preferences
+ llms.txt
+
+## Links
+https://app.radarhq.io/?utm_source=wemakedevs
+https://calendar.google.com/calendar/u/3?cid=Y19lMjYzNjA1NTgyNDA5NjJhODRlMWI2ZGRkNTViZWMyNjI4YjQ1YzVlZjYxMmUzZGM0ODY4NWJhNTcxMTEyZjJjQGdyb3VwLmNhbGVuZGFyLmdvb2dsZS5jb20
+https://dash0.com/docs/dash0/ai/mcp?utm_source=wemakedevs
+https://dash0.com/docs/dash0/miscellaneous/tooling/dash0-cli/quickstart?utm_source=wemakedevs
+https://dash0.com/guides/website-monitoring-with-opentelemetry-and-dash0?utm_source=wemakedevs
+https://discord.gg/wemakedevs
+https://docs.gitar.ai/introduction?utm_source=wemakedevs
+https://docs.gitar.ai/quickstart?utm_source=wemakedevs
+https://github.com/elastic/elasticsearch?utm_source=wemakedevs
+https://github.com/elastic/start-local?utm_source=wemakedevs
+https://github.com/skyhook-io/cnh-starter
+https://github.com/skyhook-io/radar?utm_source=wemakedevs
+https://join.cnh.radarhq.io
+https://luma.com/cnh
+https://radarhq.io/community/chat?utm_source=wemakedevs
+https://radarhq.io/docs/cloud/connect-cluster?utm_source=wemakedevs
+https://radarhq.io/docs/features/mcp?utm_source=wemakedevs
+https://radarhq.io/docs/install?utm_source=wemakedevs
+https://radarhq.io/docs?utm_source=wemakedevs
+https://radarhq.io/product/ai-investigations?utm_source=wemakedevs
+https://whatsapp.com/channel/0029Va4vHhJ5Ejxvi1qEBs1F
+https://www.dash0.com/agent0?utm_source=wemakedevs
+https://www.dash0.com/docs/dash0/monitoring/kubernetes/dash0-operator/overview?utm_source=wemakedevs
+https://www.dash0.com/docs/dash0?utm_source=wemakedevs
+https://www.dash0.com/hub/integrations/int_opentelemetry-demo/overview?utm_source=wemakedevs
+https://www.dash0.com/hub/integrations?utm_source=wemakedevs
+https://www.dash0.com/lp/opentelemetry-for-dummies?utm_source=wemakedevs
+https://www.dash0.com/sign-up?utm_source=wemakedevs
+https://www.elastic.co/docs/solutions/search/get-started?utm_source=wemakedevs
+https://www.instagram.com/wemakedevs/
+https://www.linkedin.com/company/wemakedevs
+https://www.reddit.com/user/wemakedevs/
+https://www.sonarsource.com/resources/library/get-started-with-gitar/?utm_source=wemakedevs
+https://www.sonarsource.com/resources/library/gitar-context-ingestion-for-project-aware-code-reviews/?utm_source=wemakedevs
+https://www.sonarsource.com/resources/library/multilayered-code-verification-with-gitar-sonarqube-cloud/?utm_source=wemakedevs
+https://www.sonarsource.com/resources/library/scale-gitar-context-across-an-organization/?utm_source=wemakedevs
+https://www.wemakedevs.org/hackathons/cnh/resources
+https://x.com/WeMakeDevs
+https://youtube.com/@WeMakeDevs

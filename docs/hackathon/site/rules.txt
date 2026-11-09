@@ -1,0 +1,70 @@
+Rules | Cloud Native Hackathon | WeMakeDevs 
+ Prizes
+ Sponsors
+ Judges
+ Venue
+ FAQ
+ After-Party 🎉
+ Sign in
+ Register free
+ Prizes
+ Sponsors
+ Judges
+ Venue
+ FAQ
+ After-Party 🎉
+ Register free
+ Overview
+ Schedule
+ Resources
+ Rules
+ Community partners
+ Rules
+ Everything you're held to
+ Read these before you start building. Taking part means agreeing to all of them, along with the WeMakeDevs Code of Conduct
+, the Terms
+ and the Privacy Policy
+.
+ 1 . The main coding and design work must begin after the hackathon starts. Ideas, notes, sketches and research beforehand are fine.
+ 2 . Frameworks, open-source libraries, public APIs, templates, third-party tools and publicly available assets are all allowed. The original work done during the hackathon is what gets judged.
+ 3 . Every submission needs a public source-code repository and a README with setup instructions.
+ 4 . Use only data, tools and accounts you own or have permission to use. Keep private, personal and login-protected information out of your repository and your demo.
+ 5 . AI coding assistants are allowed, but their use must be disclosed.
+ 6 . You have to understand the code you submit and be able to explain the project architecture and the technical decisions behind it.
+ 7 . Projects generated entirely by AI, without meaningful participant contribution, verification or technical understanding, may be rejected.
+ 8 . Each participant or team submits one project. Duplicate, copied or previously finished projects are disqualified.
+ 9 . To get the free Keychron mechanical keyboard, you must submit a project. Submitting a valid project that follows these rules is what confirms your participation.
+ 10 . Any intellectual property developed during the hackathon belongs to the participant or team that created it. Agree on ownership inside your team before you submit.
+ 11 . Treat participants, organisers, sponsors, speakers and judges with respect. Harassment, discrimination, spam, plagiarism or attempts to manipulate judging get you disqualified.
+ 12 . WeMakeDevs can disqualify any entry that breaks these rules or the Code of Conduct. Final eligibility and judging decisions rest with WeMakeDevs.
+ Helping great developer tools reach the builders who will shape the future.
+ Keep in touch
+ Developers
+ Hackathons 
+ Meetups 
+ Scholarships 
+ Event Calendar 
+ Feedback 
+ Businesses
+ Partners 
+ Contact Us 
+ Company
+ Blog 
+ Careers 
+ Code of Conduct 
+ Privacy Policy 
+ Terms of Service 
+ © 2026 WeMakeDevs. All rights reserved. Cookie preferences
+ llms.txt
+
+## Links
+https://calendar.google.com/calendar/u/3?cid=Y19lMjYzNjA1NTgyNDA5NjJhODRlMWI2ZGRkNTViZWMyNjI4YjQ1YzVlZjYxMmUzZGM0ODY4NWJhNTcxMTEyZjJjQGdyb3VwLmNhbGVuZGFyLmdvb2dsZS5jb20
+https://discord.gg/wemakedevs
+https://luma.com/cnh
+https://whatsapp.com/channel/0029Va4vHhJ5Ejxvi1qEBs1F
+https://www.instagram.com/wemakedevs/
+https://www.linkedin.com/company/wemakedevs
+https://www.reddit.com/user/wemakedevs/
+https://www.wemakedevs.org/hackathons/cnh/rules
+https://x.com/WeMakeDevs
+https://youtube.com/@WeMakeDevs

@@ -1,0 +1,73 @@
+Schedule | Cloud Native Hackathon | WeMakeDevs 
+ Prizes
+ Sponsors
+ Judges
+ Venue
+ FAQ
+ After-Party 🎉
+ Sign in
+ Register free
+ Prizes
+ Sponsors
+ Judges
+ Venue
+ FAQ
+ After-Party 🎉
+ Register free
+ Overview
+ Schedule
+ Resources
+ Rules
+ Community partners
+ Monday, November 9, 2026 · Mountain Time
+ How the day runs
+ 9:00 AM
+ Check-in and breakfast
+ 10:00 AM
+ Kickoff and talks
+ Give your agent Radar: ship and debug on Kubernetes
+ How to get your team's environment, connect your coding agent to Radar, and ship through it, with a live demo of a release that breaks and Radar's AI SRE finding why.
+ Nadav Erell and Roy Libman · 15 minutes
+ 11:00 AM to 2:00 PM
+ Build time
+ 2:00 PM
+ Lunch, a panel, and more build time
+ 5:30 PM
+ Project submission deadline
+ 5:30 PM to 6:30 PM
+ Project presentations
+ 6:30 PM to 7:00 PM
+ Winners announced
+ After 7:00 PM
+ After-party
+ Helping great developer tools reach the builders who will shape the future.
+ Keep in touch
+ Developers
+ Hackathons 
+ Meetups 
+ Scholarships 
+ Event Calendar 
+ Feedback 
+ Businesses
+ Partners 
+ Contact Us 
+ Company
+ Blog 
+ Careers 
+ Code of Conduct 
+ Privacy Policy 
+ Terms of Service 
+ © 2026 WeMakeDevs. All rights reserved. Cookie preferences
+ llms.txt
+
+## Links
+https://calendar.google.com/calendar/u/3?cid=Y19lMjYzNjA1NTgyNDA5NjJhODRlMWI2ZGRkNTViZWMyNjI4YjQ1YzVlZjYxMmUzZGM0ODY4NWJhNTcxMTEyZjJjQGdyb3VwLmNhbGVuZGFyLmdvb2dsZS5jb20
+https://discord.gg/wemakedevs
+https://luma.com/cnh
+https://whatsapp.com/channel/0029Va4vHhJ5Ejxvi1qEBs1F
+https://www.instagram.com/wemakedevs/
+https://www.linkedin.com/company/wemakedevs
+https://www.reddit.com/user/wemakedevs/
+https://www.wemakedevs.org/hackathons/cnh/schedule
+https://x.com/WeMakeDevs
+https://youtube.com/@WeMakeDevs

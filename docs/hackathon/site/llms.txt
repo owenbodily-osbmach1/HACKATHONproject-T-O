@@ -1,0 +1,64 @@
+# WeMakeDevs
+
+> WeMakeDevs produces growth for developer-first companies. It runs the world's most engaging hackathons and meetups, backed by a global community of 200,000+ developers across 40 countries. Companies partner with WeMakeDevs to put their product in front of builders who actually ship: the outcome is GitHub stars, API signups, merged pull requests, and real developer adoption, not vanity metrics. Founded by Kunal Kushwaha.
+
+## What WeMakeDevs does
+
+WeMakeDevs is a go-to-market engine for developer tools. Tell them your GTM goals and they organize an in-person or virtual hackathon; you leave with GitHub stars, signups, and a community that has already tried your product. Enterprise GTM spends a quarter to get a handful of engineers to open your docs. A hackathon does it in a week: hundreds of builders reading the docs on day one, calling your API by day three, and pushing public repos with your product in the stack by day seven.
+
+- Producing growth for developer-first companies
+- World's most engaging hackathons and meetups
+- 200,000+ community members, builders in 40 countries, events on the ground in 11 cities
+
+## Results
+
+- $220,000+ in prize money awarded
+- 200,000+ developers reached
+- $50 million+ raised by partners after running GTM with WeMakeDevs
+- 80,000+ organic GitHub stars generated
+- 400+ pull requests merged into partner repos to date
+- Trusted by 100+ leading enterprises and high-growth startups
+- Coral, Portia, Archestra and Kestra raised a combined $46M+ after working with WeMakeDevs
+
+## For companies (the receipts)
+
+- Global reach: builders in 40 countries, events on the ground in 11 cities, and online everywhere else.
+- Open-source engagement, not vanity metrics: thousands of engineers using partner projects, giving feedback, and contributing back, most of it inside the event week.
+- Contributions, not just clicks: builders file issues, fix bugs, and ship merged PRs (400+ merged into partner repos).
+- Hackathons as the new GTM pipeline: developer adoption in a week instead of a quarter.
+- Funding raised: the metric leadership actually reports on. Partners have gone on to close real rounds.
+
+## Events
+
+- [Hackathons](https://wemakedevs.org/hackathons): Explore upcoming hackathons.
+- [Meetups](https://wemakedevs.org/meetups): Explore upcoming meetups.
+- [Scholarships](https://wemakedevs.org/scholarships): Scholarships and learning opportunities for developers.
+- [Create Account](https://wemakedevs.org/signup): Sign up to join the community.
+
+## Partner with us
+
+- [Book a meeting](https://zcal.co/kunal/collabs): Schedule a call about a hackathon or GTM collaboration.
+- [Email](mailto:kunal@wemakedevs.org): kunal@wemakedevs.org
+
+Partnering with the best in developer tooling, including: Accomplish, Archestra, Cerebras, Cline, CodeRabbit, III, Kestra, Lingo, Meta, Portia, Tambo, and Together AI.
+
+## Founder
+
+- [Kunal Kushwaha](https://wemakedevs.org/founder): Founder of WeMakeDevs, CNCF Ambassador, GitHub Star, and TEDx Speaker. Developer advocate, community builder, and go-to-market advisor helping developer-first startups scale from 0 to $1M ARR.
+
+## Company
+
+- [Blogs](https://wemakedevs.org/blogs): Writing from the community.
+- [Careers](https://wemakedevs.org/careers): Open roles at WeMakeDevs.
+- [Code of Conduct](https://wemakedevs.org/coc): Community code of conduct.
+- [Privacy Policy](https://wemakedevs.org/privacy): How we collect, use and safeguard personal data.
+- [Terms of Service](https://wemakedevs.org/terms): Terms governing use of the platform and hackathon participation.
+- [Contact](mailto:contact@wemakedevs.org): General enquiries.
+
+## Community
+
+- [YouTube](https://youtube.com/@WeMakeDevs)
+- [X / Twitter](https://x.com/WeMakeDevs)
+- [LinkedIn](https://www.linkedin.com/company/wemakedevs)
+- [Discord](https://discord.gg/wemakedevs)
+- [WhatsApp](https://whatsapp.com/channel/0029Va4vHhJ5Ejxvi1qEBs1F)
