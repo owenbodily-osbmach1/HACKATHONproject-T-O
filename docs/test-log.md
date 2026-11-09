@@ -2,6 +2,20 @@
 
 What has been tested, how, what broke and what is still open. Newest first. Add to it when you test something.
 
+## 2026-11-09 15:40: video scenes (`scripts/video-scenes.js`), each driven end to end (Claude)
+
+Each scene ran with `--no-windows` while a headless Chrome made the clicks the guide asks for (`docs/video-shoot.md`). The window path was run once for real: the projector window opened and closed with the take, with no Chrome or server left over.
+
+| Scene | Checks | Result |
+| --- | --- | --- |
+| `qr` | title slide shows the join QR | ✅ |
+| `join` | fresh phone gets the sign-in form → after submit Live with captions, "19 here now · 19 scanned in" → projector → twice, phone follows to slide 3 → Listen plays | ✅ |
+| `alert` | phone tap + 2 scripted votes → red SPEAK UP Room 151 · 3 votes (no demo-room block) → Claim → Mark fixed → phone "Better now?" → Yes → console "Better 3 · Still bad 0" | ✅ |
+| `rooms` | tabs 151, 152, 255 in order; 151 "46/120 here"; key 2 → 152 with "⚠ mic quiet" and Microphone "very quiet"; key 3 → 255 "111 / 160" | ✅ |
+| `end` | AV End talk (2 taps) → phone Ended card → transcript → search `uplink` finds the line | ✅ |
+
+Every take starts a fresh server on 8090 and stops it at the end; a second take while one runs is refused ("port 8090 is busy").
+
 ## 2026-11-09 15:30: AV listen-in and the unkeyed /org page (Claude)
 
 Two bugs found by the data-flow review of the staff pages, both confirmed against the server and fixed on `ui/video-scenes`:
