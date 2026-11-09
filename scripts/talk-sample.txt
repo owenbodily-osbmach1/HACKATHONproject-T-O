@@ -1,0 +1,60 @@
+Good morning, and thanks for coming to the edge track.
+I want to start with a question: what happens when your platform leaves the data center?
+For most teams, the answer is a lot of new failure modes and very little visibility.
+We run Kubernetes in three regions and at fourteen venues, and the difference is not subtle.
+In the data center, a dropped packet is noise; at the edge, it can be the whole story.
+The first thing we changed was how we thought about observability.
+We stopped treating telemetry as something that only happens after a request completes.
+Instead, we made every service emit a small, consistent signal at the boundary.
+That signal is a span, and it carries the tenant, the venue and the build version.
+OpenTelemetry gave us a vendor-neutral way to produce those spans.
+We use the collector as a local gateway on every node.
+The gateway batches, redacts and limits before anything leaves the site.
+That matters because uplinks are metered, flaky and sometimes shared with a point-of-sale system.
+When the uplink drops, the collector keeps a bounded buffer on disk.
+We would rather lose the oldest low-priority debug spans than corrupt the local queue.
+The key phrase is bounded, because an unbounded buffer is just a future outage.
+We also separate signal classes by urgency.
+Errors and saturation metrics get priority; verbose request logs wait.
+This is not a new idea, but it is easy to forget when you are building a happy-path demo.
+A demo works because everything is healthy; production is defined by what happens when it is not.
+Kubernetes helps us package the edge runtime, but it does not make the network reliable.
+We pin the control plane traffic to a small set of allow-listed endpoints.
+Each site can run disconnected for about six hours.
+After that, the local cache is the source of truth until reconciliation catches up.
+Reconciliation is where most of our incidents used to hide.
+Two controllers would both believe they owned the same device, and neither would say so.
+We fixed that with a lease object and a generation number on every desired-state record.
+If the generation is stale, the write is rejected instead of merged.
+That one rule removed a whole category of split-brain bugs.
+The second rule was simpler: make the read path cheap.
+Our edge nodes serve captions and status from memory, not from a database call.
+Writes go through a queue, and the queue is observable.
+If the queue depth grows, the node sheds optional work before it drops user traffic.
+Load shedding sounds harsh, but it is more honest than a timeout that nobody can explain.
+We expose every decision as an event with a reason.
+That event stream is the thing our support team actually uses during an incident.
+They do not need a dashboard that says something is wrong.
+They need a sentence that says which site, which service and which dependency is failing.
+This is where OpenTelemetry traces and metrics meet plain language.
+A trace tells you the shape of a request.
+A metric tells you how often that shape repeats.
+A log line tells you what the code thought was happening.
+None of them is enough alone, and all of them are too expensive if you collect everything.
+We sample aggressively at the edge and keep whole traces for errors and slow requests.
+The sampler is deterministic on the trace ID, so all services make the same choice.
+That sounds like a small detail until you try to debug a partial trace.
+We also send a tiny heartbeat from each site every ten seconds.
+The heartbeat carries the build, the uptime and the current queue depth.
+If we miss three heartbeats, we open an incident automatically.
+False positives are cheaper than silent failures, as long as the alert is specific.
+The alert links to a runbook that starts with the safest action, not the most interesting one.
+Our first action is usually to stop a rollout, not to restart a pod.
+Rolling back a broken deployment is boring, fast and almost always correct.
+The interesting debugging can happen after users are safe.
+That ordering is a cultural choice, and I think it is the most important one we made.
+Observability is not a dashboard you buy; it is a set of questions you can answer.
+The questions should be written before the system is built.
+If you cannot answer who is affected and what changed, you are not observing; you are guessing.
+Start with one user journey, one signal and one alert that a human can act on.
+Then grow the system without growing the noise.
