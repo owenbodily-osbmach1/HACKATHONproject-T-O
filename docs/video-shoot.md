@@ -11,7 +11,7 @@ Every app scene has **one command**. It starts a **fresh Pulse server** on `http
 node scripts/video-scenes.js alert
 ```
 
-Run it from the repo folder (`C:\Users\Owen\pulse-pr`, or any up-to-date checkout of `main`). Your live server on port 8080 is not touched.
+Run it from the repo folder. Your live server on port 8080 is not touched.
 
 ## Before the first take (once)
 
@@ -101,11 +101,14 @@ The sign-in form appears on every take, because each take opens a new Chrome pro
 The tabs are in room order, so keys 1, 2 and 3 always mean 151, 152 and 255.
 
 **Cues and what you do:**
-1. **At 6 s, AV:** press **2** for room 152.
+1. **Before the take, AV:** type a name in the **I'm** box.
+   - The ticket then shows that name instead of "CLAIMED BY TECH".
+2. **Wait 60 s after the previous rooms take.** Each take signs in 58 phones, and the server allows 120 sign-ins a minute per address. A third take inside the same minute silently drops phones, so the "46 phones" count is short.
+3. **At 6 s, AV:** press **2** for room 152.
    - Its tab shows ⚠ mic quiet.
    - The Live status panel shows Microphone "very quiet".
-2. **At 13 s:** press **3** for room 255: 70% full, scan count, Live status.
-3. **At 20 s:** press **1**, then Ctrl+C.
+4. **At 13 s:** press **3** for room 255: 70% full, scan count, Live status.
+5. **At 20 s:** press **1**, then Ctrl+C.
 
 ### 1:30 End the talk (`end`)
 
