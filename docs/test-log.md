@@ -12,6 +12,14 @@ What has been tested, how, what broke and what is still open. Newest first. Add 
 | Local live-server smoke: the open tech socket sees the old talk's group, receives an empty group list after the next talk starts, and a late-joining tech socket gets an empty snapshot | passed |
 
 This was automated local-server QA; browser and real-device QA were not rerun.
+## 2026-11-09: tracked dependency symlink cleanup, automated (Gitar)
+
+**Setup:** Removed the committed `node_modules` symlink to a sibling checkout, changed the ignore pattern to cover both directories and symlinks, then ran `mise x node@22.23.4 -- npm ci` and `mise x node@22.23.4 -- npm run check`.
+
+| Check | Result |
+| --- | --- |
+| Repository syntax and focused checks | passed |
+| `node_modules` is ignored and the sibling-checkout symlink is no longer tracked | passed |
 
 ## 2026-11-09: answeredSeq persistence, automated (Gitar)
 
