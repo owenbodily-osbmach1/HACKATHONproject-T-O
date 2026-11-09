@@ -70,8 +70,10 @@ module.exports = {
       room.speaker = speaker;
       state.talks.set(talkId, { talkId, room: roomId, title, speaker, start, end: null });
       log.info('talk.started', { room: roomId, talkId });
-      require('./questions').attachPending(roomId, talkId);
+      const questions = require('./questions');
+      questions.attachPending(roomId, talkId);
       hub.send(roomId, state.talkMessage(roomId));
+      hub.send(roomId, { t: 'question_groups', groups: questions.groupList(roomId) }, ['tech']);
 
       esIndex(ctx, 'pulse-talks', {
         talkId,

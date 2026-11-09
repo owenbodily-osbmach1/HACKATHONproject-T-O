@@ -7,7 +7,22 @@ const params = new URLSearchParams(location.search);
 const room = decodeURIComponent((location.pathname.match(/^\/present\/([^/?#]+)/) || [])[1] || '151');
 const key = params.get('key') || '';
 const deckName = (params.get('deck') || 'demo').toLowerCase().replace(/[^a-z0-9_-]+/g, '') || 'demo';
-const attendeeUrl = `${location.origin}/r/${encodeURIComponent(room)}`;
+
+// The QR must point at an address phones can open: ?base= override, then the server's
+// PUBLIC_BASE_URL (GET /api/config → publicBaseUrl), then this page's own origin.
+const LOCAL_HOST = /^(localhost|127\.\d+\.\d+\.\d+|\[::1\]|0\.0\.0\.0)$/i;
+
+async function qrBase() {
+  const override = params.get('base');
+  if (override) return override.replace(/\/+$/, '');
+  try {
+    const c = await (await fetch('/api/config')).json();
+    if (c && c.publicBaseUrl) return String(c.publicBaseUrl).replace(/\/+$/, '');
+  } catch { /* fall back to origin */ }
+  return location.origin;
+}
+
+const attendeeUrl = `${await qrBase()}/r/${encodeURIComponent(room)}`;
 
 const state = {
   deck: [],       // [{n, url, alt}] sorted by n
@@ -565,6 +580,9 @@ try {
   document.querySelector('.qr-hint').textContent = 'QR code unavailable';
   $('deckError').textContent = 'The attendee URL is too long for the local QR generator.';
 }
+let qrHost = '';
+try { qrHost = new URL(attendeeUrl).hostname; } catch { /* bad base override */ }
+$('qrWarn').hidden = !LOCAL_HOST.test(qrHost);
 
 showSlideMessage('Loading deck…');
 updateButtons();

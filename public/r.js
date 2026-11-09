@@ -8,12 +8,13 @@ import { createPlayer } from '/lib/player.js';
 if (new URLSearchParams(location.search).has('mock')) await import('/dev/mock.js');
 
 const $ = (id) => document.getElementById(id);
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const room = (location.pathname.match(/^\/r\/([^/?#]+)/)?.[1]) || new URLSearchParams(location.search).get('room') || '151';
 const clientId = getClientId();
 
 const state = {
   talkId: null,
-  talkStatus: null,  // 'waiting' | 'live' | 'ended' (from the server's `talk` message)
+  talkStatus: null,  // 'waiting' | 'live' | 'ended' from the server's `talk` message (null = not heard yet; votes closed)
   endedAt: null,
   conn: 'connecting', // socket status
   filling: false,    // fetching missed lines after a reconnect; live captions wait in `held`
@@ -96,7 +97,7 @@ function onTalk(m) {
   state.endedAt = status === 'ended' ? (m.endedAt || state.endedAt || new Date().toISOString()) : null;
   renderPill();
   renderTalkState();
-  renderVotes();
+  applyTalkState(); // vote gate + buttons (the server's talk message is the truth about whether votes count)
   if (status === 'ended') {
     $('interim').textContent = '';
     markEnded();
@@ -150,6 +151,31 @@ function setTalk({ talkId, title, speaker }) {
   }
   if (title) $('talkTitle').textContent = title;
   if (speaker !== undefined) $('talkSpeaker').textContent = speaker || '';
+}
+
+
+function renderTalkGate() {
+  const gate = $('voteGate');
+  gate.replaceChildren();
+  if (state.talkStatus === 'live') { gate.hidden = true; return; }
+  gate.hidden = false;
+  if (state.talkStatus === 'ended') {
+    if (state.talkId) {
+      const a = document.createElement('a');
+      a.href = `/t/${encodeURIComponent(state.talkId)}`;
+      a.textContent = 'Talk ended · transcript saved';
+      gate.append(a);
+    } else {
+      gate.textContent = 'Talk ended · transcript saved';
+    }
+  } else {
+    gate.textContent = 'Voting opens when the talk starts.';
+  }
+}
+
+function applyTalkState() {
+  renderTalkGate();
+  renderVotes();
 }
 
 // A new talk in the same room: caption seq restarts at 1 and it has its own deck.
@@ -466,27 +492,32 @@ setInterval(expireVotes, 30000);
 function saveVotes() { store.set(voteKey(), { votes: state.votes, voted: state.voted }); }
 
 // Colour is never the only signal: the sub-label always says whether my vote counts.
-// Votes only count during a live talk (the server answers 409 otherwise), so the buttons say so.
-const votesOpen = () => state.talkStatus === null || state.talkStatus === 'live';
+function voteSub(type) {
+  if (state.talkStatus === 'ended') return 'Voting closed';
+  if (state.talkStatus !== 'live') return 'Voting opens when the talk starts';
+  if (isOn(type)) {
+    const count = lastCount[type] ?? 0;
+    return count > 1 ? `Voted · ${count} people · tap to undo` : 'Voted · tap to undo';
+  }
+  return type === 'cant_hear' ? "I can't hear" : 'the slides';
+}
+
 function renderVotes() {
+  const open = state.talkStatus === 'live';
   for (const b of document.querySelectorAll('.vote')) {
     const t = b.dataset.type;
     const on = isOn(t);
     b.setAttribute('aria-pressed', String(on));
+    b.setAttribute('aria-disabled', String(!open));
     b.classList.toggle('on', on);
-    b.disabled = !votesOpen();
-    setVoteCount(t, lastCount[t] ?? 0);
+    b.querySelector('.vote-sub').textContent = voteSub(t);
   }
 }
 
 function setVoteCount(type, count) {
   lastCount[type] = count;
   const b = document.querySelector(`.vote[data-type="${type}"]`);
-  if (!b) return;
-  if (!votesOpen()) { b.querySelector('.vote-sub').textContent = state.talkStatus === 'ended' ? 'Talk ended' : 'Not live yet'; return; }
-  const base = type === 'cant_hear' ? "I can't hear" : 'the slides';
-  const voted = count > 1 ? `Voted · ${count} people · tap to undo` : 'Voted · tap to undo';
-  b.querySelector('.vote-sub').textContent = isOn(type) ? voted : base;
+  if (b) b.querySelector('.vote-sub').textContent = voteSub(type);
 }
 
 async function sendVote(type, on) {
@@ -495,12 +526,25 @@ async function sendVote(type, on) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ room, talkId: state.talkId, type, clientId, on }),
   });
-  if (!res.ok) throw new Error(`vote ${res.status}`);
-  return res.json();
+  let body = {};
+  try { body = await res.json(); } catch { /* no body */ }
+  if (!res.ok) {
+    const err = new Error(body.error || `vote ${res.status}`);
+    err.status = res.status;
+    err.body = body;
+    throw err;
+  }
+  return body;
 }
 
+const voteBusy = {}; // type -> a tap is in flight; ignore further taps
+
 async function toggleVote(type) {
+  if (state.talkStatus !== 'live') return; // no optimistic toggle while voting is closed
+  if (voteBusy[type]) return;             // out-of-order taps cannot flip the server's state
+  voteBusy[type] = true;
   const prev = state.votes[type];
+  const talkAtStart = state.talkId;
   const on = !isOn(type);
   state.votes[type] = on ? Date.now() : false;
   if (on) state.voted[type] = true;
@@ -519,21 +563,45 @@ async function toggleVote(type) {
   }
 
   try {
-    const r = await sendVote(type, on);
+    let r;
+    try {
+      r = await sendVote(type, on);
+    } catch (e) {
+      if (e.status === 409 && e.body?.error === 'stale_talk' && e.body.talkId) {
+        // This phone still had the previous talk: adopt the live one and retry once.
+        setTalk({ talkId: e.body.talkId });
+        state.votes[type] = on ? Date.now() : false;
+        if (on) state.voted[type] = true;
+        saveVotes();
+        renderVotes();
+        r = await sendVote(type, on);
+      } else if (e.status === 409 && e.body?.error === 'no_live_talk') {
+        state.votes[type] = prev ?? false;
+        saveVotes();
+        state.talkStatus = 'waiting';
+        applyTalkState();
+        hideHint();
+        return;
+      } else {
+        throw e;
+      }
+    }
     if (typeof r?.count === 'number') setVoteCount(type, r.count);
   } catch (err) {
     // Undo so the button never lies about what the server has.
-    state.votes[type] = prev ?? false;
+    state.votes[type] = state.talkId === talkAtStart ? (prev ?? false) : false;
     saveVotes();
     renderVotes();
-    showHint(String(err?.message).includes('409')
-      ? 'The talk has ended, so votes are closed.'
-      : "Couldn't send that. Check your connection and tap again.");
+    showHint("Couldn't send that. Check your connection and tap again.");
+  } finally {
+    voteBusy[type] = false;
   }
 }
 document.querySelectorAll('.vote').forEach((b) => { b.onclick = () => toggleVote(b.dataset.type); });
 
 // ---------- "Better now?" after the tech presses Fixed ----------
+let betterReturnFocus = null;
+
 function onTicketStatus({ ticketId, type, status }) {
   if (status === 'fixed' || status === 'dismissed') {
     // The server cleared everyone's votes for this problem.
@@ -546,15 +614,20 @@ function onTicketStatus({ ticketId, type, status }) {
       $('betterQ').textContent = type === 'cant_hear'
         ? 'The crew fixed the sound. Better now?'
         : 'The crew fixed the slides. Better now?';
+      betterReturnFocus = document.activeElement;
       $('better').hidden = false;
       hideHint();
-      $('better').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      const typing = betterReturnFocus?.matches?.('input, textarea, select, [contenteditable]');
+      if (!typing) $('betterYes').focus({ preventScroll: true });
+      $('better').scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' });
     }
   }
 }
 
 async function answerBetter(better) {
   const t = state.betterTicket;
+  const returnTo = betterReturnFocus;
+  betterReturnFocus = null;
   $('better').hidden = true;
   state.betterTicket = null;
   if (!t) return;
@@ -572,6 +645,7 @@ async function answerBetter(better) {
     state.votes[t.type] = false;
     toggleVote(t.type);
   }
+  if (returnTo?.isConnected) returnTo.focus({ preventScroll: true });
 }
 $('betterYes').onclick = () => answerBetter(true);
 $('betterNo').onclick = () => answerBetter(false);
@@ -698,4 +772,5 @@ connectRoom({
 
 setMode(store.get('pulse.mode', 'captions'));
 loadVotes();
+applyTalkState();
 loadRoomInfo();

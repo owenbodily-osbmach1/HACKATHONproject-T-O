@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d10">
+  <title>Pulse · Privacy</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .privacy-wrap { width: 100%; max-width: 760px; margin: 0 auto; padding: 20px 16px calc(40px + env(safe-area-inset-bottom)); }
+    .privacy-wrap h1 { margin: 4px 0 12px; font-size: 30px; line-height: 1.15; }
+    .privacy-wrap h2 { margin: 28px 0 10px; font-size: 18px; letter-spacing: .04em; text-transform: uppercase; }
+    .privacy-wrap p { margin: 0 0 12px; line-height: 1.55; color: var(--text); }
+    .privacy-wrap .lede { color: var(--muted); font-size: 17px; }
+    .privacy-list { margin: 0 0 12px; padding-left: 20px; line-height: 1.6; }
+    .privacy-list li { margin-bottom: 8px; }
+    .privacy-list strong { color: var(--text); }
+    .privacy-source { margin: 6px 0 14px; color: var(--muted); font-size: 14px; }
+    .privacy-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+    .privacy-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .privacy-table th, .privacy-table td { padding: 10px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+    .privacy-table thead th { background: var(--surface); color: var(--muted); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+    .privacy-table tbody tr:last-child th, .privacy-table tbody tr:last-child td { border-bottom: 0; }
+    .privacy-table tbody th { white-space: nowrap; font-family: var(--font-head, inherit); font-size: 15px; }
+    .privacy-table td { color: var(--muted); overflow-wrap: anywhere; }
+    .privacy-foot { margin-top: 28px; color: var(--muted); font-size: 13px; }
+    .privacy-foot a { color: var(--blue); }
+    @media (max-width: 360px) { .privacy-wrap h1 { font-size: 26px; } }
+  </style>
+</head>
+<body>
+  <main class="privacy-wrap">
+    <p class="eyebrow">Pulse</p>
+    <h1>Privacy</h1>
+    <p class="lede">Pulse counts problems in a room. Your votes and questions never say who you are.</p>
+
+    <h2>What we never store</h2>
+    <p>Pulse's data store (Elasticsearch), logs, dashboards and sponsor reports hold <strong>no names, no email addresses, no phone numbers, no IP addresses and no accounts</strong>. There is no password and no profile.</p>
+
+    <h2>Joining a room (sign-in)</h2>
+    <p>When the event turns sign-in on, your phone asks once for your <strong>first and last name, company or occupation, and email</strong> before it opens the room. Only the event team sees them, to follow up with you about the session: the AV crew can export the list with the staff key. They are kept <strong>in the server's memory only</strong> (gone when it restarts), never written to Elasticsearch, logs or telemetry, never shown to other attendees, and never linked to the random id that counts votes. A cookie remembers that this phone signed in, for 24 hours.</p>
+
+    <h2>The one identifier</h2>
+    <p><strong>clientId</strong> is a random id generated on your phone. It is used only to count distinct devices — for example “3 different people cannot hear this talk” — and is never linked to a name, an email address or an account.</p>
+
+    <h2>Booth reports</h2>
+    <p>Booth reports never name a device. Any group with fewer than <strong>3 devices</strong> is hidden, so a sponsor cannot pick out one visitor. Booth dwell is reported as an upper-bound range with the number of devices behind it.</p>
+
+    <h2>Keys</h2>
+    <p>The technician key and the speaker key open the staff pages. They are <strong>never written to logs or traces</strong>.</p>
+
+    <h2>Every index Pulse writes</h2>
+    <p class="privacy-source" id="source" role="status">Reading the index list…</p>
+    <div class="privacy-table-wrap">
+      <table class="privacy-table">
+        <thead>
+          <tr><th scope="col">Index</th><th scope="col">Fields</th></tr>
+        </thead>
+        <tbody id="indices"></tbody>
+      </table>
+    </div>
+
+    <p class="privacy-foot">Questions about the data? Ask the organizer. <a href="/cards">Printable QR cards</a></p>
+  </main>
+
+  <script type="module">
+    const $ = (id) => document.getElementById(id);
+    const SOURCE = {
+      elasticsearch: 'Read live from the Elasticsearch mappings just now.',
+      mixed: 'Read live from Elasticsearch where available; the rest are the configured mappings.',
+      static: 'Elasticsearch is not enabled here, so these are the configured mappings.',
+    };
+
+    async function load() {
+      const body = $('indices');
+      try {
+        const res = await fetch('/api/privacy', { headers: { accept: 'application/json' } });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        $('source').textContent = SOURCE[data.source] || SOURCE.static;
+        body.replaceChildren();
+        for (const item of data.indices || []) {
+          const tr = document.createElement('tr');
+          const th = document.createElement('th');
+          th.scope = 'row';
+          th.textContent = item.index;
+          const td = document.createElement('td');
+          td.textContent = (item.fields || []).map((f) => `${f.field} (${f.type})`).join(', ');
+          tr.append(th, td);
+          body.append(tr);
+        }
+      } catch {
+        $('source').textContent = 'Could not read the index list right now. Everything above still applies.';
+      }
+    }
+    load();
+  </script>
+</body>
+</html>

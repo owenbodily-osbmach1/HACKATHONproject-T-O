@@ -122,12 +122,14 @@
         </button>
       </div>
 
+      <p class="vote-gate" id="voteGate" role="status" hidden></p>
+
       <div class="hint" id="hint" role="status" hidden>
         <span id="hintText"></span>
         <button type="button" class="pill" id="hintAction" hidden></button>
       </div>
 
-      <div class="better" id="better" role="dialog" aria-labelledby="betterQ" hidden>
+      <div class="better" id="better" role="dialog" aria-labelledby="betterQ" aria-live="polite" hidden>
         <p id="betterQ">The crew fixed it. Better now?</p>
         <div class="better-btns">
           <button type="button" class="yes" id="betterYes">Yes, better</button>

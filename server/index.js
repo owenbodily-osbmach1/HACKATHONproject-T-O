@@ -21,6 +21,8 @@ const schedule = require('./schedule');
 const mockroom = require('./mockroom');
 const stats = require('./stats');
 const signin = require('./signin');
+const privacy = require('./privacy');
+const metrics = require('./metrics');
 
 otel.start();
 
@@ -79,6 +81,8 @@ app.get('/tech', auth.page('TECH_KEY'), page('tech.html'));
 app.get('/b/:booth', page('b.html'));
 app.get('/booth/:booth', auth.page('TECH_KEY'), page('booth.html'));
 app.get('/find', page('find.html'));
+app.get('/privacy', page('privacy.html'));
+app.get('/cards', page('cards.html'));
 app.get('/mic/:room', auth.page('SPEAKER_KEY'), page('mic.html'));
 app.get('/present/:room', auth.page('SPEAKER_KEY'), page('present.html'));
 app.get('/relay/:room', auth.page('SPEAKER_KEY'), page('relay.html'));
@@ -94,7 +98,7 @@ app.use(express.static(pub, { extensions: ['html'], index: false }));
 
 const ctx = { config, state, auth, es, hub, otel };
 // signin first: its guards on votes/questions/feedback must run before those routes.
-for (const m of [signin, tickets, talks, questions, booths, qr, schedule, mockroom, stats]) m.register(app, ctx);
+for (const m of [signin, tickets, talks, questions, booths, qr, schedule, privacy, metrics, mockroom, stats]) m.register(app, ctx);
 
 const server = http.createServer(app);
 hub.attach(server, ctx);

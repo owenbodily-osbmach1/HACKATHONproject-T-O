@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body class="techpage">
+  <h1 class="sr-only">AV tech console</h1>
   <header class="tech-top">
     <div class="tech-brand"><span class="wordmark">PULSE</span><span class="role">AV tech</span></div>
     <div class="counters" role="status" aria-live="polite">
@@ -31,14 +32,15 @@
 
   <main class="tech-main">
     <section class="board" aria-label="Rooms">
-      <div class="blocks" id="blocks" aria-live="polite"></div>
+      <p class="sr-only" id="boardStatus" role="status" aria-live="polite"></p>
+      <div class="blocks" id="blocks"></div>
       <ul class="fixed-list" id="fixedList" aria-live="polite" hidden></ul>
       <div class="ok-tiles" id="okTiles"></div>
     </section>
 
     <aside class="drawer" id="drawer" aria-label="Room details">
       <header class="drawer-head">
-        <h2 id="dRoom">Room —</h2>
+        <h2 id="dRoom" tabindex="-1">Room —</h2>
         <span class="conn" id="dConn"><span class="dot"></span><span class="conn-word">Connecting…</span></span>
       </header>
       <p class="d-talk" id="dTalk">No talk running</p>

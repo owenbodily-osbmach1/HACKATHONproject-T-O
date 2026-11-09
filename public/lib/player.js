@@ -33,9 +33,31 @@ export function createPlayer({ room, onLevel, onState }) {
     src.start(0);
     ctx.resume?.();
 
+    // Safari reports 'interrupted' after the phone locks or another app takes the audio.
+    const ac = ctx;
+    ac.onstatechange = () => {
+      if (ac !== ctx) return;
+      if (ac.state === 'interrupted' || ac.state === 'suspended') resumeAudio();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
     stopped = false;
     playHead = 0;
     openSocket();
+  }
+
+  // Never creates an AudioContext: only resumes the one the user's tap created.
+  function resumeAudio() {
+    if (stopped) return;
+    try { ctx?.resume?.(); } catch { /* ignore */ }
+    if (ws && ws.readyState > WebSocket.OPEN) {
+      clearTimeout(retryTimer);
+      openSocket();
+    }
+  }
+
+  function onVisible() {
+    if (document.visibilityState === 'visible') resumeAudio();
   }
 
   function openSocket() {
@@ -87,6 +109,7 @@ export function createPlayer({ room, onLevel, onState }) {
 
   function stop() {
     stopped = true;
+    document.removeEventListener('visibilitychange', onVisible);
     clearTimeout(retryTimer);
     try { ws?.close(); } catch { /* ignore */ }
     try { ctx?.close(); } catch { /* ignore */ }

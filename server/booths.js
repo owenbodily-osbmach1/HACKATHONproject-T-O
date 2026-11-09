@@ -2,9 +2,11 @@
 // Booth demos are ordinary talks in a room whose id is the booth id, so captions and reports need no special path.
 const crypto = require('crypto');
 const booths = require('./booths.json');
+const otel = require('./otel');
 const log = require('./log');
 
 const SUSPECT_MS = 30 * 1000;
+const DWELL_CAP_MS = 15 * 60 * 1000;
 const MAX_HEARD = 20;
 const MAX_BECAUSE = 120;
 const MIN_DEVICES = 3;
@@ -15,6 +17,9 @@ const byId = new Map(booths.map((b) => [b.id, b]));
 
 const stamps = new Map(); // booth -> Map(clientId -> {ts, suspect, fromTalks, heard})
 const requests = new Map(); // booth -> [{requestId, kind, clientId, ts, done, doneAt}]
+
+let mRequests = null;
+let mAck = null;
 
 const STOP = new Set('a an the and or but if of to in on at for with by from is are was were be been do does did you your we our us it its this that these those how what when where why who which can could should would will as so not no than then there their them they i me my also just very really about into over under more most some any all'.split(' '));
 
@@ -213,6 +218,54 @@ function talkList(rows) {
     .sort((a, b) => b.devices - a.devices || a.talkId.localeCompare(b.talkId));
 }
 
+// Per-device upper bound: time from a stamp at boothId to that device's next stamp at any
+// booth, capped at 15 min. Suspect stamps are rejected for passport counts but still mark a
+// stop, so the sequence keeps them. No next stop means no sample.
+function dwellValues(boothId) {
+  const byClient = new Map(); // clientId -> [{booth, ts}]
+  for (const [booth, map] of stamps) {
+    for (const [clientId, stamp] of map) {
+      if (!byClient.has(clientId)) byClient.set(clientId, []);
+      byClient.get(clientId).push({ booth, ts: stamp.ts });
+    }
+  }
+  const out = [];
+  for (const list of byClient.values()) {
+    list.sort((a, b) => a.ts - b.ts);
+    for (let i = 0; i < list.length - 1; i++) {
+      if (list[i].booth !== boothId) continue;
+      out.push(Math.min(list[i + 1].ts - list[i].ts, DWELL_CAP_MS));
+    }
+  }
+  return out;
+}
+
+function median(sorted) {
+  const n = sorted.length;
+  return n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+}
+
+function nearestRank(sorted, p) {
+  const i = Math.max(0, Math.ceil(p * sorted.length) - 1);
+  return sorted[Math.min(i, sorted.length - 1)];
+}
+
+const round1 = (v) => Math.round(v * 10) / 10;
+
+// time to next stop, an upper bound; shown as a range with n (k >= 3).
+function dwellStats(boothId) {
+  const minutes = dwellValues(boothId).map((ms) => ms / 60000).sort((a, b) => a - b);
+  if (minutes.length < MIN_DEVICES) return null;
+  return { medianMin: round1(median(minutes)), p90Min: round1(nearestRank(minutes, 0.9)), n: minutes.length };
+}
+
+function openRequestCount(boothId) {
+  const queue = requests.get(String(boothId)) || [];
+  let n = 0;
+  for (const request of queue) if (!request.done) n += 1;
+  return n;
+}
+
 function indexCheckin(ctx, doc) {
   try {
     const p = ctx.es.index('pulse-checkins', doc);
@@ -234,6 +287,9 @@ async function indexBooth(ctx, booth) {
 }
 
 function register(app, ctx) {
+  mRequests = otel.counter('pulse.booth.requests', 'Booth requests created', '{request}');
+  mAck = otel.histogram('pulse.booth.request_ack', 'Seconds from booth request to done', 's');
+
   if (ctx.es && ctx.es.enabled) {
     for (const booth of booths) indexBooth(ctx, booth).catch(() => {});
   }
@@ -302,6 +358,7 @@ function register(app, ctx) {
     const ts = Date.now();
     queue.push({ requestId, kind, clientId, ts, done: false, doneAt: null });
     const position = queue.filter((r) => !r.done).length;
+    if (mRequests) mRequests.add(1, { 'pulse.kind': kind });
     log.info('booth.request', { booth: booth.id, requestId, kind, position });
 
     ctx.hub.send(booth.id, { t: 'booth_request', requestId, kind, position, ts }, ['tech']);
@@ -317,6 +374,7 @@ function register(app, ctx) {
     if (!request.done) {
       request.done = true;
       request.doneAt = Date.now();
+      if (mAck) mAck.record(Math.max(0, (request.doneAt - request.ts) / 1000), { 'pulse.booth': booth.id });
       ctx.hub.send(booth.id, { t: 'booth_request_done', requestId: request.requestId }, ['tech']);
     }
     res.json({ status: 'done' });
@@ -337,6 +395,7 @@ function register(app, ctx) {
     res.json({
       visits: rows.length,
       uniqueDevices: new Set(rows.map((r) => r.clientId)).size,
+      dwell: dwellStats(booth.id),
       open,
       fromTalks: talkList(rows).map((t) => {
         const talk = ctx.state.talks.get(t.talkId);
@@ -349,8 +408,10 @@ function register(app, ctx) {
 
 module.exports = {
   register,
+  openRequestCount,
   _test: {
     SUSPECT_MS,
+    DWELL_CAP_MS,
     MIN_DEVICES,
     isSuspect,
     passport,
@@ -360,5 +421,7 @@ module.exports = {
     scoreBooth,
     topicList,
     talkList,
+    dwellValues,
+    dwellStats,
   },
 };

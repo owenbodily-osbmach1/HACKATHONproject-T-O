@@ -67,6 +67,25 @@ Follow-ups, fixed in a third commit (15:00–15:10), each checked against a runn
 | `npm run check` scripts (syntax, booths, relay, tickets) | ✅ |
 | Real **Go live** button (screen share + real mic) and real phones | not checked: the logic it runs (resume only a `live` talk) was exercised by the script |
 
+## 2026-11-09: question-group lifecycle, automated live smoke (Gitar)
+
+**Setup:** `mise x node@22.23.4 -- npm ci`, then `mise x node@22.23.4 -- npm run check` and `mise x node@22.23.4 -- npm run smoke`.
+
+| Check | Result |
+| --- | --- |
+| Repository JavaScript syntax checks and `booths-check`, `extras-check`, `find-check`, `relay-check`, `tickets-check` | passed |
+| Local live-server smoke: the open tech socket sees the old talk's group, receives an empty group list after the next talk starts, and a late-joining tech socket gets an empty snapshot | passed |
+
+This was automated local-server QA; browser and real-device QA were not rerun.
+## 2026-11-09: tracked dependency symlink cleanup, automated (Gitar)
+
+**Setup:** Removed the committed `node_modules` symlink to a sibling checkout, changed the ignore pattern to cover both directories and symlinks, then ran `mise x node@22.23.4 -- npm ci` and `mise x node@22.23.4 -- npm run check`.
+
+| Check | Result |
+| --- | --- |
+| Repository syntax and focused checks | passed |
+| `node_modules` is ignored and the sibling-checkout symlink is no longer tracked | passed |
+
 ## 2026-11-09: answeredSeq persistence, automated (Gitar)
 
 **Setup:** `mise x node@22.23.4 -- npm ci`, then `mise x node@22.23.4 -- npm run check` and `mise x node@22.23.4 -- npm run smoke`.
@@ -76,6 +95,16 @@ Follow-ups, fixed in a third commit (15:00–15:10), each checked against a runn
 | Repository syntax checks and `booths-check`, `find-check`, `relay-check`, `tickets-check` | passed |
 | Smoke checks | passed |
 | Focused mock-Elasticsearch question-answer check: update persists `answeredSeq` alongside `hidden` and `answered` | passed |
+## 2026-11-09: attendee focus and listen-in lifecycle fixes, automated (Gitar)
+
+**Setup:** `mise x node@22.23.4 -- npm ci`, `mise x node@22.23.4 -- npm run check`, plus a mocked AudioContext check for a stale `onstatechange` callback after stop/restart.
+
+| Check | Result |
+| --- | --- |
+| JavaScript syntax checks and `booths-check`, `find-check`, `relay-check`, `tickets-check` | passed |
+| Player stale-context callback after stop/restart does not throw or resume the stale/current context | passed |
+
+The attendee prompt's focus behavior was not exercised in a browser or on a real device.
 
 ## 2026-11-09: venue-local schedule times and past-event find check, automated (Gitar)
 
@@ -88,6 +117,21 @@ Follow-ups, fixed in a third commit (15:00–15:10), each checked against a runn
 | Repository syntax checks and `booths-check`, `find-check`, `relay-check`, `tickets-check` | passed |
 
 Elasticsearch schedule indexing was not integration-tested.
+
+## 2026-11-09: accessibility fixes, automated (headless Chromium)
+
+**Setup:** `npm run check`; server on port 8180 (`PORT=8180 SPEAKER_KEY=sk TECH_KEY=tk node server/index.js`); managed headless Chromium at 320×800 plus `?mock=1` pages.
+
+| Check | Result |
+| --- | --- |
+| `npm run check` and the three `*-check.js` scripts | ✅ |
+| `/r/151`, `/tech?key=…`, `/mic/151?key=…`, `/present/151?key=…` | ✅ 200 |
+| Document scroll width at 320 px on `/r`, `/tech`, `/mic` | ✅ 320 px |
+| Tech ticket card: Enter selects the room; focus stays after Claim/Fixed | ✅ |
+| "Better now?" prompt: polite live region, focus on Yes, focus returns to the vote button | ✅ |
+| Listen-in after the audio socket closes + visibilitychange | ✅ context resumes, socket reopens |
+| A−/A+ and tech controls | ✅ 44×44 px minimum |
+| `prefers-reduced-motion: reduce` | ✅ transitions and smooth scroll disabled |
 
 ## 2026-11-09: attendee relay restoration and image-format contract, automated (Gitar)
 
@@ -243,3 +287,15 @@ All passed:
 - **Go live after End talk starts a new talk:** talk `9ce0f0af` ended, Go live again created `d3fd738a`. Phones show live again.
 - **Caption crawl with a 30-word caption:** split into lines of up to 8 words. Newest line fully inside the box and on screen at 320×568, 360×640 and 390×844, at default, 28 px and 36 px text. The box is capped at 32vh.
 - `npm run check`: all checks ok.
+## 2026-11-09: demo fixes (UI)
+
+- `public/lib/socket.js` now sends the attendee `clientId`. A `/tmp` `ws` client connected as `role=attendee&clientId=...` received `question_reply` after `POST /api/questions` + tech reply (`sent: 1`).
+- `/r/wscheck` while waiting: both vote buttons `aria-disabled="true"` and sub-label "Voting opens when the talk starts". Live talk message enabled them and showed title/speaker. A rapid triple tap produced one `PUT /api/votes`. End showed "Talk ended · transcript saved" → `/t/373d9c39`.
+- Injected 409s: `stale_talk` was retried once and the retry returned 200; `no_live_talk` showed the gate with no network request.
+- `/present/wscheck` opened on `127.0.0.1`: warning visible and QR URL `http://127.0.0.1:8181/r/wscheck`; with `?base=https://pulse.example.test` the warning was hidden and the URL used the base.
+- `/tech?key=tk` without `rooms`: discovered `demo2` and `wscheck`; `&rooms=151` stayed on 151 only. The drawer showed "Discovery talk · Grace" from the `talk` message.
+- `npm run check` passes.
+
+## 2:45 PM: listen-in relay latency (public URL)
+
+100 frames of 3200 bytes (100 ms of 16 kHz PCM) sent on `/ws/audio-in` in room `lat1`, received on `/ws/audio-out` through the Cloudflare tunnel: 100/100 delivered, median 56 ms, p95 100 ms, max 338 ms. This is relay time only; add the 100 ms frame and the phone's playback buffer for mic-to-ear.
