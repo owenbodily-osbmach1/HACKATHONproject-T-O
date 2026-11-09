@@ -432,6 +432,7 @@ body[data-talk="ended"] .interim { display: none; }
 .act.fixed { background: var(--text); color: var(--on-color); }
 .ghost.small { min-height: 44px; font-size: 14px; padding: 0 10px; }
 .b-actions .ghost.small { min-height: 56px; }
+a.ghost { display: inline-flex; align-items: center; justify-content: center; color: var(--text); text-decoration: none; }
 .ok-tiles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .ok-tile { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; min-height: 44px; padding: 0 14px; color: var(--text); font-size: 16px; font-weight: 700; }
 .ok-tile.sel { box-shadow: 0 0 0 3px var(--blue); }
