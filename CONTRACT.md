@@ -42,6 +42,7 @@ Every change goes in as a pull request. Gitar reviews it; merge only after Gitar
 | GET | `/api/privacy` | — | `{source, elasticsearch, indices:[{index, fields:[{field, type}]}], privacy}` (see "Privacy") |
 | GET | `/cards` | — | printable QR cards page (public): one card per room and booth, 2 per page |
 | GET | `/metrics` | — | Prometheus text format (see "Metrics") |
+| GET | `/api/metrics?room=` | `TECH_KEY` | AV console metrics panel: `{at, room, dash0:{enabled, startFailed, endpointHost, lastExportAt, lastExportOk, exportFailures, traces, url}, service:{name, version, environment, uptimeSec}, es:{enabled, ...}, series:[...]}` (`Cache-Control: no-store`; see "Metrics") |
 
 - Slide relay uploads are kept in memory (last 150 frames per talk or per room while no talk is live); a second upload less than 1 s after the previous one for the same room returns `429`.
 - Vote `type`: `cant_hear` | `cant_see` (`room_full` is a stretch goal). With no live talk in the room, `PUT /api/votes` returns `409 {error:'no_live_talk'}`; a `talkId` other than the room's live talk returns `409 {error:'stale_talk', talkId: <live talkId>}`.
@@ -74,12 +75,14 @@ One mechanism everywhere. Keyed **pages** are opened with `?key=...` in the URL 
 
 | Key | HTTP routes and pages that require it |
 | --- | --- |
-| `TECH_KEY` | `POST /api/talks/:talkId/end` (also `SPEAKER_KEY`) · `POST /api/rooms/:room/demo/restart` · `POST /api/tickets/:id/claim` · `/fixed` · `/dismiss` · `POST /api/config` · `POST /api/rooms/:room/settings` · `POST /api/questions/:qid/*` · `POST /api/rooms/:room/broadcast` · `POST /api/clients/:clientId/mute` · page `/tech` |
+| `TECH_KEY` | `POST /api/talks/:talkId/end` (also `SPEAKER_KEY`) · `POST /api/rooms/:room/demo/restart` · `POST /api/tickets/:id/claim` · `/fixed` · `/dismiss` · `POST /api/config` · `POST /api/rooms/:room/settings` · `POST /api/questions/:qid/*` · `POST /api/rooms/:room/broadcast` · `POST /api/clients/:clientId/mute` · `GET /api/metrics` · page `/tech` |
 | `BOOTH_KEY` | page `/booth/:booth` · `POST /api/booths/:booth/requests/:id/done` · `GET /api/booths/:booth/report` · socket `role=booth`. Nothing else: the booth key gets `403` on every tech or speaker route (including the sign-in export). Unset = booth pages and routes locked. |
 | `SPEAKER_KEY` | `POST /api/talks` · `POST /api/talks/:talkId/end` · `POST /api/rooms/:room/slide-frame` · pages `/mic/:room`, `/present/:room`, `/relay/:room` and `/go/:room` |
 | none | `GET /api/rooms`, `PUT /api/votes`, `POST /api/questions`, `POST /api/feedback`, `GET /api/report/:talkId`, `GET /api/config`, transcript routes, `/healthz`, `/privacy`, `/api/privacy`, `/cards`, `/metrics`, pages `/r/:room`, `/t/:talkId`, `/room/:room`, `/org`, `/find` |
 
 ## WebSocket: `/ws?room=151&role=attendee|viewer|mic|present|tech|org[&clientId=]`
+
+Caption cleanup: the hub runs every `caption` and `caption_interim` text from the mic through `server/wordfix.js` before relaying or storing it. It fixes cloud-native terms speech recognition mishears (e.g. "cube control" → "kubectl", "cooper netties" → "Kubernetes", "dash zero" → "Dash0"), tidies spacing, capitalises the first letter and collapses exact repeated words. It never changes meaning, is idempotent, and on any error the line is relayed exactly as sent. Phones, the transcript, the report and Elasticsearch all get the cleaned text.
 
 Attendee sockets also send `&clientId=<anonymous per-phone id>` (from `public/lib/store.js`). The server uses it to deliver `question_reply` to the asker and to attribute heard captions for booths and `/api/find/next`.
 
@@ -204,6 +207,10 @@ Public page `/privacy` (`public/privacy.html`, no key) and `GET /api/privacy`. T
 | `process_resident_memory_bytes` | gauge | — |
 
 The deployment template carries `prometheus.io/scrape: "true"`, `prometheus.io/port: "8080"` and `prometheus.io/path: "/metrics"`.
+
+### AV console metrics (`GET /api/metrics`, `TECH_KEY`)
+
+`server/otel.js` mirrors every counter, histogram and gauge it exports into a small in-process registry (60 one-second buckets per counter, the last 256 samples per histogram, a capped number of `pulse.room` values per series), whether or not a Dash0 endpoint is set. `server/av-metrics.js` serves that mirror to the AV console's "Dash0 metrics" panel (`public/tech.js`, polled every 5 s while the panel is open and visible; `M` toggles it). Values are this pod's own; nothing is read back from Dash0. It also registers gauges that go to Dash0: `pulse.audio.listeners`, `pulse.tickets.open` (per room), `pulse.ws.connections` (by role), `process.memory.usage`, `v8js.memory.heap.used`, `nodejs.eventloop.delay.p99` / `.max`, and the `pulse.es.*` write, error and queue gauges when the Elasticsearch client reports them. No series carries a client IP, user agent, query string or `clientId`.
 
 OTLP (Dash0): marking a booth request done records histogram `pulse.booth.request_ack` (seconds, attribute `pulse.booth`); creating a request counts `pulse.booth.requests` (attribute `pulse.kind`). Both are fire-and-forget and never delay the request response.
 
