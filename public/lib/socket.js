@@ -1,7 +1,7 @@
 // Reconnecting JSON WebSocket client shared by every page.
 // Backoff 1, 2, 4, 8 s, capped at 10 s (CONTRACT.md). Answers server pings.
 
-export function connectRoom({ room, role, key, onMessage, onStatus }) {
+export function connectRoom({ room, role, key, clientId, onMessage, onStatus }) {
   const delays = [1000, 2000, 4000, 8000, 10000];
   let attempt = 0;
   let ws = null;
@@ -12,6 +12,7 @@ export function connectRoom({ room, role, key, onMessage, onStatus }) {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const q = new URLSearchParams({ room, role });
     if (key) q.set('key', key);
+    if (clientId) q.set('clientId', clientId);
     return `${proto}//${location.host}/ws?${q}`;
   }
 

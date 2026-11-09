@@ -74,6 +74,8 @@ One mechanism everywhere. Keyed **pages** are opened with `?key=...` in the URL 
 
 ## WebSocket: `/ws?room=151&role=attendee|viewer|mic|present|tech|org`
 
+Attendee sockets also send `&clientId=<anonymous per-phone id>` (from `public/lib/store.js`). The server uses it to deliver `question_reply` to the asker and to attribute heard captions for booths and `/api/find/next`.
+
 `viewer` (no key) is for transcript/report pages: it receives `caption`, `caption_interim` and `caption_backlog` like `attendee` but is not counted in `listeners`.
 
 All messages are JSON with a `t` field. `role=mic` and `role=present` must also pass `&key=SPEAKER_KEY`; `role=tech` must pass `&key=TECH_KEY`.
