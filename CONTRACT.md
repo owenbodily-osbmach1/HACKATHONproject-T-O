@@ -30,9 +30,11 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 | POST | `/api/tickets/:id/claim` · `/fixed` · `/dismiss` | `{by}` | `{status}` |
 | GET | `/api/report/:talkId` | — | `{transcript[], signalsByMinute[], questions[]}` |
 | GET / POST | `/api/config` | `{alertThreshold}` | `{alertThreshold, nudgeThreshold, publicBaseUrl}` (`publicBaseUrl` = `PUBLIC_BASE_URL`; the mic page builds the QR code from it) |
+| POST | `/api/rooms/:room/slide-frame` | raw `image/jpeg` (≤ 1.5 MB), `SPEAKER_KEY` | `{n, url}` (slide relay; server then sends `slide` with `total: 0`) |
+| GET | `/slides/live/:talkId/:n.jpg` | — | the captured slide image |
 | GET | `/healthz` | — | `ok` |
 
-- Vote `type`: `cant_hear` | `cant_see` (`room_full` is a stretch goal).
+- Vote `type`: `cant_hear` | `cant_see` (`room_full` is a stretch goal). With no live talk in the room, `PUT /api/votes` returns `409 {error:'no_live_talk'}`.
 - Ticket `status`: `open` | `claimed` | `fixed` | `reopened` | `dismissed`.
 - One vote per `clientId` per type per talk. `on: false` takes the vote back. Votes expire after 10 min and clear when a ticket is marked fixed.
 - "Still bad": the phone sends `POST /api/feedback` with `better: false` **and then** `PUT /api/votes` with `on: true`. The feedback route only records the answer; it does not re-add the vote itself.
@@ -56,7 +58,7 @@ One mechanism everywhere. Keyed **pages** are opened with `?key=...` in the URL 
 | Key | HTTP routes and pages that require it |
 | --- | --- |
 | `TECH_KEY` | `POST /api/tickets/:id/claim` · `/fixed` · `/dismiss` · `POST /api/config` · `POST /api/rooms/:room/settings` · `POST /api/questions/:qid/*` · `POST /api/rooms/:room/broadcast` · `POST /api/clients/:clientId/mute` · page `/tech` |
-| `SPEAKER_KEY` | `POST /api/talks` · `POST /api/talks/:talkId/end` · pages `/mic/:room` and `/present/:room` |
+| `SPEAKER_KEY` | `POST /api/talks` · `POST /api/talks/:talkId/end` · `POST /api/rooms/:room/slide-frame` · pages `/mic/:room`, `/present/:room` and `/relay/:room` |
 | none | `GET /api/rooms`, `PUT /api/votes`, `POST /api/questions`, `POST /api/feedback`, `GET /api/report/:talkId`, `GET /api/config`, transcript routes, `/healthz`, pages `/r/:room`, `/t/:talkId`, `/room/:room`, `/org` |
 
 ## WebSocket: `/ws?room=151&role=attendee|viewer|mic|present|tech|org`
@@ -83,13 +85,15 @@ All messages are JSON with a `t` field. `role=mic` and `role=present` must also 
 | `question_reply` | server → | `qid, text` | the askers only |
 | `broadcast` | server → | `text` | attendee |
 | `feed` | server → | `kind, room, text, ts, refId` | tech |
-| `slide` | present/mic → server → room | `talkId, n, total, url, alt?` | all (and new phones on join) |
+| `slide` | present/mic → server → room (or server, after a relay upload) | `talkId, n, total, url, alt?` (`total: 0` = unknown, captured deck) | all (and new phones on join) |
+| `talk` | server → (on join and on every change) | `talkId, title, speaker, status: 'waiting'\|'live'\|'ended', startedAt, reportUrl?, next?: {title, start}` | all |
 | `ping` / `pong` | both, every 20 s | — | all |
 
 Audio uses its own binary-only sockets:
 
 - `/ws/audio-in?room=151&key=SPEAKER_KEY` — Int16 little-endian, mono, 16 kHz, 1,600 samples per frame (100 ms, 3,200 bytes).
-- `/ws/audio-out?room=151` — the same frames out. Send-only: the server ignores anything a phone sends.
+- `/ws/audio-out?room=151` — the same frames out.
+- One sender per room: a new `/ws/audio-in` sender replaces the old one, which is closed with `4409`. A sender closed with `4409` must **not** reconnect by itself (pre-show AV feed vs podium mic hand-over; see `docs/design-relay-preshow-questions.md`). Send-only: the server ignores anything a phone sends.
 - A binary frame on any other socket closes that connection.
 
 ## Mic lock (security)
