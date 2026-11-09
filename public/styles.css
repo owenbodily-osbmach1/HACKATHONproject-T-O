@@ -134,7 +134,7 @@ button:disabled { opacity: .4; cursor: default; }
 }
 .stage[data-mode="both"] .slide-bar { padding-top: 2px; }
 /* In Both, captions always keep at least ~4 lines; the page scrolls instead of squeezing them. */
-.stage[data-mode="both"] .caption-pane { flex: 1 0 auto; min-height: 190px; }
+/* (Both: captions pane height is set by the crawl rules below) */
 .group-watch:has(.stage[data-mode="both"]) { flex-shrink: 0; }
 .stage[data-mode="both"] { flex: 1 0 auto; }
 .slide-bar { display: flex; align-items: center; gap: 8px; padding-top: 6px; font-size: 14px; font-weight: 700; color: var(--blue); }
@@ -155,6 +155,40 @@ button:disabled { opacity: .4; cursor: default; }
 .interim { margin: 0; padding: 0 14px 10px; color: var(--muted); font-size: var(--cap-size); font-style: italic; min-height: 0; }
 .interim:empty { padding: 0; }
 .jump { position: absolute; right: 10px; bottom: 10px; box-shadow: 0 4px 14px rgba(0,0,0,.6); }
+
+/* ---------- BOTH: captions as a short "crawl" under the slide ----------
+   Only the last 4 lines, in a fixed-height box that can never be pushed off screen.
+   The newest line sits at the bottom in full white; older lines tilt back, shrink and
+   fade toward the top (a gentle Star Wars crawl). Captions mode keeps the full transcript. */
+.stage[data-mode="both"] .caption-pane { flex: 0 0 auto; min-height: 0; }
+.stage[data-mode="both"] .caption-tools { display: none; }
+.stage[data-mode="both"] .jump { display: none !important; }
+.stage[data-mode="both"] .captions {
+  --crawl-lines: 4;
+  flex: none; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;
+  height: calc(var(--cap-size) * 1.4 * var(--crawl-lines) + 18px);
+  padding: 4px 16px 8px; line-height: 1.4;
+  perspective: 420px; perspective-origin: 50% 120%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 42%);
+          mask-image: linear-gradient(to bottom, transparent 0, #000 42%);
+}
+.stage[data-mode="both"] .captions .line:not(:nth-last-child(-n+4)) { display: none; }
+.stage[data-mode="both"] .captions .line {
+  margin: 0 0 .2em; text-align: center; color: var(--muted); font-weight: 600;
+  transform-origin: 50% 100%; transition: transform .45s ease, opacity .45s ease, color .45s ease;
+}
+.stage[data-mode="both"] .captions .line:nth-last-child(4) { transform: rotateX(28deg) scale(.82); opacity: .45; }
+.stage[data-mode="both"] .captions .line:nth-last-child(3) { transform: rotateX(22deg) scale(.88); opacity: .65; }
+.stage[data-mode="both"] .captions .line:nth-last-child(2) { transform: rotateX(14deg) scale(.94); opacity: .85; }
+.stage[data-mode="both"] .captions .line:last-child { transform: none; opacity: 1; color: var(--text); font-weight: 700; }
+.stage[data-mode="both"] .captions .line.enter { animation: crawl-in .45s ease-out; }
+@keyframes crawl-in { from { transform: translateY(70%); opacity: 0; } to { transform: none; opacity: 1; } }
+.stage[data-mode="both"] .caption-empty { text-align: center; margin: auto 0 4px; }
+.stage[data-mode="both"] .interim { text-align: center; padding: 0 16px 10px; min-height: calc(var(--cap-size) * 1.4); }
+@media (prefers-reduced-motion: reduce) {
+  .stage[data-mode="both"] .captions { perspective: none; }
+  .stage[data-mode="both"] .captions .line { transform: none !important; transition: none; animation: none !important; }
+}
 
 /* ---------- LISTEN ---------- */
 .listen {
@@ -269,7 +303,7 @@ button:disabled { opacity: .4; cursor: default; }
   .wordmark { font-size: 32px; }
   .stage { min-height: 0; }
   .stage[data-mode="both"] .slide-frame { height: min(46vh, 520px); width: auto; }
-  .stage[data-mode="both"] .caption-pane { min-height: 160px; }
+  .stage[data-mode="both"] .captions { --crawl-lines: 5; }
   .group-watch:has(.stage[data-mode="both"]) { flex-shrink: 1; }
 }
 
