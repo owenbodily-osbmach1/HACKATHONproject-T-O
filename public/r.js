@@ -8,6 +8,7 @@ import { createPlayer } from '/lib/player.js';
 if (new URLSearchParams(location.search).has('mock')) await import('/dev/mock.js');
 
 const $ = (id) => document.getElementById(id);
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const room = (location.pathname.match(/^\/r\/([^/?#]+)/)?.[1]) || new URLSearchParams(location.search).get('room') || '151';
 const clientId = getClientId();
 
@@ -345,6 +346,8 @@ async function toggleVote(type) {
 document.querySelectorAll('.vote').forEach((b) => { b.onclick = () => toggleVote(b.dataset.type); });
 
 // ---------- "Better now?" after the tech presses Fixed ----------
+let betterReturnFocus = null;
+
 function onTicketStatus({ ticketId, type, status }) {
   if (status === 'fixed' || status === 'dismissed') {
     // The server cleared everyone's votes for this problem.
@@ -357,15 +360,20 @@ function onTicketStatus({ ticketId, type, status }) {
       $('betterQ').textContent = type === 'cant_hear'
         ? 'The crew fixed the sound. Better now?'
         : 'The crew fixed the slides. Better now?';
+      betterReturnFocus = document.activeElement;
       $('better').hidden = false;
       hideHint();
-      $('better').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      const typing = betterReturnFocus?.matches?.('input, textarea, select, [contenteditable]');
+      if (!typing) $('betterYes').focus({ preventScroll: true });
+      $('better').scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' });
     }
   }
 }
 
 async function answerBetter(better) {
   const t = state.betterTicket;
+  const returnTo = betterReturnFocus;
+  betterReturnFocus = null;
   $('better').hidden = true;
   state.betterTicket = null;
   if (!t) return;
@@ -383,6 +391,7 @@ async function answerBetter(better) {
     state.votes[t.type] = false;
     toggleVote(t.type);
   }
+  if (returnTo?.isConnected) returnTo.focus({ preventScroll: true });
 }
 $('betterYes').onclick = () => answerBetter(true);
 $('betterNo').onclick = () => answerBetter(false);
