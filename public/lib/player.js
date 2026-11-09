@@ -8,7 +8,7 @@ const SAMPLE_RATE = 16000;
 const LEAD = 0.25;      // schedule this far ahead (jitter buffer)
 const MAX_BEHIND = 1.0; // drop frames more than this far behind
 
-export function createPlayer({ room, onLevel, onState }) {
+export function createPlayer({ room, key, onLevel, onState }) {
   let ctx = null;
   let ws = null;
   let playHead = 0;
@@ -64,7 +64,9 @@ export function createPlayer({ room, onLevel, onState }) {
     if (stopped) return;
     onState?.('connecting');
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const sock = new WebSocket(`${proto}//${location.host}/ws/audio-out?room=${encodeURIComponent(room)}`);
+    const q = new URLSearchParams({ room });
+    if (key) q.set('key', key); // AV console: the tech key stands in for the phone's sign-in
+    const sock = new WebSocket(`${proto}//${location.host}/ws/audio-out?${q}`);
     ws = sock;
     sock.binaryType = 'arraybuffer';
     // Every handler ignores events from a socket that has been replaced (stop → start quickly).

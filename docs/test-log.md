@@ -2,6 +2,33 @@
 
 What has been tested, how, what broke and what is still open. Newest first. Add to it when you test something.
 
+## 2026-11-09 15:40: video scenes (`scripts/video-scenes.js`), each driven end to end (Claude)
+
+Each scene ran with `--no-windows` while a headless Chrome made the clicks the guide asks for (`docs/video-shoot.md`). The window path was run once for real: the projector window opened and closed with the take, with no Chrome or server left over.
+
+| Scene | Checks | Result |
+| --- | --- | --- |
+| `qr` | title slide shows the join QR | ✅ |
+| `join` | fresh phone gets the sign-in form → after submit Live with captions, "19 here now · 19 scanned in" → projector → twice, phone follows to slide 3 → Listen plays | ✅ |
+| `alert` | phone tap + 2 scripted votes → red SPEAK UP Room 151 · 3 votes (no demo-room block) → Claim → Mark fixed → phone "Better now?" → Yes → console "Better 3 · Still bad 0" | ✅ |
+| `rooms` | tabs 151, 152, 255 in order; 151 "46/120 here"; key 2 → 152 with "⚠ mic quiet" and Microphone "very quiet"; key 3 → 255 "111 / 160" | ✅ |
+| `end` | AV End talk (2 taps) → phone Ended card → transcript → search `uplink` finds the line | ✅ |
+
+Every take starts a fresh server on 8090 and stops it at the end; a second take while one runs is refused ("port 8090 is busy").
+
+## 2026-11-09 15:30: AV listen-in and the unkeyed /org page (Claude)
+
+Two bugs found by the data-flow review of the staff pages, both confirmed against the server and fixed on `ui/video-scenes`:
+
+| Check | Result |
+| --- | --- |
+| `/ws/audio-out` with `key=TECH_KEY`: opens and receives the podium frames (5/5) | ✅ |
+| `/ws/audio-out` with a wrong key, or with no key and no sign-in | ✅ still closed `4403` |
+| AV console "Listen to podium" in headless Chrome | ✅ "Listening · stop" |
+| Unkeyed `/org` socket after a question and a claim by "Sam": tickets yes; question text, tech name, sign-in name no | ✅ (the keyed console still gets all of it) |
+| `/org` page without a key shows Room 151 and its ticket, no question text or names | ✅ |
+| `npm run smoke` and every `scripts/*-check.js` (`tickets-check` now asserts the `/org` copy has no `claimedBy` / `fixedBy`) | ✅ |
+
 ## 2026-11-09 14:20–14:45: agent group test, then fixes + sign-in on `ui/live-state-rooms` (Claude)
 
 **Agent group test** (`poc/one-room` build, shared server, 14:19–14:33): a presenter agent (headless Go live with fake mic, screen share and speech), an audience agent (6 headless phones + 40–51 socket phones, offline / locked-screen / blocked-WebSocket phones), an AV agent (3 consoles, real clicks and keys), and a chaos agent on its own servers. Fixed on this branch from their findings:
