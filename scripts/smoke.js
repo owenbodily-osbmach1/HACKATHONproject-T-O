@@ -217,6 +217,23 @@ async function main() {
     assert.ok(room, '/api/rooms must include room 1');
     assert.equal(room.openTickets, 1, `room 1 must have exactly one open ticket, got ${room.openTickets}`);
 
+    // Question groups from an ended talk must not reach /tech once the next talk starts.
+    const asked = await http(base, 'POST', '/api/questions', {
+      body: { room: '1', talkId, clientId: 'smoke-a', text: 'old talk question about uplinks' },
+    });
+    assert.equal(asked.status, 200, `POST /api/questions must return 200, got ${asked.status}`);
+    await http(base, 'POST', `/api/talks/${talkId}/end`, { key: 'sk' });
+    const talk2 = await http(base, 'POST', '/api/talks', {
+      key: 'sk', body: { room: '1', title: 'Smoke talk 2', speaker: 'Smoke' },
+    });
+    assert.equal(talk2.status, 200, `second POST /api/talks must return 200, got ${talk2.status}`);
+    const tech = socket(`ws://${HOST}:${port}/ws?room=1&role=tech&key=tk&clientId=smoke-tech`);
+    sockets.push(tech);
+    await tech.opened;
+    const snap = await tech.wait((m) => m.t === 'question_groups');
+    assert.equal(snap.groups.length, 0,
+      `tech must not see question groups from an ended talk, got ${JSON.stringify(snap.groups)}`);
+
     console.log('smoke: all checks passed');
   } catch (err) {
     console.error(`smoke: FAILED — ${err.message}`);
