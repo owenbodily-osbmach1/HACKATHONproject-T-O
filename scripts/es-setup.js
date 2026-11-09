@@ -42,6 +42,7 @@ const mappings = {
     groupId: { type: 'keyword' },
     answered: { type: 'boolean' },
     answeredSeq: { type: 'integer' },
+    hidden: { type: 'boolean' },
   },
   'pulse-tickets': {
     id: { type: 'keyword' },

@@ -2,6 +2,16 @@
 
 What has been tested, how, what broke and what is still open. Newest first. Add to it when you test something.
 
+## 2026-11-09: answeredSeq persistence, automated (Gitar)
+
+**Setup:** `mise x node@22.23.4 -- npm ci`, then `mise x node@22.23.4 -- npm run check` and `mise x node@22.23.4 -- npm run smoke`.
+
+| Check | Result |
+| --- | --- |
+| Repository syntax checks and `booths-check`, `find-check`, `relay-check`, `tickets-check` | passed |
+| Smoke checks | passed |
+| Focused mock-Elasticsearch question-answer check: update persists `answeredSeq` alongside `hidden` and `answered` | passed |
+
 ## 2026-11-09: venue-local schedule times and past-event find check, automated (Gitar)
 
 **Setup:** `mise x node@22.23.4 -- npm ci`, then `mise x node@22.23.4 -- npm run check`.
@@ -153,6 +163,12 @@ All passed:
 - **Through the Cloudflare quick tunnel:** about **230 sockets** connected before Cloudflare answered **429** for further new WebSockets from the same client IP. That is the tunnel's per-client limit, not the pod; a real ingress or named tunnel removes it.
 - **Idle, per Radar (after installing metrics-server):** ~11m CPU / 35 MiB against 100m / 128 MiB requested.
 - **Decision (#24):** requests 50m CPU / 192Mi memory (the memory request covers the 128 MB slide-frame cache from #23), limits 500m / 256Mi.
+
+## 2026-11-09: contract and hidden-question persistence checks
+
+- `npm run check`: passed (`booths-check`, `find-check`, `relay-check`, `tickets-check`, plus JavaScript syntax checks).
+- `npm run smoke`: passed.
+- Focused mock-Elasticsearch check: verified stable-id question indexing, `hidden` updates, and hidden-question exclusion from the report after re-registering the question routes to simulate a restart. No live Elasticsearch cluster was used.
 
 ## 2026-11-09 1:55 PM: Gitar fixes for relay, Go live and the phone (Owen + Claude, headless)
 

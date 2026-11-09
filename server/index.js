@@ -27,11 +27,26 @@ app.use(express.json({ limit: '64kb' }));
 
 // Mic lock: only the podium mic page may ask for the microphone.
 app.use((req, res, next) => {
+  let p = req.path;
+  try { p = path.posix.normalize(decodeURIComponent(req.path)).replace(/\/+/g, '/').toLowerCase(); } catch {}
   // /go/:room is the one-button control page: it runs the same podium mic.
-  const isMic = req.path.startsWith('/mic/') || req.path.startsWith('/go/');
+  const isMic = p.startsWith('/mic/') || p.startsWith('/go/');
   res.setHeader('Permissions-Policy', isMic ? 'microphone=(self), camera=()' : 'microphone=(), camera=()');
   next();
 });
+
+// Ids from the public: room/booth ids are short slugs, clientIds are short random ids (security audit:
+// unbounded ids were stored forever). Rejected before any route creates state.
+const ROOM_RE = /^[A-Za-z0-9_-]{1,32}$/;
+app.use((req, res, next) => {
+  const b = req.body && typeof req.body === 'object' ? req.body : {};
+  const room = b.room ?? req.query.room;
+  if (room != null && !ROOM_RE.test(String(room))) return res.status(400).json({ error: 'bad room id' });
+  const cid = b.clientId ?? req.query.clientId;
+  if (cid != null && String(cid).length > 64) return res.status(400).json({ error: 'bad clientId' });
+  next();
+});
+app.param('room', (req, res, next, v) => (ROOM_RE.test(v) ? next() : res.status(400).json({ error: 'bad room id' })));
 
 app.get('/healthz', (req, res) => res.type('text').send('ok'));
 // Browsers still probe /favicon.ico; point them at the SVG instead of 404ing.

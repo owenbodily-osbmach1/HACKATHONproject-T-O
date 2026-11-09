@@ -11,7 +11,7 @@ const otel = require('./otel');
 const log = require('./log');
 
 const ROLES = new Set(['attendee', 'viewer', 'mic', 'present', 'tech', 'org']);
-const wss = new WebSocketServer({ noServer: true });
+const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 }); // JSON messages are small (security audit)
 const rooms = new Map(); // room -> Set<{ws, role, clientId, alive}>
 const handlers = new Map(); // t -> Set<fn>
 const heardRooms = new Map(); // attendee clientId -> Set(room) joined while connected
@@ -174,13 +174,18 @@ function join(ws, room, role, clientId) {
 
   if (role === 'attendee' && clientId) {
     let heard = heardRooms.get(clientId);
-    if (!heard) heardRooms.set(clientId, (heard = new Set()));
+    if (!heard) {
+      // Kept after the socket closes (booths use it), so cap it: oldest devices drop first.
+      if (heardRooms.size >= 20000) heardRooms.delete(heardRooms.keys().next().value);
+      heardRooms.set(clientId, (heard = new Set()));
+    }
     heard.add(room);
   }
 
   const state = ctx.state.room(room);
   if (role === 'attendee' || role === 'viewer' || role === 'tech') {
-    sendJson(ws, { t: 'caption_backlog', lines: state.captions.slice(-50) });
+    // Backlog only for the room's current talk, so a late joiner never mixes two talks (contract audit).
+    sendJson(ws, { t: 'caption_backlog', lines: state.captions.filter((c) => !state.talkId || c.talkId === state.talkId).slice(-50) });
   }
   sendJson(ws, { t: 'room_settings', ...state.settings });
   sendJson(ws, ctx.state.talkMessage(room));
@@ -234,7 +239,7 @@ module.exports = {
     const clientId = url.searchParams.get('clientId') || '';
 
     if (!ctx) { socket.destroy(); return; }
-    if (!room || !ROLES.has(role)) {
+    if (!room || !/^[A-Za-z0-9_-]{1,32}$/.test(room) || clientId.length > 64 || !ROLES.has(role)) {
       wss.handleUpgrade(req, socket, head, (ws) => closeQuietly(ws, 1008, 'bad request'));
       return;
     }

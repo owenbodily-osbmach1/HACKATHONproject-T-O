@@ -4,7 +4,7 @@ const { WebSocketServer } = require('ws');
 const otel = require('./otel');
 const log = require('./log');
 
-const wss = new WebSocketServer({ noServer: true });
+const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 }); // audio frames are 3,200 bytes
 const senders = new Map(); // room -> sender ws (one active)
 const outs = new Map(); // room -> Set<ws>
 const dbByRoom = new Map(); // room -> latest RMS dBFS
