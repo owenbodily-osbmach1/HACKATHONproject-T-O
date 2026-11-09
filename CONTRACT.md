@@ -50,8 +50,8 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 - `POST /api/questions`: one question per phone every 20 s (`429 {error:'too_fast'}`), keyed on `clientId` and the visitor cookie. `ticket_status` reaches phones only when a ticket's status changes. `GET /api/report/:talkId` fills `signalsByMinute` from memory when Elasticsearch is off.
 - Going live again after a talk ended starts a **new** talk (Go live and the mic page resume only a talk whose `status` is `live`), so phones flip from Ended back to Live.
 - Demo room: on start the server seeds room `MOCK_ROOM` (default `255`, `off` disables) with a live talk, a transcript that keeps growing, a fake mic level, 3 questions and a "can't see" ticket. It is `simulated: true` in `/api/rooms` and is never written to Elasticsearch.
-- Room switches: `POST /api/rooms/:room/settings` `{captions, listen, slides, capacity?}` (tech only; `capacity` = seats, for the room-fill bar).
-- Scans: `GET /r/:room` sets a server-issued random cookie `pulse_v` (httpOnly, 1 day) and counts each visitor once per room (`joined`). The phone never reports a count. `here` = open attendee sockets. Default capacity `ROOM_CAPACITY` (120). Server sends `room_settings` to every role in the room.
+- Room switches: `POST /api/rooms/:room/settings` `{captions, listen, slides, capacity?}` (tech only; `capacity` = seats, for the room-fill bar). Server sends `room_settings` to every role in the room.
+- Scans: `GET /r/:room` sets a server-issued cookie `pulse_v` = `<random id>.<HMAC>` (httpOnly, 1 day; the server only accepts ids it signed, secret `VISITOR_SECRET` or random per start) and counts each visitor once per room (`joined`). The phone never reports a count; a scan never creates a room. `here` = open attendee sockets. Default capacity `ROOM_CAPACITY` (120).
 
 Search: `GET /api/search?q=&talkId=` → `[{talkId, seq, text, ts}]`, hybrid (RRF of a match query and a semantic query on `text_sem`), falling back to a plain match.
 
@@ -143,7 +143,7 @@ Set `inference_id` explicitly from `ES_INFERENCE_ID`. If inference isn't availab
 | Method | Path | Body | Returns |
 | --- | --- | --- | --- |
 | GET | `/r/:room` | — | the sign-in form (`public/join.html`) until this phone's `pulse_v` cookie has signed in, then the audience page. `Cache-Control: no-store`. |
-| POST | `/api/signin` | `{room, first, last, company, email}` | `{ok}` · `400 {error:'invalid', fields:{first?, last?, company?, email?}}` · `400 no_visitor` (no cookie: open the room link first) · `429` (10 tries / min) |
+| POST | `/api/signin` | `{room, first, last, company, email}` | `{ok}` · `400 {error:'invalid', fields:{first?, last?, company?, email?}}` · `400 no_visitor` (no cookie: open the room link first) · `429` (10 tries / min per phone, 120 / min per network address) |
 | GET | `/api/rooms/:room/signins` (`TECH_KEY`) | — | `{room, count, enabled}`; `?format=csv` → `first_name, last_name, company_or_occupation, email, signed_in_at, source` (`source: demo` for the demo room's fictional crowd) |
 
 - Server checks: every field required, trimmed, control characters removed; names ≤ 60, company ≤ 100, email ≤ 254 and a basic `name@domain.tld` check. The phone never says it signed in: the server looks up its own record for the `pulse_v` cookie (httpOnly, 24 h).
@@ -154,7 +154,7 @@ Set `inference_id` explicitly from `ES_INFERENCE_ID`. If inference isn't availab
 
 Kubernetes Secret (entered in the Radar UI) or local `.env`. **Never committed.** See `.env.example`.
 
-`PORT` · `MOCK_ROOM=255` · `ROOM_CAPACITY=120` · `SIGNIN=on` · `AUTO_END_MIN=10` · `PUBLIC_BASE_URL` · `SPEAKER_KEY` · `TECH_KEY` · `ALERT_THRESHOLD=3` · `ALERT_WINDOW_SEC=60` · `CAPTIONS_DEFAULT=on` · `ELASTIC_URL` · `ELASTIC_API_KEY` · `ES_INFERENCE_ID` · `OTEL_SERVICE_NAME=pulse` · `OTEL_EXPORTER_OTLP_ENDPOINT` · `OTEL_EXPORTER_OTLP_HEADERS` · `DASH0_RUM_TOKEN` (public, ingest-only) · `DASH0_RUM_ENDPOINT=https://ingress.us-west-2.aws.dash0.com`
+`PORT` · `MOCK_ROOM=255` · `ROOM_CAPACITY=120` · `SIGNIN=on` · `AUTO_END_MIN=10` · `VISITOR_SECRET` · `PUBLIC_BASE_URL` · `SPEAKER_KEY` · `TECH_KEY` · `ALERT_THRESHOLD=3` · `ALERT_WINDOW_SEC=60` · `CAPTIONS_DEFAULT=on` · `ELASTIC_URL` · `ELASTIC_API_KEY` · `ES_INFERENCE_ID` · `OTEL_SERVICE_NAME=pulse` · `OTEL_EXPORTER_OTLP_ENDPOINT` · `OTEL_EXPORTER_OTLP_HEADERS` · `DASH0_RUM_TOKEN` (public, ingest-only) · `DASH0_RUM_ENDPOINT=https://ingress.us-west-2.aws.dash0.com`
 
 ## Booths (expo floor)
 

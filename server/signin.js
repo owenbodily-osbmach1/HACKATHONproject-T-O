@@ -19,7 +19,10 @@ const stats = require('./stats');
 
 const ENABLED = String(process.env.SIGNIN || 'on').toLowerCase() !== 'off';
 const people = new Map(); // visitor id -> {first, last, company, email, at, rooms: Set}
+const roomPeople = new Map(); // room -> Set(visitor id): counts without scanning everyone every 2 s
 const tries = new Map(); // visitor id -> [ts] of recent submissions (rate limit)
+const ipTries = new Map(); // network address -> [ts]: generous, since a venue Wi-Fi shares one address
+const IP_LIMIT = 120; // sign-ins per minute per address
 const MAX_PEOPLE = 50000;
 const EMAIL = /^[^\s@"<>,;:]{1,64}@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\.[A-Za-z]{2,24}$/;
 
@@ -63,9 +66,16 @@ function allowSocket(req) {
 }
 
 // Sign-ins in a room: real ones plus the demo room's seeded audience.
+function addToRoom(vid, p, room) {
+  if (!room) return;
+  p.rooms.add(room);
+  let set = roomPeople.get(room);
+  if (!set) roomPeople.set(room, (set = new Set()));
+  set.add(vid);
+}
+
 function countFor(room) {
-  let n = 0;
-  for (const p of people.values()) if (p.rooms.has(room)) n++;
+  let n = roomPeople.get(room)?.size || 0;
   const r = ctx && ctx.state.rooms.get(room);
   if (r && r.simulated && r.sim) n += r.sim.joined || 0;
   return n;
@@ -109,7 +119,7 @@ module.exports = {
     if (!ENABLED) return next();
     const vid = res.locals.vid;
     const p = vid && people.get(vid);
-    if (p) { p.rooms.add(String(req.params.room)); return next(); }
+    if (p) { addToRoom(vid, p, String(req.params.room)); return next(); }
     res.sendFile(require('path').join(__dirname, '..', 'public', 'join.html'));
   },
 
@@ -129,6 +139,12 @@ module.exports = {
       const vid = stats.visitorFromHeaders(req.headers);
       if (!vid) return res.status(400).json({ error: 'no_visitor', message: 'Open the room link (scan the QR code) first.' });
       const now = Date.now();
+      const ip = String(req.get('cf-connecting-ip') || (req.get('x-forwarded-for') || '').split(',')[0] || req.socket.remoteAddress || '').trim();
+      const fromIp = (ipTries.get(ip) || []).filter((t) => now - t < 60000);
+      if (fromIp.length >= IP_LIMIT) return res.status(429).json({ error: 'too_many', message: 'Too many sign-ins from this network. Try again in a minute.' });
+      fromIp.push(now);
+      ipTries.set(ip, fromIp);
+      if (ipTries.size > 20000) ipTries.delete(ipTries.keys().next().value);
       const recent = (tries.get(vid) || []).filter((t) => now - t < 60000);
       if (recent.length >= 10) return res.status(429).json({ error: 'too_many', message: 'Too many tries. Wait a minute and try again.' });
       recent.push(now);
@@ -137,10 +153,15 @@ module.exports = {
       const { ok, errors, value } = validate(req.body);
       if (!ok) return res.status(400).json({ error: 'invalid', fields: errors });
       const prev = people.get(vid);
-      if (!prev && people.size >= MAX_PEOPLE) return res.status(503).json({ error: 'full', message: 'Sign-in is full right now.' });
+      if (!prev && people.size >= MAX_PEOPLE) {
+        // Full: drop the oldest sign-in rather than locking every new phone out (Gitar).
+        const [oldVid, old] = people.entries().next().value;
+        people.delete(oldVid);
+        for (const r of old.rooms) roomPeople.get(r)?.delete(oldVid);
+      }
       const p = { ...value, at: prev ? prev.at : now, rooms: prev ? prev.rooms : new Set() };
-      if (room) p.rooms.add(room);
       people.set(vid, p);
+      addToRoom(vid, p, room);
       if (room) ctx.hub.send(room, stats.statsMessage(room)); // counts move right away
       res.json({ ok: true });
     });

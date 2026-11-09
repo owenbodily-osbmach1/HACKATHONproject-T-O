@@ -16,6 +16,19 @@ const DEFAULT_CAPACITY = Number(process.env.ROOM_CAPACITY || 120);
 const AUTO_END_MS = Math.max(0, Number(process.env.AUTO_END_MIN ?? 10)) * 60 * 1000;
 const micGoneAt = new Map(); // room -> when the last mic socket was seen gone
 const visitors = new Map(); // room -> Set(visitor id)
+const MAX_SCAN_ROOMS = 300; // /r/<anything> can't grow this without bound (Gitar)
+// The visitor cookie is `<16 hex id>.<HMAC>`: the server only trusts ids it issued itself, so a script
+// can't mint ids to fill sign-in or the scan counts (Gitar). VISITOR_SECRET keeps cookies valid across
+// restarts; without it a random secret is used (sign-ins are in memory anyway).
+const SECRET = process.env.VISITOR_SECRET || crypto.randomBytes(32).toString('hex');
+const sign = (id) => crypto.createHmac('sha256', SECRET).update(id).digest('hex').slice(0, 24);
+function verifiedId(value) {
+  const m = /^([a-f0-9]{16})\.([a-f0-9]{24})$/.exec(String(value || ''));
+  if (!m) return '';
+  const want = Buffer.from(sign(m[1]));
+  const got = Buffer.from(m[2]);
+  return want.length === got.length && crypto.timingSafeEqual(want, got) ? m[1] : '';
+}
 const lastStats = new Map(); // room -> JSON of the last room_stats sent
 const phoneLog = new Map(); // room -> {left: Map(clientId -> ts), reconnects: [ts]}
 let ctx = null;
@@ -33,18 +46,19 @@ function cookie(req, name) {
 function scan(req, res, next) {
   if (req.method !== 'GET') return next();
   if (!/^[A-Za-z0-9_-]{1,32}$/.test(String(req.params.room))) return res.status(404).type('text').send('No such room');
-  let vid = cookie(req, 'pulse_v');
-  if (!/^[a-f0-9]{16}$/.test(vid)) {
+  let vid = verifiedId(cookie(req, 'pulse_v'));
+  if (!vid) {
     vid = crypto.randomBytes(8).toString('hex');
     const https = req.secure || req.get('x-forwarded-proto') === 'https';
-    res.append('Set-Cookie', `pulse_v=${vid}; Path=/; Max-Age=86400; HttpOnly; SameSite=Lax${https ? '; Secure' : ''}`);
+    res.append('Set-Cookie', `pulse_v=${vid}.${sign(vid)}; Path=/; Max-Age=86400; HttpOnly; SameSite=Lax${https ? '; Secure' : ''}`);
   }
   res.locals.vid = vid; // server/signin.js gate
   const room = String(req.params.room);
   let set = visitors.get(room);
-  if (!set) visitors.set(room, (set = new Set()));
-  set.add(vid);
-  if (ctx) ctx.state.room(room); // a scanned room shows up in /api/rooms even before its talk
+  // A scan never creates a room (only a talk or a socket does), and junk room ids stop being counted
+  // once MAX_SCAN_ROOMS ids are tracked.
+  if (!set && (visitors.size < MAX_SCAN_ROOMS || (ctx && ctx.state.rooms.has(room)))) visitors.set(room, (set = new Set()));
+  if (set) set.add(vid);
   next();
 }
 
@@ -124,8 +138,7 @@ function telemetry(id) {
 
 // The visitor id from a raw Cookie header (WebSocket upgrades and API calls).
 function visitorFromHeaders(headers) {
-  const vid = cookie({ headers: headers || {} }, 'pulse_v');
-  return /^[a-f0-9]{16}$/.test(vid) ? vid : '';
+  return verifiedId(cookie({ headers: headers || {} }, 'pulse_v'));
 }
 
 function autoEnd(r) {

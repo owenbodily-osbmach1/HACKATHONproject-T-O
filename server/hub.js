@@ -110,8 +110,9 @@ function onCaption(rec, msg) {
   }
   const now = Date.now();
   talk.recent = (talk.recent || []).filter((r) => now - r.at < 15000);
-  if (talk.recent.some((r) => r.text === text)) return; // the same line from a second mic
-  talk.recent.push({ text, at: now });
+  // The same line from a SECOND mic (laptop swap). One speaker saying "Okay." twice is kept (Gitar).
+  if (talk.recent.some((r) => r.text === text && r.rec !== rec)) return;
+  talk.recent.push({ text, at: now, rec });
   if (talk.recent.length > 8) talk.recent.shift();
   let seq = Number(msg.seq);
   if (!Number.isInteger(seq) || seq <= talk.lastSeq) seq = talk.lastSeq + 1;
