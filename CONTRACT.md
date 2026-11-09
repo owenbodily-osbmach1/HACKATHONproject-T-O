@@ -93,9 +93,9 @@ All messages are JSON with a `t` field. `role=mic` and `role=present` must also 
 | `caption` | mic → server → room | `talkId, seq, text, ts` | attendee, tech |
 | `caption_interim` | mic → server → room | `text` | attendee |
 | `caption_backlog` | server → (on join) | `lines[]` (last 50) | attendee, tech |
-| `ticket` (snapshot) | server → (on join) | one `ticket` message per open / claimed / reopened ticket in the room, plus the current `question_groups` | tech, org |
+| `ticket` (snapshot) | server → (on join) | one `ticket` message per open / claimed / reopened ticket in the room, plus the current `question_groups` (tech only) | tech, org (`/org` has no key: its tickets carry no `claimedBy` / `fixedBy`, and it never gets `question_groups`) |
 | `vote_count` | server → (at most every 300 ms per room+type) | `type, count, windowSec` | attendee |
-| `ticket` | server → | `id, room, type, people, status, openedAt, reopenedAt, cause, steps[], claimedBy, fixedBy, fixedAt, better, stillBad` (`claimedBy`/`fixedBy` = the tech's "I'm" name from `{by}`; console only, never indexed) | tech, org (`better`/`stillBad` updates and the 3-min "just fixed" snapshot: tech only) |
+| `ticket` | server → | `id, room, type, people, status, openedAt, reopenedAt, cause, steps[], claimedBy, fixedBy, fixedAt, better, stillBad` (`claimedBy`/`fixedBy` = the tech's "I'm" name from `{by}`; keyed console only, never indexed) | tech; org without `claimedBy`/`fixedBy` (`better`/`stillBad` updates and the 3-min "just fixed" snapshot: tech only) |
 | `ticket_status` | server → | `ticketId, type, status` | attendee |
 | `room_status` (every 2 s) | server → | `room, listeners, micDb, captionGapSec, openTickets` | tech, org, mic |
 | `room_settings` | server → | `captions, listen, slides` | all |
@@ -113,7 +113,7 @@ All messages are JSON with a `t` field. `role=mic` and `role=present` must also 
 Audio uses its own binary-only sockets:
 
 - `/ws/audio-in?room=151&key=SPEAKER_KEY` — Int16 little-endian, mono, 16 kHz, 1,600 samples per frame (100 ms, 3,200 bytes).
-- `/ws/audio-out?room=151` — the same frames out. Send-only: the server ignores anything a phone sends.
+- `/ws/audio-out?room=151[&key=TECH_KEY]` — the same frames out. Send-only: the server ignores anything a phone sends. A phone needs a sign-in (see Sign-in); the AV console's "Listen to podium" passes `key=TECH_KEY` instead.
 - A binary frame on any other socket closes that connection.
 
 ## Mic lock (security)

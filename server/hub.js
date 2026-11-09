@@ -230,8 +230,9 @@ function join(ws, room, role, clientId) {
   sendJson(ws, stats.statsMessage(room));
   if (role === 'tech' || role === 'org') {
     // Lazy require: tickets/questions require the hub too.
-    for (const m of require('./tickets').activeTicketMessages(room, { justFixed: role === 'tech' })) sendJson(ws, m);
-    sendJson(ws, { t: 'question_groups', groups: require('./questions').groupList(room) });
+    for (const m of require('./tickets').activeTicketMessages(room, { justFixed: role === 'tech', org: role === 'org' })) sendJson(ws, m);
+    // Question text is for the keyed AV console only; the unkeyed /org page never gets it.
+    if (role === 'tech') sendJson(ws, { t: 'question_groups', groups: require('./questions').groupList(room) });
   }
 
   ws.on('pong', () => { rec.alive = true; });

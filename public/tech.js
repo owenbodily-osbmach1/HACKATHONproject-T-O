@@ -612,6 +612,7 @@ $('listenPodium').onclick = () => {
   if (player?.playing) { player.stop(); $('listenPodium').setAttribute('aria-pressed', 'false'); return; }
   player = createPlayer({
     room: selected,
+    key,
     onLevel: (rms) => { $('dLevel').style.width = `${Math.min(100, Math.round(Math.sqrt(rms) * 160))}%`; },
     onState: (s) => { $('listenPodium').textContent = s === 'playing' ? 'Listening · stop' : s === 'stopped' ? 'Listen to podium' : 'Connecting…'; },
   });

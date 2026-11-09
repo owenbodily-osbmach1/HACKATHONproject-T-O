@@ -122,7 +122,10 @@ module.exports = {
       wss.handleUpgrade(req, socket, head, (ws) => closeQuietly(ws, 4401, 'unauthorized'));
       return;
     }
-    if (isOut && !require('./signin').allowSocket(req)) {
+    // Phones need a sign-in (server/signin.js); the AV console passes ?key=TECH_KEY instead (same
+    // constant-time check as every tech route). Nothing else gets past the gate.
+    const techListen = isOut && ctx.auth.ok('TECH_KEY', url.searchParams.get('key'));
+    if (isOut && !techListen && !require('./signin').allowSocket(req)) {
       wss.handleUpgrade(req, socket, head, (ws) => closeQuietly(ws, 4403, 'signin_required'));
       return;
     }
