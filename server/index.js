@@ -41,7 +41,11 @@ app.get('/mic/:room', auth.page('SPEAKER_KEY'), page('mic.html'));
 app.get('/present/:room', auth.page('SPEAKER_KEY'), page('present.html'));
 // Keyed pages are reachable only through their routes above, never as static files.
 const keyedFiles = /^\/(tech|mic|present)(\.html)?$/i;
-app.use((req, res, next) => (keyedFiles.test(req.path) ? res.status(404).end() : next()));
+app.use((req, res, next) => {
+  let p;
+  try { p = decodeURIComponent(req.path); } catch { return res.status(400).end(); }
+  return keyedFiles.test(p) ? res.status(404).end() : next();
+});
 app.use(express.static(pub, { extensions: ['html'], index: false }));
 
 const ctx = { config, state, auth, es, hub, otel };

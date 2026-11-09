@@ -12,7 +12,13 @@ const questions = new Map(); // qid -> {qid, groupId, room, talkId, text, client
 // Lowercase, punctuation to spaces: the word set used for Jaccard grouping.
 // Stopwords dropped and a crude stem (drops/dropped -> drop) so rephrasings of one question match.
 const STOP = new Set('a an the and or but if of to in on at for with by from is are was were be been do does did you your we our us it its this that these those how what when where why who which can could should would will at as so not no than then there their them they i me my'.split(' '));
-const stem = (w) => w.replace(/(ing|ed|es|s)$/, '') || w;
+// Light stem: dropped/dropping/drops -> drop, nodes -> node. Undo a doubled final consonant (dropp -> drop).
+const stem = (w) => {
+  if (w.length <= 3) return w;
+  let s = w.replace(/(ing|ed)$/, '');
+  if (s !== w && s.length > 2) return /([b-df-hj-np-tv-z])\1$/.test(s) ? s.slice(0, -1) : s;
+  return w.endsWith('ss') ? w : w.replace(/s$/, '');
+};
 function words(text) {
   return new Set(
     String(text || '')
@@ -29,7 +35,9 @@ function jaccard(a, b) {
   if (!a.size || !b.size) return 0;
   let shared = 0;
   for (const w of a) if (b.has(w)) shared++;
-  return shared >= 3 ? shared / Math.min(a.size, b.size) : 0;
+  const small = Math.min(a.size, b.size);
+  return shared >= Math.min(3, small) ? shared / small : 0; // short questions group only if identical in content
+
 }
 
 function findGroup(room, talkId, w) {
