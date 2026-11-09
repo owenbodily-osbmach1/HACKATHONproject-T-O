@@ -2,6 +2,15 @@
 
 What has been tested, how, what broke and what is still open. Newest first. Add to it when you test something.
 
+## 2026-11-09: Elasticsearch search network-failure fallback, automated (Gitar)
+
+**Setup:** `mise x node@22.23.4 -- npm ci`, `mise x node@22.23.4 -- npm run check`, `mise x node@22.23.4 -- npm run smoke`, and a focused mocked-Elasticsearch search handler check.
+
+| Check | Result |
+| --- | --- |
+| Repository syntax checks, `booths-check`, `extras-check`, `find-check`, `relay-check`, `tickets-check`, and smoke checks | passed |
+| Network failure skips the plain-text Elasticsearch retry and returns matching room-buffer rows; HTTP errors retain the plain-text retry before memory fallback | passed |
+
 ## 2026-11-09: question-group lifecycle, automated live smoke (Gitar)
 
 **Setup:** `mise x node@22.23.4 -- npm ci`, then `mise x node@22.23.4 -- npm run check` and `mise x node@22.23.4 -- npm run smoke`.
@@ -20,6 +29,11 @@ This was automated local-server QA; browser and real-device QA were not rerun.
 | --- | --- |
 | Repository syntax and focused checks | passed |
 | `node_modules` is ignored and the sibling-checkout symlink is no longer tracked | passed |
+## 2026-11-09: search dedupe, memory fallback and cold-model timeout, automated
+
+- `/api/search` and `/api/find` now drop repeated captions by normalized text (case, whitespace, punctuation), keeping the highest-ranked copy; "because you heard" lines use the same deduped input.
+- `/api/search` returns the in-memory transcript when Elasticsearch errors or times out instead of `[]`; all search `es.raw` calls use the 8000 ms search deadline.
+- `npm run check` (including the new dedupe assert in `find-check`) and `node scripts/smoke.js` passed. A server run against an unreachable `ELASTIC_URL` returned unique memory rows from `/api/search`.
 
 ## 2026-11-09: answeredSeq persistence, automated (Gitar)
 

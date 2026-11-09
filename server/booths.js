@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const booths = require('./booths.json');
 const otel = require('./otel');
 const log = require('./log');
+const { dedupeByText } = require('./text');
 
 const SUSPECT_MS = 30 * 1000;
 const DWELL_CAP_MS = 15 * 60 * 1000;
@@ -126,7 +127,7 @@ function heardBy(ctx, clientId) {
     }
   }
   lines.sort((a, b) => a.ts - b.ts);
-  return lines.slice(-MAX_HEARD).map((l) => l.text);
+  return dedupeByText(lines.slice(-MAX_HEARD).map((l) => l.text));
 }
 
 // Talks whose room this device had joined before checking in.
@@ -157,7 +158,7 @@ async function suggestNext(ctx, excluded, heard) {
             ],
           },
         },
-      });
+      }, 8000);
       const hits = (out && out.hits && out.hits.hits) || [];
       for (const hit of hits) {
         const id = String((hit._source && hit._source.id) || hit._id || '');
