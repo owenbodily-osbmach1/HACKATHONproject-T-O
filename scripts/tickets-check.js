@@ -202,7 +202,7 @@ const vote = (clientId, type, on = true) =>
   assert.equal(status.msg.micDb, null);
   assert.equal(typeof status.msg.captionGapSec, 'number');
   assert.equal(status.msg.openTickets, 1);
-  assert.deepEqual(status.roles, ['tech', 'org']);
+  assert.deepEqual(status.roles, ['tech', 'org', 'mic']);
 
   console.log('tickets-check: ok');
   process.exit(0);
