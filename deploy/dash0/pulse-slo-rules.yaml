@@ -1,0 +1,34 @@
+# Dash0 check rule for the AV time-to-fix SLO (docs/dash0-slo.md).
+# Not part of the app's kustomization: apply it only in a cluster that runs the Dash0 operator,
+# or create the same rule by hand in Dash0 (Alerting -> Check rules).
+# Metric names follow Prometheus naming of the OTel histogram pulse.ticket.time_to_fix (seconds);
+# if Dash0 lists them differently, keep the expression and swap the names.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pulse-av-slo
+  namespace: team-pulse
+spec:
+  groups:
+    - name: pulse-av-slo
+      rules:
+        - alert: PulseTimeToFixSLO
+          expr: |
+            (
+              sum(increase(pulse_ticket_time_to_fix_seconds_bucket{le="300"}[1h]))
+              /
+              sum(increase(pulse_ticket_time_to_fix_seconds_count[1h]))
+            ) < 0.95
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Fewer than 95% of the last hour's AV tickets were fixed within 5 minutes.
+            description: "Time-to-fix SLO: 95% of tickets (open or reopen to fixed) within 300 s, rolling 1 h."
+        - alert: PulseRoomsAlerting
+          expr: pulse_rooms_alerting > 0
+          for: 10m
+          labels:
+            severity: info
+          annotations:
+            summary: A room has had an open audience ticket for 10 minutes.
