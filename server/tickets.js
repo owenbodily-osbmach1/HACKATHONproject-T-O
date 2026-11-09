@@ -132,6 +132,15 @@ function minuteFor(talkId, ts) {
   return Number.isFinite(start) ? Math.max(0, Math.floor((ts - start) / 60000)) : 0;
 }
 
+function liveTalk(room) {
+  if (!ctx || !ctx.state) return null;
+  if (typeof ctx.state.liveTalk === 'function') return ctx.state.liveTalk(room);
+  const stateRoom = ctx.state.rooms && ctx.state.rooms.get(String(room));
+  const talkId = stateRoom && stateRoom.talkId;
+  const talk = talkId && ctx.state.talks && ctx.state.talks.get(talkId);
+  return talk && !talk.end ? talk : null;
+}
+
 // Elasticsearch is fire-and-forget: never awaited and never allowed to throw here.
 function index(name, doc) {
   if (!ctx || !ctx.es || typeof ctx.es.index !== 'function') return;
@@ -303,6 +312,7 @@ function register(app, context) {
     if (!room || !talkId || !clientId) {
       return res.status(400).json({ error: 'room, talkId and clientId are required' });
     }
+    if (!liveTalk(room)) return res.status(409).json({ error: 'no_live_talk' });
 
     const now = Date.now();
     pruneVotes(now);
