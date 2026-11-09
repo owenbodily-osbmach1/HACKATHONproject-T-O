@@ -20,14 +20,11 @@ spec:
             - name: metrics
               containerPort: 2000
           # cloudflared reports /ready once it holds a tunnel connection (Radar check: missing probes).
+          # No liveness probe on purpose: cloudflared reconnects by itself, and a restart gives a quick
+          # tunnel a new public hostname, which would break every QR code (Gitar).
           readinessProbe:
             httpGet: {path: /ready, port: metrics}
             periodSeconds: 10
-          livenessProbe:
-            httpGet: {path: /ready, port: metrics}
-            initialDelaySeconds: 30
-            periodSeconds: 20
-            failureThreshold: 3
           resources:
             requests: {cpu: 20m, memory: 32Mi}
             limits: {cpu: 200m, memory: 128Mi}
