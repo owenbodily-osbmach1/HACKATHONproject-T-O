@@ -1,0 +1,484 @@
+[
+  {
+    "id": "patient-zero-is-a-dependency-tracing-one-attack-two-ways",
+    "title": "Patient zero is a dependency: tracing one attack two ways",
+    "abstract": "",
+    "track": "In-Booth Demo",
+    "start": "2026-11-10T10:45:00",
+    "end": "2026-11-10T11:15:00",
+    "location": "175",
+    "sponsor": "Cloudsmith"
+  },
+  {
+    "id": "temporal-worker-autoscaling-on-kubernetes",
+    "title": "Temporal Worker Autoscaling on Kubernetes",
+    "abstract": "",
+    "track": "In-Booth Demo",
+    "start": "2026-11-10T10:45:00",
+    "end": "2026-11-10T11:15:00",
+    "location": "171",
+    "sponsor": "Temporal"
+  },
+  {
+    "id": "agentic-ai-needs-agentic-infrastructure-autonomy-on-kubernetes",
+    "title": "Agentic AI Needs Agentic Infrastructure: Autonomy on Kubernetes",
+    "abstract": "Autonomous workloads need autonomous infrastructure. See how fractional GPU allocations track real usage, pod requests stay accurate as behavior changes, and Karpenter consolidates nodes on accurate signals with production examples and a blueprint for self-managing infrastructure.",
+    "track": "Demo Theater",
+    "start": "2026-11-10T10:50:00",
+    "end": "2026-11-10T11:10:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "stop-running-mystery-meat-in-production",
+    "title": "Stop Running Mystery Meat in Production",
+    "abstract": "\"You wouldn’t serve mystery meat to guests — so why are you running it in your Kubernetes clusters?\n\nUsing unverified container images like \"\"FROM node:latest\"\" introduces hidden risks into your Kubernetes clusters. While convenient for developers, it creates significant security challenges for platform engineers due to a lack of visibility into image contents, dependencies, and build tools. In",
+    "track": "Demo Theater",
+    "start": "2026-11-10T11:15:00",
+    "end": "2026-11-10T11:35:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "do-not-give-ai-agents-credentials",
+    "title": "DO NOT Give AI Agents Credentials!",
+    "abstract": "How do you stop an AI agent from leaking API Keys, OAuth tokens, or secret credentials? \"\"Hey, here is my API key, can you do this for me\"\" an AI agent can easily ask another agent/API/MCP server. The answer is simple. Don't give them any credentials. So how do they do any meaningful work then? Inject the credentials on egress. In this quick session, we'll look at credential brokering for AI agent",
+    "track": "Demo Theater",
+    "start": "2026-11-10T11:40:00",
+    "end": "2026-11-10T12:00:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "all-the-ways-to-add-opentelemetry-without-touching-your-code",
+    "title": "All the Ways to Add OpenTelemetry Without Touching Your Code",
+    "abstract": "\"OpenTelemetry is the de-facto standard for collecting telemetry from your applications, but adding it manually often feels like a chore. Fortunately, you can get rich observability across your entire stack without touching application source code.\n\nIn this session, we cover every automatic monitoring option available across Kubernetes and plain Linux systems. We will break down the OpenTelemetr",
+    "track": "Demo Theater",
+    "start": "2026-11-10T12:30:00",
+    "end": "2026-11-10T12:50:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "agent-observability-evaluating-and-guardrailing-responses-in-real-time",
+    "title": "Agent Observability: Evaluating and Guardrailing Responses in Real Time",
+    "abstract": "\"AI Agents are here to stay. The key to deploying and running them successfully in production is tracking what they’re doing and evaluating the quality, accuracy, and relevance of responses in real time without breaking the bank. Evaluations need to be trustworthy and fall within predetermined guardrails to stop bad responses from affecting users.\n\nEasy, right?\n\nLearn how Splunk Agent Observ",
+    "track": "Demo Theater",
+    "start": "2026-11-10T12:55:00",
+    "end": "2026-11-10T13:15:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "introducing-the-komodor-agentic-operations-platform-for-production",
+    "title": "Introducing the Komodor Agentic Operations Platform for Production",
+    "abstract": "",
+    "track": "In-Booth Demo",
+    "start": "2026-11-10T13:15:00",
+    "end": "2026-11-10T13:45:00",
+    "location": "185",
+    "sponsor": "Komodor"
+  },
+  {
+    "id": "your-ai-model-needs-more-than-an-api",
+    "title": "Your AI Model Needs More Than an API",
+    "abstract": "",
+    "track": "In-Booth Demo",
+    "start": "2026-11-10T13:15:00",
+    "end": "2026-11-10T13:45:00",
+    "location": "186",
+    "sponsor": "Vultr"
+  },
+  {
+    "id": "agentic-karpenter-using-kagent-claude-to-tune-your-autoscaling",
+    "title": "Agentic Karpenter: Using kagent + Claude to Tune Your Autoscaling",
+    "abstract": "\"Karpenter is powerful, but tuning it well is still tribal knowledge: hand-edited NodePool/NodeClass configs, squinting at consolidation logs, slow lessons about why nodes won't scale down or spot churn spikes. In this session, we use kagent to run an AI agent powered by Anthropic’s Claude to investigate Karpenter configuration, events, and workload metrics, explain what is blocking consolidation,",
+    "track": "Demo Theater",
+    "start": "2026-11-10T13:20:00",
+    "end": "2026-11-10T13:40:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "csi-won-t-save-you-why-csi-support-is-not-a-storage-strategy",
+    "title": "CSI won’t Save You - Why “CSI Support” Is Not a Storage Strategy",
+    "abstract": "“CSI compliant” is often treated as a checkbox for running stateful and virtualized workloads on Kubernetes. In practice, that checkbox hides some significant assumptions. CSI plug-ins start the journey—they don’t finish it.\nThis session examines the responsibilities CSI deliberately leaves out, why those omissions matter in production, and what they cost platform teams on Day 2. Through practica",
+    "track": "Demo Theater",
+    "start": "2026-11-10T13:45:00",
+    "end": "2026-11-10T14:05:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "from-one-stack-to-a-managed-disaggregated-inference-service",
+    "title": "From One Stack to a Managed, Disaggregated Inference Service",
+    "abstract": "",
+    "track": "In-Booth Demo",
+    "start": "2026-11-10T13:45:00",
+    "end": "2026-11-10T14:15:00",
+    "location": "164",
+    "sponsor": "vCluster"
+  },
+  {
+    "id": "using-kubernetes-to-run-distributed-ai-workloads-across-heterogeneous-infrastructure",
+    "title": "Using Kubernetes to run distributed AI workloads across heterogeneous infrastructure",
+    "abstract": "Kubernetes assumes your nodes belong to a cluster, but real infrastructure is often messier. GPU capacity may live in another region, another datacenter, or on infrastructure you don't fully control. As a result, platform teams frequently end up creating additional clusters simply to place workloads where compute is available.\n\nIn this live demo, we'll show how flex nodes can extend Kubernetes",
+    "track": "Demo Theater",
+    "start": "2026-11-10T14:10:00",
+    "end": "2026-11-10T14:30:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "kill-switch-quarantining-and-sandboxing-an-agent-you-don-t-trust",
+    "title": "Kill Switch: Quarantining and Sandboxing an Agent You Don’t Trust",
+    "abstract": "",
+    "track": "In-Booth Demo",
+    "start": "2026-11-10T14:15:00",
+    "end": "2026-11-10T14:45:00",
+    "location": "150",
+    "sponsor": "Tigera"
+  },
+  {
+    "id": "sovereign-hybrid-architectures-made-simple",
+    "title": "Sovereign & Hybrid Architectures Made Simple",
+    "abstract": "",
+    "track": "In-Booth Demo",
+    "start": "2026-11-10T14:15:00",
+    "end": "2026-11-10T14:45:00",
+    "location": "149",
+    "sponsor": "Couchbase"
+  },
+  {
+    "id": "unified-protection-for-kubernetes-vms-ai",
+    "title": "Unified Protection for Kubernetes, VMs & AI",
+    "abstract": "",
+    "track": "In-Booth Demo",
+    "start": "2026-11-10T14:15:00",
+    "end": "2026-11-10T14:45:00",
+    "location": "187",
+    "sponsor": "Veeam Kasten"
+  },
+  {
+    "id": "one-kubernetes-api-for-vms-without-rebuilding-the-infrastructure-beneath-it",
+    "title": "One Kubernetes API for VMs, without Rebuilding the Infrastructure Beneath It",
+    "abstract": "Kubernetes gave applications a portable, declarative API, but VMs are still managed through infrastructure-specific APIs. What if instead Kubernetes could provide a common VM API while leaving placement, migration, availability, and lifecycle management to the platforms already designed for them?\n\nVM API (an open-source CNCF Sandbox project) explores that model. A portable hypervisor-agnostic Vi",
+    "track": "Demo Theater",
+    "start": "2026-11-10T14:35:00",
+    "end": "2026-11-10T14:55:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "agent-substrate-secure-high-density-sandboxing-for-ai-agents",
+    "title": "Agent Substrate: Secure, High-Density Sandboxing for AI Agents",
+    "abstract": "Running untrusted AI agents requires balancing strict isolation with rapid, cost-effective scaling. Agent Substrate is an open source framework that solves this challenge on Kubernetes by combining workload isolation with high-density execution. In this session, we introduce Agent Substrate and break down its core operational architecture across two main pillars: security and isolation (kernel-lev",
+    "track": "Demo Theater",
+    "start": "2026-11-10T15:00:00",
+    "end": "2026-11-10T15:20:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "giving-ai-agents-an-identity-a-secure-runtime-with-teleport-beams",
+    "title": "Giving AI Agents an Identity: A Secure Runtime with Teleport Beams",
+    "abstract": "AI agents are starting to act on real infrastructure, and static API keys and shared credentials do not hold up. This code-heavy demo shows how Teleport Beams gives agents a safer place to run. We launch coding agents in a isolated micro-VMs that carry a short-lived scoped identity delegated from the human who started it. The agent reaches your infrastructure and its inference endpoints without a",
+    "track": "Demo Theater",
+    "start": "2026-11-10T15:25:00",
+    "end": "2026-11-10T15:45:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "from-wide-open-to-locked-down-running-ai-agents-on-kubernetes",
+    "title": "From Wide Open to Locked Down: Running AI Agents on Kubernetes",
+    "abstract": "More teams are running AI agents on Kubernetes, but many first deployments give agents far more than they need: API keys in environment variables, a mounted ServiceAccount token, open internet access, a shared node kernel, and no resource limits. This demo starts inside that kind of pod, shows what the agent can read and reach, then locks it down with five controls: gVisor isolation through agent-",
+    "track": "Demo Theater",
+    "start": "2026-11-10T15:50:00",
+    "end": "2026-11-10T16:10:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "the-spin-sandbox-secure-execution-of-ai-generated-code-with-cncf-spin-and-wasi",
+    "title": "The Spin Sandbox: Secure Execution of AI-Generated Code with CNCF Spin and WASI",
+    "abstract": "The future of cloud-native development involves autonomous agents generating and executing code on the fly. But executing untrusted AI output safely requires an evolution in isolation technology.\n\nIn this session, we will explore the Spin Agent Sandox - a brand new open-source Agentic Sandbox built entirely on the CNCF Spin framework and underlying WASI. Designed for engineers and security teams",
+    "track": "Demo Theater",
+    "start": "2026-11-10T16:15:00",
+    "end": "2026-11-10T16:35:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "allocated-utilized-managing-gpus-with-ibm-kubecost",
+    "title": "Allocated ≠ Utilized: Managing GPUs with IBM Kubecost",
+    "abstract": "AI workloads are putting new pressure on Kubernetes environments. Training and inference can depend on large amounts of GPU capacity, often spread across clusters, teams, and cloud or on-prem infrastructure. The challenge is not just knowing what the infrastructure costs, but understanding which workloads are driving that cost, how much of the GPU capacity they are actually using, and where waste",
+    "track": "Demo Theater",
+    "start": "2026-11-10T16:40:00",
+    "end": "2026-11-10T17:00:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "yugabytedb-amp-agentic-multitenant-postgresql-for-the-ai-era",
+    "title": "YugabyteDB AMP: Agentic Multitenant PostgreSQL for the AI Era",
+    "abstract": "AI agents are bursty, mostly idle, and unpredictable at scale. Traditional databases charge you for idle capacity and buckle when one runaway agent hogs shared resources. Yet AI agents still need high availability, resilience, and constant tuning, and the ones that reach production often outgrow a single node.\nYugabyteDB AMP (Agentic Multitenant Postgres) is built for that journey. It manages lar",
+    "track": "Demo Theater",
+    "start": "2026-11-10T17:05:00",
+    "end": "2026-11-10T17:25:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "ready-or-not-your-hybrid-ai-stack-is-here",
+    "title": "Ready or not, your hybrid AI stack is here",
+    "abstract": "As a platform team, you probably did not design a hybrid AI architecture to begin with. While you were busy migrating hundreds of VMs, the GPU budget landed - and now you are running VMs, Kubernetes fleets, and AI clusters, with the same headcount as before.\n\nThis is the state of enterprise AI right now. Inference workloads are landing on infrastructure that’s already mid-modernization, in data",
+    "track": "Demo Theater",
+    "start": "2026-11-10T17:30:00",
+    "end": "2026-11-10T17:50:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "beyond-the-agent-trace-understand-and-trust-ai-agents-across-cloud-native-systems",
+    "title": "Beyond the Agent Trace: Understand and Trust AI Agents Across Cloud-Native Systems",
+    "abstract": "When an AI agent slows down, fails, or behaves unexpectedly, the problem may not be the agent itself. A model call, tool, API, Kubernetes service, or infrastructure dependency can all impact the outcome. In this demo session, see how full-stack observability connects agent behavior with application and infrastructure context to trace autonomous workflows end-to-end and identify where problems orig",
+    "track": "Demo Theater",
+    "start": "2026-11-10T17:55:00",
+    "end": "2026-11-10T18:15:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "giving-claude-a-cloud-app-previews-with-heroku",
+    "title": "Giving Claude a Cloud: App Previews with Heroku",
+    "abstract": "",
+    "track": "In-Booth Demo",
+    "start": "2026-11-10T18:00:00",
+    "end": "2026-11-10T18:30:00",
+    "location": "166",
+    "sponsor": "Heroku"
+  },
+  {
+    "id": "one-terminal-the-entire-agentic-sdlc",
+    "title": "One Terminal, The Entire Agentic SDLC",
+    "abstract": "In this talk, we’ll work through that scenario as an agentic software development lifecycle. We’ll give an agent an API requirement and follow it through implementation, a collection, tests, CI, and monitoring, all in the terminal. You’ll see the agent use task-specific skills to carry out each step, inspect the results, and fix what fails.\n\nThen we’ll change the requirement. Before editing the",
+    "track": "Demo Theater",
+    "start": "2026-11-10T18:20:00",
+    "end": "2026-11-10T18:40:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "the-ultimate-hot-dog-showdown-scaling-ai-inference-on-kubernetes",
+    "title": "The Ultimate Hot Dog Showdown: Scaling AI Inference on Kubernetes",
+    "abstract": "Hot dog or not is only the qualifying round.\nTwo GPUs are about to settle a question nobody asked: which hot dog deserves the crown? A web search agent gathers openly licensed images, a vision model checks the contestants, and Kubernetes hosts a tournament with plenty of food pics and no way to taste test. GPU workers judge 1v1 matches while a live web app reveals the bracket, the verdicts, and t",
+    "track": "Demo Theater",
+    "start": "2026-11-10T18:45:00",
+    "end": "2026-11-10T19:05:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "falco-meets-ai-threats-runtime-defense-beyond-kubernetes",
+    "title": "Falco Meets AI Threats: Runtime Defense Beyond Kubernetes",
+    "abstract": "",
+    "track": "In-Booth Demo",
+    "start": "2026-11-11T10:30:00",
+    "end": "2026-11-11T11:00:00",
+    "location": "168",
+    "sponsor": "Sysdig"
+  },
+  {
+    "id": "get-your-signed-book-argo-cd-the-right-way",
+    "title": "Get your signed book 'Argo CD the right way'",
+    "abstract": "",
+    "track": "In-Booth Demo",
+    "start": "2026-11-11T10:30:00",
+    "end": "2026-11-11T11:00:00",
+    "location": "174",
+    "sponsor": "Octopus Deploy"
+  },
+  {
+    "id": "ai-already-found-your-java-vulnerabilities-has-your-scanner",
+    "title": "AI already found your Java vulnerabilities. Has your scanner?",
+    "abstract": "Your scanner says your Java dependencies are clean. It is wrong. A scanner only matches known CVEs, and some of the most dangerous vulnerabilities were never filed as one.\n\nMost teams are stuck on old versions, and it is worse than you think. Attackers now point AI at open-source code to find and exploit these bugs with or without a CVE, so a clean scan is no protection.\n\nChainguard Libraries",
+    "track": "Demo Theater",
+    "start": "2026-11-11T10:35:00",
+    "end": "2026-11-11T10:55:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "from-observability-to-autonomous-infrastructure",
+    "title": "From Observability to Autonomous Infrastructure",
+    "abstract": "What happens when observability stops at telling you what’s wrong? The next step is infrastructure that can use production context to continuously make better decisions.\n\nIn this session, groundcover co-founder and CEO Shahar Azulay will explore the path from observability to autonomous infrastructure. See how high-fidelity application and infrastructure data gives engineers and AI agents the co",
+    "track": "Demo Theater",
+    "start": "2026-11-11T11:00:00",
+    "end": "2026-11-11T11:20:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "agent-sandbox-on-eks-hardware-isolated-microvm-pods-for-ai-agents",
+    "title": "Agent Sandbox on EKS: Hardware-Isolated microVM Pods for AI Agents",
+    "abstract": "AI agents now write and run their own code, which puts untrusted, model-generated workloads right next to your production services. The emerging pattern separates reasoning from execution: an external control plane runs the agentic loop while the code runs in a sandbox you own, inside your own cluster. The real question is how strong that boundary is.\n\nThis talk makes the case for giving every a",
+    "track": "Demo Theater",
+    "start": "2026-11-11T11:25:00",
+    "end": "2026-11-11T11:45:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "kubehound-identifying-attack-paths-in-kubernetes-clusters-at-scale",
+    "title": "KubeHound: Identifying Attack Paths in Kubernetes Clusters at Scale",
+    "abstract": "KubeHound is an open source tool developed by Datadog that discovers attack paths in Kubernetes clusters. Security scanners give you lists: 14 container escapes, 32 privilege escalations, 72 lateral movements. But a list cannot answer the question that matters most: which of those findings can be used to access critical assets in your cluster?\n\nKubeHound takes a different approach. Instead o",
+    "track": "Demo Theater",
+    "start": "2026-11-11T11:50:00",
+    "end": "2026-11-11T12:10:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "clickhouse-observability-full-fidelity-observability-for-ai-agents-and-sres",
+    "title": "ClickHouse Observability: Full-fidelity observability for AI agents and SREs",
+    "abstract": "See how easy it is to get started with ClickHouse Observability, the new self-service product built on open source ClickStack by ClickHouse. We'll connect OpenTelemetry data and start investigating, with ingestion, storage, optimization, and scaling handled for you.\nWatch AI agents investigate using ClickHouse's fast analytical queries and full SQL access. See how low unit costs make long-term re",
+    "track": "Demo Theater",
+    "start": "2026-11-11T12:15:00",
+    "end": "2026-11-11T12:35:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "unifying-kubernetes-and-datacenter-networking-with-isovalent-and-cisco-nexus-one",
+    "title": "Unifying Kubernetes and Datacenter Networking with Isovalent and Cisco Nexus One",
+    "abstract": "This demo shows how Isovalent Private Networks (IPNs) connect Kubernetes workloads to a datacenter network solution built on Cisco Nexus One. Using Ethernet Virtual Private Network (EVPN), we’ll show how workload routes reach the fabric, how Endpoint Security Groups support traffic segmentation and multi-tenancy, and how operators can monitor application traffic flows in Timescape and fabric opera",
+    "track": "Demo Theater",
+    "start": "2026-11-11T12:40:00",
+    "end": "2026-11-11T13:00:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "the-world-s-smallest-and-largest-kubernetes-clusters",
+    "title": "The World's Smallest and Largest Kubernetes Clusters",
+    "abstract": "Kubernetes is usually run within a well-defined range of supported sizes, but its limits reveal a lot about how the system works. This demo pushes Kubernetes to both extremes: a cluster on the smallest hardware that can still run a functional control plane, and a cluster scaled well beyond the project's documented limits. Attendees will see each cluster running and learn which components hit their",
+    "track": "Demo Theater",
+    "start": "2026-11-11T13:05:00",
+    "end": "2026-11-11T13:25:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "agent-sandboxing-with-openshell-on-openshift",
+    "title": "Agent Sandboxing with OpenShell on OpenShift",
+    "abstract": "As recently announced, OpenShell has been accepted as a Sandbox project. This live demo will show effective restraint of an AI agent running inside OpenShell on OpenShift.  We will share how an OpenShell sandboxing harness is deployed on OpenShift, and then unleash an AI agent prompted to obtain unauthorized resources.  You will see how the agent is unable to access backends and APIs not permitted",
+    "track": "Demo Theater",
+    "start": "2026-11-11T13:30:00",
+    "end": "2026-11-11T13:50:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "alert-noise-to-root-cause-in-5-minutes-kubernetes-observability-with-openobserve",
+    "title": "Alert Noise to Root Cause in 5 Minutes: Kubernetes Observability with OpenObserve",
+    "abstract": "",
+    "track": "In-Booth Demo",
+    "start": "2026-11-11T13:45:00",
+    "end": "2026-11-11T14:15:00",
+    "location": "167",
+    "sponsor": "OpenObserve"
+  },
+  {
+    "id": "dstl8-demo-telemetry-distillation-sentiment-in-action",
+    "title": "Dstl8 Demo - Telemetry Distillation + Sentiment In Action",
+    "abstract": "",
+    "track": "In-Booth Demo",
+    "start": "2026-11-11T13:45:00",
+    "end": "2026-11-11T14:15:00",
+    "location": "188",
+    "sponsor": "ControlTheory"
+  },
+  {
+    "id": "kubernetes-monitoring-with-the-opentelemetry-kube-stack",
+    "title": "Kubernetes Monitoring with the OpenTelemetry Kube Stack",
+    "abstract": "",
+    "track": "In-Booth Demo",
+    "start": "2026-11-11T13:45:00",
+    "end": "2026-11-11T14:15:00",
+    "location": "159",
+    "sponsor": "New Relic"
+  },
+  {
+    "id": "do-you-trust-your-ai-agent-pod-sandboxing-on-oke",
+    "title": "Do you trust your AI agent? Pod Sandboxing on OKE",
+    "abstract": "Kubernetes gives teams a familiar production platform to orchestrate long-running, tool-using AI agents alongside their applications. These agents can write and run code, install packages, and use tools with limited human oversight. On shared infrastructure, that code can affect the host or neighboring workloads if compute isolation is weak. Join us for a live demo of OKE Pod Sandboxing and see ho",
+    "track": "Demo Theater",
+    "start": "2026-11-11T13:55:00",
+    "end": "2026-11-11T14:15:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "building-an-agent-centric-cloud-platform-lessons-from-nutanix",
+    "title": "Building an Agent-Centric Cloud Platform: Lessons from Nutanix",
+    "abstract": "What does a cloud platform need to provide when applications can reason, invoke tools, execute code, and act on a user’s behalf? Drawing on our work evolving the enterprise platform for agentic workloads, this talk examines the necessary infrastructure requirements across the stack.\n\nWe follow an agent through its lifecycle -- from receiving a task and assuming a delegated identity to accessing",
+    "track": "Demo Theater",
+    "start": "2026-11-11T14:20:00",
+    "end": "2026-11-11T14:40:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "universal-mesh-one-model-for-ingress-gateway-api-and-multi-cloud",
+    "title": "Universal Mesh: One Model for Ingress, Gateway API, and Multi-Cloud",
+    "abstract": "Kubernetes solved connectivity inside the cluster. Everything else was different: legacy VMs, bare metal, partner networks, and multiple clouds each connected and secured traffic on their own terms. Then service meshes added a proxy to every pod.\n\nUniversal Mesh does it differently. One connectivity model spans north-south traffic at the edge and east-west traffic between services, with one prox",
+    "track": "Demo Theater",
+    "start": "2026-11-11T14:45:00",
+    "end": "2026-11-11T15:05:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "the-distroless-trap-live-busting-container-myths-with-rocks",
+    "title": "The Distroless Trap: Live-Busting Container Myths with Rocks",
+    "abstract": "Cloud-native engineers often follow best practices for building containers – like shrinking images to zero CVEs or strictly enforcing the \"\"one process per container\"\" rule. But what if those conventions are inadvertently creating massive security gaps and operational nightmares?\n\nThis 20-minute demo will challenge common container myths, and explore how manually trimming a container won’t neces",
+    "track": "Demo Theater",
+    "start": "2026-11-11T15:10:00",
+    "end": "2026-11-11T15:30:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "why-your-kubernetes-autoscalers-keep-fighting-and-how-to-end-the-thrash",
+    "title": "Why Your Kubernetes Autoscalers Keep Fighting (and How to End the Thrash)",
+    "abstract": "Ask your cluster a simple question: what is the right size for checkout-api, and how many replicas should it run right now? HPA says 11. KEDA says 24. VPA says the pods are over-provisioned. Karpenter is adding nodes sized to requests nobody uses. And Argo CD wants it all reset to whatever is in Git.\nEach controller is doing its job. Together, they thrash. In this demo, we'll talk live about the",
+    "track": "Demo Theater",
+    "start": "2026-11-11T15:35:00",
+    "end": "2026-11-11T15:55:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "the-software-factory-of-factories-with-port-io",
+    "title": "The Software Factory of Factories with Port.io",
+    "abstract": "Every team wants its own software factory, and apparently the platform team is supposed to build all of them before anyone can get back to shipping features. I'd like the agents to help with that job too, although letting them write the workflow that decides when to ask a human needs some thought.\n\nFor the demo, I've made up a company that prints conference T-shirts through an API and has shippe",
+    "track": "Demo Theater",
+    "start": "2026-11-11T16:00:00",
+    "end": "2026-11-11T16:20:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "day-2-for-stateful-kubernetes-data-services-you-can-see",
+    "title": "Day 2 for Stateful Kubernetes: Data Services You Can See",
+    "abstract": "Installing a CSI driver takes an afternoon. Living with it takes years. Day 2 is where stateful Kubernetes gets hard: a PVC fills up at 2 a.m., a namespace needs a clean copy for testing, and nobody can tell which volume is causing the latency. In this session, Tintri CTO Brock Mowry and Solutions Engineer Tapas Mahanta walk through the VMstore CSI driver 2.0 on a live lab cluster. You will see RW",
+    "track": "Demo Theater",
+    "start": "2026-11-11T16:25:00",
+    "end": "2026-11-11T16:45:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "introducing-traversal-the-ai-sre-for-the-enterprise",
+    "title": "Introducing Traversal: The AI SRE for the Enterprise",
+    "abstract": "AI is accelerating software delivery, but production systems are becoming too complex for humans to operate alone. Incidents drain engineering time, while traditional observability tools often create more data instead of clear answers. Discover how Traversal's AI SRE helps teams troubleshoot, remediate & prevent production incidents in minutes, with no runbooks or significant manual tuning require",
+    "track": "Demo Theater",
+    "start": "2026-11-12T10:35:00",
+    "end": "2026-11-12T10:55:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "from-yolo-to-golden-paths-building-trusted-environments-for-ai-agents",
+    "title": "From YOLO to Golden Paths: Building Trusted Environments for AI Agents",
+    "abstract": "AI agents that write code are most useful when you let them run freely. They install packages, run code, and fix their own errors. This also makes them risky. On a laptop, an agent in YOLO mode can reach your credentials and files. When each developer uses a different agent setup, the team cannot repeat what worked.\nIn this demo-driven session, we'll explore how Docker Sandboxes provide isolated",
+    "track": "Demo Theater",
+    "start": "2026-11-12T11:00:00",
+    "end": "2026-11-12T11:20:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "http-200-tool-failed-taming-mcp-agent-traffic-with-nginx",
+    "title": "HTTP 200, Tool Failed: Taming MCP Agent Traffic with NGINX",
+    "abstract": "Users and AI agents now call tools over the Model Context Protocol (MCP), and every call looks the same to a gateway: a JSON-RPC POST to /mcp that often returns HTTP 200 even when the tool fails. In this live demo, we put open-source NGINX in front of a set of MCP servers to make tool calls visible and governable using familiar NGINX primitives: routing, metrics, rate limiting, and authentication.",
+    "track": "Demo Theater",
+    "start": "2026-11-12T11:25:00",
+    "end": "2026-11-12T11:45:00",
+    "location": "Demo Theater"
+  },
+  {
+    "id": "when-should-your-cluster-fix-a-failing-gpu",
+    "title": "When Should Your Cluster Fix a Failing GPU?",
+    "abstract": "GPUs are notoriously unreliable at scale. Run thousands in a K8s cluster and manual remediation becomes unsustainable, but naive self-healing only solves the easy case: a failure that stops a workload outright.\n\nConfirming the fault is real, deciding whether it is safe to act on a node running someone else's workload, and choosing the least disruptive fix are distinct challenges for platform and",
+    "track": "Demo Theater",
+    "start": "2026-11-12T12:40:00",
+    "end": "2026-11-12T13:00:00",
+    "location": "Demo Theater"
+  }
+]

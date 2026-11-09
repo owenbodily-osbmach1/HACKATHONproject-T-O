@@ -88,6 +88,18 @@ const mappings = {
     suspect: { type: 'boolean' },
     fromTalks: { type: 'keyword' },
   },
+  'pulse-schedule': {
+    id: { type: 'keyword' },
+    title: { type: 'text', copy_to: 'title_sem' },
+    title_sem: sem,
+    abstract: { type: 'text', copy_to: 'abstract_sem' },
+    abstract_sem: sem,
+    track: { type: 'keyword' },
+    location: { type: 'keyword' },
+    start: { type: 'date' },
+    end: { type: 'date' },
+    sponsor: { type: 'keyword' },
+  },
 };
 
 async function main() {
