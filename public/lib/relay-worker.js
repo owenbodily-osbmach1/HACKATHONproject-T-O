@@ -116,7 +116,16 @@ async function tick() {
     if (cfg.requireFullscreen) {
       // Exact screen size in device pixels (±2), not just the same shape: a maximized
       // window or a normal tab is smaller than the screen. Best effort, see relay.html.
-      const presenting = (cfg.screens || []).some((s) => Math.abs(width - s.w) <= 2 && Math.abs(height - s.h) <= 2);
+      // The capture is often scaled down (the page asks for ~1920 wide, and a 2560x1600 screen at
+      // 150% scaling never arrives at its native size), so also accept a frame that is the screen
+      // shrunk evenly: same shape within 0.6% and no larger than the screen. A normal tab or a
+      // maximized window is several percent off because of the browser's own bars.
+      const presenting = (cfg.screens || []).some((s) => {
+        if (Math.abs(width - s.w) <= 2 && Math.abs(height - s.h) <= 2) return true;
+        if (!s.w || !s.h || width < 640 || width > s.w + 2) return false;
+        const shape = s.w / s.h;
+        return Math.abs(width / height - shape) / shape < 0.006;
+      });
       if (presenting !== wasPresenting) {
         wasPresenting = presenting;
         notPresentingSince = presenting ? 0 : Date.now();
