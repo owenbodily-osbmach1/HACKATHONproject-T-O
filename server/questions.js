@@ -10,27 +10,32 @@ const groups = new Map(); // groupId -> {groupId, room, talkId, text, words, cou
 const questions = new Map(); // qid -> {qid, groupId, room, talkId, text, clientId, ts, pinned, hidden, answered}
 
 // Lowercase, punctuation to spaces: the word set used for Jaccard grouping.
+// Stopwords dropped and a crude stem (drops/dropped -> drop) so rephrasings of one question match.
+const STOP = new Set('a an the and or but if of to in on at for with by from is are was were be been do does did you your we our us it its this that these those how what when where why who which can could should would will at as so not no than then there their them they i me my'.split(' '));
+const stem = (w) => w.replace(/(ing|ed|es|s)$/, '') || w;
 function words(text) {
   return new Set(
     String(text || '')
       .toLowerCase()
       .replace(/[^\p{L}\p{N}]+/gu, ' ')
       .split(' ')
-      .filter(Boolean)
+      .filter((w) => w && !STOP.has(w))
+      .map(stem)
   );
 }
 
+// Overlap coefficient: shared / smaller set. Needs 3+ shared content words so short questions don't collapse.
 function jaccard(a, b) {
   if (!a.size || !b.size) return 0;
   let shared = 0;
   for (const w of a) if (b.has(w)) shared++;
-  return shared / (a.size + b.size - shared);
+  return shared >= 3 ? shared / Math.min(a.size, b.size) : 0;
 }
 
 function findGroup(room, talkId, w) {
   for (const g of groups.values()) {
     if (g.room !== room || g.talkId !== talkId) continue;
-    if (jaccard(g.words, w) >= 0.6) return g;
+    if (jaccard(g.words, w) >= 0.5) return g;
   }
   return null;
 }
