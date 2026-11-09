@@ -75,6 +75,19 @@ const mappings = {
     detail: { type: 'text' },
     ts: { type: 'date' },
   },
+  'pulse-booths': {
+    id: { type: 'keyword' },
+    sponsor: { type: 'keyword' },
+    about: { type: 'text', copy_to: 'about_sem' },
+    about_sem: sem,
+  },
+  'pulse-checkins': {
+    booth: { type: 'keyword' },
+    clientId: { type: 'keyword' },
+    ts: { type: 'date' },
+    suspect: { type: 'boolean' },
+    fromTalks: { type: 'keyword' },
+  },
 };
 
 async function main() {
