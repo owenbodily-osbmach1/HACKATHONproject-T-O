@@ -89,12 +89,21 @@ $('limitSel').onchange = async () => {
 };
 
 // ---------- tickets → blocks ----------
+// The board itself is rebuilt on every ticket change; only this line is announced.
+function announce(text) { $('boardStatus').textContent = text; }
+
 function onTicket(m) {
   const prev = tickets.get(m.id);
   const merged = { ...(prev || {}), ...m };
   if (!prev) merged.firstSeen = Date.now();
   tickets.set(m.id, merged);
   const becameRed = RED.has(m.status) && (!prev || !RED.has(prev.status));
+  if (!prev) {
+    announce(`Room ${merged.room}: ${TYPE_WORD[merged.type] || 'new'} ticket opened.`);
+  } else if (prev.status !== merged.status) {
+    const word = merged.status === 'fixed' ? 'fixed' : merged.status === 'dismissed' ? 'dismissed' : merged.status;
+    announce(`Room ${merged.room}: ticket ${word}.`);
+  }
   render();
   if (becameRed) chime();
 }
@@ -179,8 +188,23 @@ function blockEl(t) {
   dismiss.onclick = (e) => { e.stopPropagation(); act(t, 'dismiss', dismiss); };
   row.append(main, dismiss);
 
-  el.append(band, head, cause, steps, row);
-  el.onclick = () => select(String(t.room));
+  // Keyboard users select a room from the card body. Actions stay outside this
+  // button role so they keep their own tab stops.
+  const open = document.createElement('div');
+  open.className = 'b-open';
+  open.tabIndex = 0;
+  open.setAttribute('role', 'button');
+  open.setAttribute('aria-label', `Show room ${t.room} details`);
+  open.onclick = () => select(String(t.room));
+  open.onkeydown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      select(String(t.room));
+    }
+  };
+  open.append(band, head, cause, steps);
+
+  el.append(open, row);
   return el;
 }
 
@@ -190,6 +214,9 @@ async function act(t, action, btn) {
     const r = await api(`/api/tickets/${encodeURIComponent(t.id)}/${action}`, { by: techName() });
     // The server also broadcasts the new status; apply it now so the button feels instant.
     if (r?.status) onTicket({ ...t, status: r.status });
+    // The board was rebuilt and removed the focused button: keep the user's place.
+    const card = [...document.querySelectorAll('.block')].find((el) => el.dataset.id === t.id);
+    (card?.querySelector('.b-open') || document.querySelector('.block .b-open') || $('dRoom')).focus();
   } catch {
     btn.disabled = false;
   }
@@ -202,6 +229,7 @@ setInterval(() => {
 
 // ---------- selected room drawer ----------
 function select(room) {
+  const wasCardFocus = document.activeElement?.classList.contains('b-open');
   // Listen to podium is bound to one room: stop it rather than play the old room under a new label.
   if (room !== selected && player?.playing) {
     player.stop();
@@ -210,6 +238,11 @@ function select(room) {
   selected = room;
   render();
   renderDrawer();
+  // render() rebuilt the board; put keyboard users back on the card they selected.
+  if (wasCardFocus) {
+    const card = [...document.querySelectorAll('.block')].find((el) => String(tickets.get(el.dataset.id)?.room) === room);
+    card?.querySelector('.b-open')?.focus({ preventScroll: true });
+  }
 }
 
 function renderDrawer() {
