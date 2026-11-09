@@ -234,8 +234,8 @@ function createTicket(room, talkId, type, people, now) {
 // Creation/reopening only happens when a vote was added.
 function refreshTicket(room, talkId, type, allowCreate) {
   const now = Date.now();
-  const people = countFor(room, null, type, now, VOTE_TTL_MS); // everyone with an active vote
-  const recent = countFor(room, null, type, now, windowMs()); // threshold uses the alert window
+  const people = countFor(room, talkId || null, type, now, VOTE_TTL_MS); // everyone with an active vote in this talk
+  const recent = countFor(room, talkId || null, type, now, windowMs()); // threshold uses the alert window
   const active = activeTicket(room, type);
   if (active) {
     if (active.people !== people) {
@@ -319,7 +319,10 @@ function register(app, context) {
     if (!room || !talkId || !clientId) {
       return res.status(400).json({ error: 'room, talkId and clientId are required' });
     }
-    if (!liveTalk(room)) return res.status(409).json({ error: 'no_live_talk' });
+    const live = liveTalk(room);
+    if (!live) return res.status(409).json({ error: 'no_live_talk' });
+    // Votes belong to the live talk only (contract audit): a stale page gets told to refresh.
+    if (talkId !== live.talkId) return res.status(409).json({ error: 'stale_talk', talkId: live.talkId });
 
     const now = Date.now();
     pruneVotes(now);
