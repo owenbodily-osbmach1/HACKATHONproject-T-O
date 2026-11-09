@@ -169,8 +169,10 @@ async function searchCaptions(q, talkId) {
     let res;
     try {
       res = await es.raw('POST', '/pulse-captions/_search', hybrid, SEARCH_TIMEOUT_MS);
-    } catch {
-      // No inference endpoint, an older cluster or a cold-model timeout: plain text match.
+    } catch (err) {
+      // Network failure or timeout: Elasticsearch is unreachable, so use the room buffers right away.
+      if (!err || !err.status) return memorySearchRows(q, talkId, active);
+      // HTTP error (no inference endpoint, older cluster): plain text match.
       const rows = await otel.span('pulse.search.es', esAttrs(talkId), async (inner) => {
         const out = dedupeByText(await es.search('pulse-captions', {
           size: 20,
@@ -181,7 +183,6 @@ async function searchCaptions(q, talkId) {
         return out;
       });
       if (rows.length) return rows;
-      // Elasticsearch is unreachable or timed out: the room buffers hold the live tail.
       return memorySearchRows(q, talkId, active);
     }
     const rows = dedupeByText(((res && res.hits && res.hits.hits) || []).map((h) => h._source).filter(Boolean));

@@ -2,6 +2,15 @@
 
 What has been tested, how, what broke and what is still open. Newest first. Add to it when you test something.
 
+## 2026-11-09: Elasticsearch search network-failure fallback, automated (Gitar)
+
+**Setup:** `mise x node@22.23.4 -- npm ci`, `mise x node@22.23.4 -- npm run check`, `mise x node@22.23.4 -- npm run smoke`, and a focused mocked-Elasticsearch search handler check.
+
+| Check | Result |
+| --- | --- |
+| Repository syntax checks, `booths-check`, `extras-check`, `find-check`, `relay-check`, `tickets-check`, and smoke checks | passed |
+| Network failure skips the plain-text Elasticsearch retry and returns matching room-buffer rows; HTTP errors retain the plain-text retry before memory fallback | passed |
+
 ## 2026-11-09: question-group lifecycle, automated live smoke (Gitar)
 
 **Setup:** `mise x node@22.23.4 -- npm ci`, then `mise x node@22.23.4 -- npm run check` and `mise x node@22.23.4 -- npm run smoke`.
