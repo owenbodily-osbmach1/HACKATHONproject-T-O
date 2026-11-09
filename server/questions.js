@@ -43,7 +43,7 @@ function findGroup(room, talkId, w) {
 function groupList(room) {
   const out = [];
   for (const g of groups.values()) {
-    if (g.room === room) out.push({ groupId: g.groupId, text: g.text, count: g.count, answered: g.answered });
+    if (g.room === room) out.push({ groupId: g.groupId, qid: g.qid, text: g.text, count: g.count, answered: g.answered });
   }
   return out;
 }
@@ -189,6 +189,7 @@ function register(app, ctx) {
       groups.set(group.groupId, group);
     }
     const qid = crypto.randomUUID();
+    if (!group.qid) group.qid = qid; // the group's actions (reply/queue/answered/hide) target its first question
     const ts = Date.now();
     questions.set(qid, {
       qid, groupId: group.groupId, room, talkId, text, clientId, ts,
@@ -305,4 +306,4 @@ function register(app, ctx) {
   }));
 }
 
-module.exports = { register };
+module.exports = { register, groupList };
