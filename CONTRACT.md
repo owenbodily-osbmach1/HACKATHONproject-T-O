@@ -120,3 +120,28 @@ Set `inference_id` explicitly from `ES_INFERENCE_ID`. If inference isn't availab
 Kubernetes Secret (entered in the Radar UI) or local `.env`. **Never committed.** See `.env.example`.
 
 `PORT` · `PUBLIC_BASE_URL` · `SPEAKER_KEY` · `TECH_KEY` · `ALERT_THRESHOLD=3` · `ALERT_WINDOW_SEC=60` · `CAPTIONS_DEFAULT=on` · `ELASTIC_URL` · `ELASTIC_API_KEY` · `ES_INFERENCE_ID` · `OTEL_SERVICE_NAME=pulse` · `OTEL_EXPORTER_OTLP_ENDPOINT` · `OTEL_EXPORTER_OTLP_HEADERS`
+
+## Booths (expo floor)
+
+A booth is a place like a room, keyed by a short id (`gitar`, `dash0`, …). Booth demos are just talks in a room whose id is the booth id, so captions, questions and reports work unchanged. Booth config lives in `server/booths.json`: `[{id, sponsor, table, pitch, about, resourcesUrl}]` (`about` is 2–4 sentences used for matching).
+
+### Pages
+| Page | Key | What |
+| --- | --- | --- |
+| `/b/:booth` | none | Attendee booth page (QR on the table): sponsor, pitch, passport progress, next-booth card, "Talk to an engineer" / "Send me resources" |
+| `/booth/:booth?key=TECH_KEY` | `TECH_KEY` | Booth staff screen: live request queue, visits, "talks that sent people here" |
+
+### HTTP
+| Method | Path | Body | Returns |
+| --- | --- | --- | --- |
+| GET | `/api/booths` | — | `[{id, sponsor, table, pitch, resourcesUrl}]` |
+| POST | `/api/booths/:booth/checkin` | `{clientId}` | `{booth, stamps, total, suspect, next: {id, sponsor, table, because} \| null}` |
+| POST | `/api/booths/:booth/requests` | `{clientId, kind}` (`talk_to_engineer` \| `send_resources`) | `{requestId, position}` |
+| POST | `/api/booths/:booth/requests/:id/done` (TECH_KEY) | `{by}` | `{status}` |
+| GET | `/api/booths/:booth/report` (TECH_KEY) | — | `{visits, uniqueDevices, open: [requests], fromTalks: [{talkId, title, devices}], topics: [{text, devices}]}` |
+
+- **Passport:** one stamp per `clientId` per booth. `suspect: true` if the same device stamped another booth less than 30 s earlier (not counted toward `stamps`).
+- **Next booth:** from the captions this device actually received in rooms it joined as `attendee` (last 20 lines across rooms). Elastic semantic search of those lines against booth `about` (`pulse-booths.about_sem`, RRF with a match query); fallback is word overlap in memory. Never suggest a booth already stamped. `because` is the caption line (≤ 120 chars) that matched best.
+- **Privacy:** the report never names a device. Any `fromTalks` or `topics` bucket with fewer than 3 devices is dropped (k ≥ 3). No identity is collected.
+- WebSocket: booth staff connect `/ws?room=<booth>&role=tech&key=TECH_KEY` and get `{t:'booth_request', requestId, kind, position, ts}` and `{t:'booth_request_done', requestId}`.
+- Elastic: `pulse-booths` (`id`, `sponsor`, `about` → `about_sem` semantic_text), `pulse-checkins` (`booth`, `clientId`, `ts`, `suspect`, `fromTalks` keyword[]).
