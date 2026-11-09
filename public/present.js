@@ -14,6 +14,8 @@ const state = {
   index: 0,
   talkId: null,
   imgToken: 0,
+  synced: false,  // this connection already delivered the server's stored slide
+  pendingN: 0,    // stored slide number that arrived before the deck loaded
 };
 
 let socket = null;
@@ -43,13 +45,16 @@ function setTickets(count) {
 
 function setRoomInfo(info) {
   const talkId = info.talkId || null;
-  const changed = talkId !== state.talkId;
+  const previousTalk = state.talkId;
+  const changed = talkId !== previousTalk;
   state.talkId = talkId;
   const listeners = Number(info.listeners);
   if (Number.isFinite(listeners)) setListeners(listeners);
   const openTickets = Number(info.openTickets);
   if (Number.isFinite(openTickets)) setTickets(openTickets);
-  if (changed && talkId && state.deck.length) announce();
+  // Only a real talk switch announces: a first reply on reload must not push
+  // slide 1 before the join-time slide arrives.
+  if (changed && previousTalk && talkId && state.deck.length) announce();
 }
 
 // GET /api/rooms is public and is the only source of listener/ticket counts for
@@ -133,8 +138,13 @@ async function loadDeck() {
     state.deck = deck;
     state.index = 0;
     preloadDeck();
+    if (state.pendingN) {
+      const restored = deck.findIndex((slide) => slide.n === state.pendingN);
+      if (restored >= 0) state.index = restored;
+      state.pendingN = 0;
+    }
     render();
-    announce();
+    scheduleAnnounce();
   } catch {
     state.deck = [];
     state.index = 0;
@@ -146,6 +156,18 @@ async function loadDeck() {
 }
 
 // ---------- slide relay ----------
+let syncTimer = null;
+
+// The server sends the stored slide immediately after the socket joins. Hold
+// the first announce briefly so a reload adopts that slide instead of slide 1.
+function scheduleAnnounce() {
+  if (state.synced) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    if (!state.synced) announce();
+  }, 250);
+}
+
 function announce() {
   const slide = state.deck[state.index];
   if (!slide || !socket) return;
@@ -551,12 +573,36 @@ socket = connectRoom({
   key,
   onStatus: (status) => {
     setConn(status);
+    if (status === 'connecting' || status === 'reconnecting') {
+      state.synced = false; // wait for the stored slide this join may carry
+      state.pendingN = 0;
+    }
     if (status === 'live') {
       refreshRoom();
-      announce(); // resync after a reconnect or a server restart
+      scheduleAnnounce(); // resync after a reconnect or a server restart
     }
   },
   onMessage: (msg) => {
+    if (msg.t === 'slide') {
+      // Only the join-time stored slide moves this tab: relayed changes are
+      // our own echoes, and re-adopting them fights fast key presses.
+      if (state.synced) return;
+      if (msg.talkId && state.talkId && msg.talkId !== state.talkId) return;
+      const n = Number(msg.n);
+      if (!Number.isInteger(n)) return;
+      state.synced = true;
+      clearTimeout(syncTimer);
+      if (state.deck.length) {
+        const index = state.deck.findIndex((slide) => slide.n === n);
+        if (index >= 0) {
+          state.index = index;
+          render();
+        }
+      } else {
+        state.pendingN = n; // the deck is still loading; apply it there
+      }
+      return;
+    }
     if (msg.t === 'room_status') {
       if (msg.room !== undefined && String(msg.room) !== room) return;
       if (Number.isFinite(msg.listeners)) setListeners(msg.listeners);
