@@ -199,6 +199,11 @@ setInterval(() => {
 
 // ---------- selected room drawer ----------
 function select(room) {
+  // Listen to podium is bound to one room: stop it rather than play the old room under a new label.
+  if (room !== selected && player?.playing) {
+    player.stop();
+    $('listenPodium').setAttribute('aria-pressed', 'false');
+  }
   selected = room;
   render();
   renderDrawer();
@@ -323,8 +328,13 @@ function questionEl(g) {
 
 async function qAction(g, action) {
   try {
-    const r = await api(`/api/questions/${encodeURIComponent(g.qid)}/${action}`, {});
-    onQuestionUpdate({ qid: g.qid, ...r });
+    await api(`/api/questions/${encodeURIComponent(g.qid)}/${action}`, {});
+    // Apply only this action's flag; the server's question_update broadcast carries the full state.
+    const cur = questionState.get(g.qid) || {};
+    const patch = action === 'queue' ? { pinned: true, hidden: false }
+      : action === 'hide' ? { pinned: false, hidden: true }
+      : { answered: true };
+    onQuestionUpdate({ ...cur, ...patch, qid: g.qid });
   } catch { /* warned */ }
 }
 
@@ -387,7 +397,12 @@ for (const room of roomList) {
     onStatus: (s) => {
       st.conn = s;
       if (s === 'unauthorized') warn('The server rejected the tech key.');
-      if (s === 'live') loadRooms();
+      if (s === 'live') {
+        // The join snapshot is the full truth for this room: drop what we had, so a ticket
+        // fixed or dismissed while we were disconnected doesn't stay red forever.
+        for (const [id, t] of tickets) if (String(t.room) === room) tickets.delete(id);
+        loadRooms();
+      }
       render();
       if (room === selected) renderDrawer();
     },

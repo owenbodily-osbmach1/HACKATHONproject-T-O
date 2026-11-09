@@ -21,5 +21,15 @@ function room(id) {
 }
 
 const talks = new Map(); // talkId -> {talkId, room, title, speaker, start, end}
+// Full transcript per talk in memory (capped), so transcripts work live and without Elasticsearch.
+const transcripts = new Map(); // talkId -> [{talkId, seq, text, ts}]
+const MAX_LINES = 20000;
+function addLine(line) {
+  if (!line.talkId) return;
+  let arr = transcripts.get(line.talkId);
+  if (!arr) transcripts.set(line.talkId, (arr = []));
+  arr.push(line);
+  if (arr.length > MAX_LINES) arr.shift();
+}
 
-module.exports = { rooms, room, talks };
+module.exports = { rooms, room, talks, transcripts, addLine };
