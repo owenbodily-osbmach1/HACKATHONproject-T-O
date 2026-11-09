@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d10">
+  <title>Pulse · Live room</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="attendee">
+  <div id="app">
+    <header class="top">
+      <div class="room-line">
+        <span class="room-badge" id="roomBadge">Room —</span>
+        <span class="conn" id="conn" role="status"><span class="dot"></span><span class="conn-word">Connecting…</span></span>
+      </div>
+      <h1 id="talkTitle">Waiting for the talk to start</h1>
+      <p class="speaker" id="talkSpeaker"></p>
+    </header>
+
+    <div class="banner" id="banner" role="alert" hidden>
+      <span id="bannerText"></span>
+      <button type="button" class="banner-x" id="bannerClose" aria-label="Dismiss">✕</button>
+    </div>
+
+    <nav class="modes" id="modes" aria-label="What to show">
+      <button type="button" data-mode="slides">Slides</button>
+      <button type="button" data-mode="captions" aria-pressed="true">Captions</button>
+      <button type="button" data-mode="both">Both</button>
+    </nav>
+
+    <main class="stage" id="stage" data-mode="captions">
+      <section class="slide-pane" id="slidePane" aria-label="Current slide">
+        <div class="slide-frame" id="slideFrame">
+          <img id="slideImg" alt="" hidden>
+          <p class="slide-empty" id="slideEmpty">No slides yet. They'll appear here when the speaker moves to the next slide.</p>
+        </div>
+        <div class="slide-bar">
+          <button type="button" class="ghost" id="slidePrev" aria-label="Previous slide">‹</button>
+          <span id="slideLabel">—</span>
+          <button type="button" class="ghost" id="slideNext" aria-label="Next slide">›</button>
+          <button type="button" class="pill" id="slideLive" hidden>Back to live</button>
+        </div>
+      </section>
+
+      <section class="caption-pane" aria-label="Live captions">
+        <div class="caption-tools">
+          <span class="label">Live captions</span>
+          <span class="sizes">
+            <button type="button" class="ghost" id="fontDown" aria-label="Smaller text">A−</button>
+            <button type="button" class="ghost" id="fontUp" aria-label="Larger text">A+</button>
+          </span>
+        </div>
+        <div class="captions" id="captions" aria-live="polite" aria-relevant="additions">
+          <p class="caption-empty" id="captionEmpty">Captions will appear here as the speaker talks.</p>
+        </div>
+        <p class="interim" id="interim" aria-hidden="true"></p>
+        <p class="captions-off" id="captionsOff" hidden>Captions are switched off for this room right now.</p>
+        <button type="button" class="pill jump" id="jumpLive" hidden>Jump to live ↓</button>
+      </section>
+    </main>
+
+    <section class="controls" aria-label="Tell the room crew">
+      <button type="button" class="listen" id="listenBtn" aria-pressed="false">
+        <span class="listen-icon" aria-hidden="true">🎧</span>
+        <span class="listen-word" id="listenWord">Listen with earbuds</span>
+        <span class="level" aria-hidden="true"><span id="levelBar"></span></span>
+      </button>
+
+      <div class="votes">
+        <button type="button" class="vote" data-type="cant_hear" aria-pressed="false">
+          <span class="vote-icon" aria-hidden="true">🔇</span>
+          <span class="vote-word">Speak up</span>
+          <span class="vote-sub">Can't hear</span>
+        </button>
+        <button type="button" class="vote" data-type="cant_see" aria-pressed="false">
+          <span class="vote-icon" aria-hidden="true">👀</span>
+          <span class="vote-word">Can't see</span>
+          <span class="vote-sub">the slides</span>
+        </button>
+      </div>
+
+      <div class="hint" id="hint" role="status" hidden>
+        <span id="hintText"></span>
+        <button type="button" class="pill" id="hintAction" hidden></button>
+      </div>
+
+      <div class="better" id="better" role="dialog" aria-labelledby="betterQ" hidden>
+        <p id="betterQ">The crew fixed it. Better now?</p>
+        <div class="better-btns">
+          <button type="button" class="yes" id="betterYes">Yes</button>
+          <button type="button" class="no" id="betterNo">Still bad</button>
+        </div>
+      </div>
+
+      <details class="ask" id="ask">
+        <summary>Ask a question</summary>
+        <form id="askForm">
+          <label for="askText" class="sr-only">Your question</label>
+          <textarea id="askText" maxlength="200" rows="2" placeholder="Type your question (200 characters max)"></textarea>
+          <div class="ask-row">
+            <span id="askCount">0 / 200</span>
+            <button type="submit" id="askSend">Send</button>
+          </div>
+          <p class="ask-msg" id="askMsg" role="status"></p>
+        </form>
+        <ul class="my-questions" id="myQuestions"></ul>
+      </details>
+    </section>
+  </div>
+
+  <div class="zoom" id="zoom" hidden>
+    <button type="button" class="zoom-x" id="zoomClose" aria-label="Close full screen slide">✕ Close</button>
+    <div class="zoom-scroll"><img id="zoomImg" alt=""></div>
+  </div>
+
+  <script type="module" src="/r.js"></script>
+</body>
+</html>
