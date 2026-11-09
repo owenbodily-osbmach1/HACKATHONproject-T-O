@@ -2,6 +2,18 @@
 
 What has been tested, how, what broke and what is still open. Newest first. Add to it when you test something.
 
+## 2026-11-09: venue-local schedule times and past-event find check, automated (Gitar)
+
+**Setup:** `mise x node@22.23.4 -- npm ci`, then `mise x node@22.23.4 -- npm run check`.
+
+| Check | Result |
+| --- | --- |
+| Offset-less Salt Lake schedule time parses as venue wall-clock time; explicit offsets are preserved | passed |
+| `find-check`: searches all schedule entries and accepts no upcoming suggestions when the schedule is past | passed |
+| Repository syntax checks and `booths-check`, `find-check`, `relay-check`, `tickets-check` | passed |
+
+Elasticsearch schedule indexing was not integration-tested.
+
 ## 2026-11-09: attendee relay restoration and image-format contract, automated (Gitar)
 
 **Setup:** `mise x node@20 -- npm ci`, then `mise x node@20 -- npm run check`.

@@ -15,18 +15,23 @@ const MAX_WHY = 180;
 
 const STOP = new Set('a an the and or but if of to in on at for with by from is are was were be been do does did you your we our us it its this that these those how what when where why who which can could should would will as so not no than then there their them they i me my also just very really about into over under more most some any all'.split(' '));
 
+// Offset-less schedule times are venue wall-clock time (Salt Lake City, MST).
+const VENUE_OFFSET = '-07:00';
+
+function venueTime(value) {
+  const text = String(value || '');
+  return /[zZ]|[+-]\d{2}:\d{2}$/.test(text) ? text : `${text}${VENUE_OFFSET}`;
+}
+
+function instant(value) {
+  if (typeof value === 'number') return value;
+  return Date.parse(venueTime(value));
+}
+
 const byId = new Map(schedule.map((s) => [String(s.id), s]));
 const ordered = schedule
   .slice()
   .sort((a, b) => instant(a.start) - instant(b.start) || a.title.localeCompare(b.title));
-
-// Schedule times have no offset in the source file; Elasticsearch reads them as UTC. Do the same
-// in memory so filters and ES agree.
-function instant(value) {
-  if (typeof value === 'number') return value;
-  const text = String(value || '');
-  return Date.parse(/[zZ]|[+-]\d{2}:\d{2}$/.test(text) ? text : `${text}Z`);
-}
 
 function words(text) {
   return String(text || '')
@@ -310,8 +315,13 @@ function parseFrom(raw) {
 function indexSchedule(ctx) {
   if (!ctx.es || !ctx.es.enabled || typeof ctx.es.raw !== 'function') return;
   for (const item of schedule) {
+    const document = {
+      ...item,
+      start: venueTime(item.start),
+      end: venueTime(item.end),
+    };
     try {
-      ctx.es.raw('PUT', `/${INDEX}/_doc/${encodeURIComponent(item.id)}`, item, WRITE_TIMEOUT_MS).catch(() => {});
+      ctx.es.raw('PUT', `/${INDEX}/_doc/${encodeURIComponent(item.id)}`, document, WRITE_TIMEOUT_MS).catch(() => {});
     } catch {}
   }
 }

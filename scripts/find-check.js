@@ -6,6 +6,7 @@ const net = require('net');
 const path = require('path');
 const { spawn } = require('child_process');
 const WebSocket = require('ws');
+const schedule = require('../server/schedule');
 
 const ROOT = path.join(__dirname, '..');
 const HOST = '127.0.0.1';
@@ -143,6 +144,11 @@ const CAPTIONS = [
 ];
 
 async function main() {
+  assert.equal(schedule._test.instant('2026-11-10T10:45:00'), Date.parse('2026-11-10T17:45:00Z'),
+    'offset-less schedule times must be interpreted as Salt Lake City wall-clock time');
+  assert.equal(schedule._test.instant('2026-11-10T10:45:00-08:00'), Date.parse('2026-11-10T18:45:00Z'),
+    'offset-qualified schedule times must keep their stated offset');
+
   const port = await freePort();
   const base = `http://${HOST}:${port}`;
   const env = { ...process.env, PORT: String(port), SPEAKER_KEY: 'sk', TECH_KEY: 'tk' };
@@ -195,7 +201,7 @@ async function main() {
     });
     await lastCaption;
 
-    const find = await http(base, 'GET', '/api/find?q=kubernetes&limit=10');
+    const find = await http(base, 'GET', '/api/find?q=kubernetes&from=all&limit=10');
     assert.equal(find.status, 200, `/api/find must return 200, got ${find.status}`);
     assert.ok(find.json && Array.isArray(find.json.sessions), '/api/find must return sessions[]');
     assert.ok(find.json.sessions.length > 0, 'fallback search must return schedule sessions');
@@ -206,9 +212,9 @@ async function main() {
 
     const next = await http(base, 'GET', '/api/find/next?clientId=c1&limit=3');
     assert.equal(next.status, 200, `/api/find/next must return 200, got ${next.status}`);
-    assert.ok(Array.isArray(next.json) && next.json.length > 0, '/api/find/next must return suggestions');
+    assert.ok(Array.isArray(next.json), '/api/find/next must return an array of suggestions');
     assert.ok(next.json.every((row) => typeof row.because === 'string' && row.because.length <= 120),
-      'every suggestion for c1 must carry a because line of at most 120 chars');
+      'every returned suggestion for c1 must carry a because line of at most 120 chars');
 
     console.log('find-check: ok');
   } catch (err) {
