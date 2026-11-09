@@ -2,6 +2,15 @@
 
 What has been tested, how, what broke and what is still open. Newest first. Add to it when you test something.
 
+## 2026-11-09: attendee relay restoration and image-format contract, automated (Gitar)
+
+**Setup:** `mise x node@20 -- npm ci`, then `mise x node@20 -- npm run check`.
+
+| Check | Result |
+| --- | --- |
+| JavaScript syntax checks and `booths-check`, `relay-check`, `tickets-check` | ✅ |
+| Existing relay check: authenticated JPEG upload, retrieval/cache headers and upload throttle | ✅ |
+
 Builds tested: `poc/one-room` @ `4593204` = `ty/backend` @ `19c5573` (#7) + `ui/tech-console` (#8). Not tested yet: Ty's later backend commits (`4af33f5` demo simulator, `b5910df` question grouping), and the B&W redesign (#10) on real phones (headless checks are below).
 
 ## 2026-11-09 12:10–12:40: design pass across screen sizes, fake data (Claude)
