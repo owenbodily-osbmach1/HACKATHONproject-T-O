@@ -8,6 +8,7 @@
 //   on(t, fn)                           subscribe to inbound messages: fn(msg, {room, role, clientId})
 const { WebSocketServer } = require('ws');
 const otel = require('./otel');
+const log = require('./log');
 
 const ROLES = new Set(['attendee', 'viewer', 'mic', 'present', 'tech', 'org']);
 const wss = new WebSocketServer({ noServer: true });
@@ -139,7 +140,7 @@ function dispatch(rec, msg) {
   const info = { room: rec.room, role: rec.role, clientId: rec.clientId };
   for (const fn of list) {
     try { fn(msg, info); } catch (err) {
-      console.error('pulse: ws handler failed:', err && err.message);
+      log.error('ws.handler_failed', { event: msg.t, error: err && err.message });
     }
   }
 }

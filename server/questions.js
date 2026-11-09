@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const state = require('./state');
 const es = require('./es');
+const log = require('./log');
 
 const MAX_TEXT = 280;
 
@@ -155,7 +156,7 @@ async function searchCaptions(q, talkId) {
 function register(app, ctx) {
   const wrap = (fn) => (req, res) => {
     Promise.resolve(fn(req, res)).catch((err) => {
-      console.error('[questions]', err.message || err);
+      log.error('questions.request_failed', { error: err.message || String(err) });
       res.status(500).json({ error: 'internal' });
     });
   };

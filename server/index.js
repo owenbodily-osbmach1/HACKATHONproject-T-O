@@ -5,6 +5,7 @@ const path = require('path');
 const express = require('express');
 
 const config = require('./config');
+const log = require('./log');
 const state = require('./state');
 const auth = require('./auth');
 const otel = require('./otel');
@@ -32,6 +33,19 @@ app.use((req, res, next) => {
 });
 
 app.get('/healthz', (req, res) => res.type('text').send('ok'));
+
+// Public browser config: ingest-only Dash0 token, never the OTLP auth secret.
+app.get('/rum-config.js', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.type('application/javascript');
+  if (!config.DASH0_RUM_TOKEN) return res.send('window.PULSE_RUM = null;');
+  const body = JSON.stringify({
+    serviceName: 'pulse-web',
+    endpoint: config.DASH0_RUM_ENDPOINT,
+    token: config.DASH0_RUM_TOKEN,
+  }).replace(/</g, '\\u003c');
+  return res.send(`window.PULSE_RUM = ${body};`);
+});
 
 const pub = path.join(__dirname, '..', 'public');
 const page = (file) => (req, res) => res.sendFile(path.join(pub, file));
@@ -71,5 +85,5 @@ server.on('upgrade', (req, socket, head) => {
   target.handleUpgrade(req, socket, head);
 });
 
-server.listen(config.PORT, () => console.log(`pulse listening on :${config.PORT}`));
+server.listen(config.PORT, () => log.info('server.listening', { port: config.PORT }));
 module.exports = { app, server };

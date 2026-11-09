@@ -2,6 +2,7 @@
 // it must never throw into or delay the live caption/audio path. With no ELASTIC_URL it is a no-op.
 // Interface: index(indexName, doc), search(indexName, body) -> hits[] (empty on any error), raw(method, path, body), enabled -> bool.
 const config = require('./config');
+const log = require('./log');
 
 const enabled = Boolean(config.ELASTIC_URL && config.ELASTIC_API_KEY);
 const base = (config.ELASTIC_URL || '').replace(/\/+$/, '');
@@ -22,9 +23,10 @@ function warnOnce(slot) {
   return true;
 }
 
-function warn(slot, err) {
+function warn(slot, err, index) {
   if (!warnOnce(slot)) return; // at most one line per minute per path
-  console.warn('[es]', err && err.message ? err.message : err);
+  const event = slot === 'write' ? 'es.write_failed' : 'es.search_failed';
+  log.warn(event, { index: index || null, error: err && err.message ? err.message : String(err) });
 }
 
 // Raw request: throws on any HTTP or network failure. Only es-setup and the search
@@ -50,7 +52,7 @@ function index(name, doc) {
   if (!enabled) return;
   // Writes run ELSER inference for semantic_text fields; a cold model can take several seconds.
   // Fire-and-forget, so a longer timeout never touches the live path (Radar investigation found 3 s too short).
-  raw('POST', `/${name}/_doc`, doc, 15000).catch((err) => warn('write', err));
+  raw('POST', `/${name}/_doc`, doc, 15000).catch((err) => warn('write', err, name));
 }
 
 async function search(name, body) {
@@ -59,7 +61,7 @@ async function search(name, body) {
     const out = await raw('POST', `/${name}/_search`, body);
     return ((out && out.hits && out.hits.hits) || []).map((h) => h._source).filter(Boolean);
   } catch (err) {
-    warn('search', err);
+    warn('search', err, name);
     return [];
   }
 }

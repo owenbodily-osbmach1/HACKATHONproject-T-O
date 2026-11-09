@@ -13,4 +13,6 @@ module.exports = {
   ES_INFERENCE_ID: e.ES_INFERENCE_ID || '',
   OTEL_SERVICE_NAME: e.OTEL_SERVICE_NAME || 'pulse',
   OTEL_EXPORTER_OTLP_ENDPOINT: e.OTEL_EXPORTER_OTLP_ENDPOINT || '',
+  DASH0_RUM_TOKEN: e.DASH0_RUM_TOKEN || '',
+  DASH0_RUM_ENDPOINT: e.DASH0_RUM_ENDPOINT || 'https://ingress.us-west-2.aws.dash0.com',
 };

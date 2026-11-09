@@ -36,6 +36,7 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 | GET | `/slides/live/:talkId/:n.jpg` | — | the captured slide image (JPEG, PNG or WebP; response `Content-Type` matches the image format; `Cache-Control: public, max-age=31536000, immutable`) |
 | GET | `/qr/:room.gif` | — | QR code image for `<public base>/r/:room` (insert the join code into a deck by URL) |
 | GET | `/healthz` | — | `ok` |
+| GET | `/rum-config.js` | — | `window.PULSE_RUM = {serviceName, endpoint, token}` for browser RUM, or `null` when `DASH0_RUM_TOKEN` is unset (`Cache-Control: no-store`) |
 
 - Slide relay uploads are kept in memory (last 150 frames per talk or per room while no talk is live); a second upload less than 1 s after the previous one for the same room returns `429`.
 - Vote `type`: `cant_hear` | `cant_see` (`room_full` is a stretch goal). With no live talk in the room, `PUT /api/votes` returns `409 {error:'no_live_talk'}`.
@@ -129,7 +130,7 @@ Set `inference_id` explicitly from `ES_INFERENCE_ID`. If inference isn't availab
 
 Kubernetes Secret (entered in the Radar UI) or local `.env`. **Never committed.** See `.env.example`.
 
-`PORT` · `PUBLIC_BASE_URL` · `SPEAKER_KEY` · `TECH_KEY` · `ALERT_THRESHOLD=3` · `ALERT_WINDOW_SEC=60` · `CAPTIONS_DEFAULT=on` · `ELASTIC_URL` · `ELASTIC_API_KEY` · `ES_INFERENCE_ID` · `OTEL_SERVICE_NAME=pulse` · `OTEL_EXPORTER_OTLP_ENDPOINT` · `OTEL_EXPORTER_OTLP_HEADERS`
+`PORT` · `PUBLIC_BASE_URL` · `SPEAKER_KEY` · `TECH_KEY` · `ALERT_THRESHOLD=3` · `ALERT_WINDOW_SEC=60` · `CAPTIONS_DEFAULT=on` · `ELASTIC_URL` · `ELASTIC_API_KEY` · `ES_INFERENCE_ID` · `OTEL_SERVICE_NAME=pulse` · `OTEL_EXPORTER_OTLP_ENDPOINT` · `OTEL_EXPORTER_OTLP_HEADERS` · `DASH0_RUM_TOKEN` (public, ingest-only) · `DASH0_RUM_ENDPOINT=https://ingress.us-west-2.aws.dash0.com`
 
 ## Booths (expo floor)
 
