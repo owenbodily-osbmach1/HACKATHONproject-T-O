@@ -74,6 +74,8 @@ Run it from the repo folder. Your live server on port 8080 is not touched.
 
 The sign-in form appears on every take, because each take opens a new Chrome profile.
 
+**Say while the form is on screen:** "An organizer can ask for a one-time sign-in, like here. It is optional: at this event it is off, so a scan goes straight to the captions." The live demo and the submission text both say no sign-in, so the video must say the form is optional.
+
 ### 0:40 The alert loop (`alert`)
 
 **What the app is doing:** a talk is live in room 151 with 41 phones. The alert limit is 3 votes. There is no demo room in this shot, so only room 151's ticket is on the board.
