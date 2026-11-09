@@ -5,7 +5,7 @@ One QR code per conference room. Attendee phones get live captions, listen-in au
 ## What it does
 
 **Attendees**
-- Scan the room QR code. No app. A one-time sign-in (name, company / occupation, email) opens the room; a phone is remembered after that.
+- Scan the room QR code. No app: the room opens straight away, or, when sign-in is on, a one-time sign-in (name, company / occupation, email) opens it, and a phone is remembered after that.
 - Read live captions from the podium microphone.
 - Listen to the podium audio through their own earbuds.
 - Follow the slides on their phone as the speaker changes them.
