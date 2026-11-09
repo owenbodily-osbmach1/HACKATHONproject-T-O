@@ -792,7 +792,7 @@ async function initTalk() {
     setConn('connecting');
     state.conn = connectRoom({
       room: String(talk.room),
-      role: 'attendee',
+      role: 'viewer',
       onStatus: setConn,
       onMessage(msg) {
         if (msg.t === 'caption') addCaptionRows([msg]);
