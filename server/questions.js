@@ -185,8 +185,9 @@ function register(app, ctx) {
     const talks = require('./talks');
     if (clientId && talks.isMuted?.(clientId)) return res.status(403).json({ error: 'muted' });
 
-    const live = state.room(room);
-    const talkId = String(body.talkId || live.talkId || '');
+    state.room(room);
+    const live = state.liveTalk(room);
+    const talkId = String(body.talkId || (live && live.talkId) || '');
     const w = words(text);
     let group = findGroup(room, talkId, w);
     if (!group) {
@@ -314,4 +315,15 @@ function register(app, ctx) {
   }));
 }
 
-module.exports = { register, groupList };
+// Questions asked before the talk starts are held under the room and attached when it starts.
+function attachPending(room, talkId) {
+  const id = String(room);
+  for (const g of groups.values()) {
+    if (g.room === id && !g.talkId) g.talkId = talkId;
+  }
+  for (const q of questions.values()) {
+    if (q.room === id && !q.talkId) q.talkId = talkId;
+  }
+}
+
+module.exports = { register, groupList, attachPending };
