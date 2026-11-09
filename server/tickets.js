@@ -104,7 +104,7 @@ function minuteFor(talkId, ts) {
   const talks = ctx && ctx.state && ctx.state.talks;
   if (!talks || typeof talks.get !== 'function') return 0;
   const talk = talks.get(String(talkId));
-  const start = talk && Date.parse(talk.start);
+  const start = talk && (typeof talk.start === 'number' ? talk.start : Date.parse(talk.start));
   return Number.isFinite(start) ? Math.max(0, Math.floor((ts - start) / 60000)) : 0;
 }
 

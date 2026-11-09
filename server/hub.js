@@ -113,7 +113,7 @@ function onSlide(rec, msg) {
     talkId,
     actor: rec.clientId || rec.role,
     action: 'slide',
-    detail: slide,
+    detail: JSON.stringify(slide), // mapped as text in pulse-actions
     ts: Date.now(),
   });
 }
