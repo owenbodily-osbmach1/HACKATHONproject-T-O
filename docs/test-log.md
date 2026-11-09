@@ -2,6 +2,16 @@
 
 What has been tested, how, what broke and what is still open. Newest first. Add to it when you test something.
 
+## 2026-11-09: answeredSeq persistence, automated (Gitar)
+
+**Setup:** `mise x node@22.23.4 -- npm ci`, then `mise x node@22.23.4 -- npm run check` and `mise x node@22.23.4 -- npm run smoke`.
+
+| Check | Result |
+| --- | --- |
+| Repository syntax checks and `booths-check`, `find-check`, `relay-check`, `tickets-check` | passed |
+| Smoke checks | passed |
+| Focused mock-Elasticsearch question-answer check: update persists `answeredSeq` alongside `hidden` and `answered` | passed |
+
 ## 2026-11-09: venue-local schedule times and past-event find check, automated (Gitar)
 
 **Setup:** `mise x node@22.23.4 -- npm ci`, then `mise x node@22.23.4 -- npm run check`.
