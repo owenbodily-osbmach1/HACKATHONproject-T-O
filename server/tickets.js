@@ -2,10 +2,12 @@
 // Interface: register(app, ctx), openTickets(room) -> number.
 const crypto = require('crypto');
 const audio = require('./audio');
+const otel = require('./otel');
 
 const VOTE_TTL_MS = 10 * 60 * 1000;
 const REOPEN_MS = 2 * 60 * 1000;
 const ACTIVE = new Set(['open', 'claimed', 'reopened']);
+const LIFECYCLE = { claimed: 'claim', fixed: 'fix', dismissed: 'dismiss' };
 
 const votes = new Map(); // room|talkId|type|clientId -> {room, talkId, type, clientId, ts}
 const tickets = new Map(); // id -> ticket
@@ -14,6 +16,28 @@ const feedback = new Map(); // ticketId -> Map(clientId -> better)
 let ctx = null;
 let alertThreshold = 3;
 let ticker = null;
+
+let mOpened = null;
+let mTimeToFix = null;
+let mTimeToAck = null;
+let mVotes = null;
+
+const ticketAttrs = (ticket) => ({
+  'pulse.ticket.id': ticket.id,
+  'pulse.room': ticket.room,
+  'pulse.signal.type': ticket.type,
+  'pulse.ticket.people': ticket.people,
+});
+
+// One span per lifecycle change; synchronous so the vote/action path never waits.
+function lifecycle(action, ticket, fn) {
+  return otel.span(`pulse.ticket.${action}`, ticketAttrs(ticket), fn);
+}
+
+function secondsSince(iso, now) {
+  const start = Date.parse(iso);
+  return Number.isFinite(start) ? Math.max(0, (now - start) / 1000) : null;
+}
 
 const windowMs = () => {
   const sec = Number(ctx && ctx.config && ctx.config.ALERT_WINDOW_SEC);
@@ -189,6 +213,7 @@ function createTicket(room, talkId, type, people, now) {
     stillBad: 0,
   };
   tickets.set(ticket.id, ticket);
+  if (mOpened) mOpened.add(1, { 'pulse.room': ticket.room, 'pulse.signal.type': ticket.type });
   return ticket;
 }
 
@@ -212,16 +237,17 @@ function refreshTicket(room, talkId, type, allowCreate) {
   if (prior) {
     const details = likelyCause(type, room);
     prior.status = 'reopened';
+    prior.reopenedAt = new Date(now).toISOString();
     prior.talkId = talkId;
     prior.people = people;
     prior.cause = details.cause;
     prior.steps = details.steps;
-    ticketChanged(prior);
+    lifecycle('reopen', prior, () => ticketChanged(prior));
     return prior;
   }
 
   const ticket = createTicket(room, talkId, type, people, now);
-  ticketChanged(ticket);
+  lifecycle('open', ticket, () => ticketChanged(ticket));
   return ticket;
 }
 
@@ -244,6 +270,27 @@ function register(app, context) {
   const configured = Number(ctx && ctx.config && ctx.config.ALERT_THRESHOLD);
   if (Number.isFinite(configured) && configured >= 1) alertThreshold = Math.floor(configured);
 
+  mOpened = otel.counter('pulse.tickets.opened', 'Tickets opened', '{ticket}');
+  mVotes = otel.counter('pulse.votes', 'Votes added or retracted', '{vote}');
+  mTimeToFix = otel.histogram('pulse.ticket.time_to_fix', 'Seconds from open (or reopen) to fixed', 's');
+  mTimeToAck = otel.histogram('pulse.ticket.time_to_ack', 'Seconds from open to claimed', 's');
+
+  otel.observableGauge('pulse.listeners', 'Open attendee sockets per room', () => {
+    if (!ctx || !ctx.state || !ctx.state.rooms || !ctx.hub) return [];
+    const points = [];
+    for (const room of ctx.state.rooms.values()) {
+      const id = room && room.room != null ? String(room.room) : String(room);
+      points.push({ value: ctx.hub.listeners(id), attributes: { 'pulse.room': id } });
+    }
+    return points;
+  });
+
+  otel.observableGauge('pulse.rooms.alerting', 'Rooms with an active ticket', () => {
+    const activeRooms = new Set();
+    for (const ticket of tickets.values()) if (ACTIVE.has(ticket.status)) activeRooms.add(ticket.room);
+    return activeRooms.size;
+  });
+
   app.put('/api/votes', (req, res) => {
     const body = req.body || {};
     const room = String(body.room || '');
@@ -265,11 +312,13 @@ function register(app, context) {
     if (body.on === false) {
       if (existing) {
         votes.delete(key);
+        if (mVotes) mVotes.add(1, { 'pulse.signal.type': type, 'pulse.vote.on': false });
         indexSignal(existing, false, now);
       }
     } else if (!existing) {
       const vote = { room, talkId, type, clientId, ts: now };
       votes.set(key, vote);
+      if (mVotes) mVotes.add(1, { 'pulse.signal.type': type, 'pulse.vote.on': true });
       indexSignal(vote, true, now);
     }
 
@@ -288,14 +337,22 @@ function register(app, context) {
   const action = (status) => (req, res) => {
     const ticket = tickets.get(String(req.params.id));
     if (!ticket) return res.status(404).json({ error: 'not found' });
-    const now = new Date().toISOString();
+    const nowMs = Date.now();
+    const now = new Date(nowMs).toISOString();
     ticket.status = status;
-    if (status === 'claimed') ticket.ackAt = now;
+    const attrs = { 'pulse.room': ticket.room, 'pulse.signal.type': ticket.type };
+    if (status === 'claimed') {
+      ticket.ackAt = now;
+      const sec = secondsSince(ticket.openedAt, nowMs);
+      if (mTimeToAck && sec !== null) mTimeToAck.record(sec, attrs);
+    }
     if (status === 'fixed') {
       ticket.fixedAt = now;
+      const sec = secondsSince(ticket.reopenedAt || ticket.openedAt, nowMs);
+      if (mTimeToFix && sec !== null) mTimeToFix.record(sec, attrs);
       clearVotes(ticket.room, ticket.type);
     }
-    ticketChanged(ticket);
+    lifecycle(LIFECYCLE[status] || status, ticket, () => ticketChanged(ticket));
     res.json({ status: ticket.status });
   };
 
