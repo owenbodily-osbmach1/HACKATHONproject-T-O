@@ -47,7 +47,8 @@ function send(roomId, msg, roles) {
   const allow = roles ? new Set(roles) : null;
   const data = JSON.stringify(msg);
   for (const rec of set) {
-    if (!allow || allow.has(rec.role)) deliver(rec, data);
+    // An untargeted room broadcast never reaches booth staff: they only get what is addressed to 'booth'.
+    if (allow ? allow.has(rec.role) : rec.role !== 'booth') deliver(rec, data);
   }
 }
 
@@ -225,10 +226,13 @@ function join(ws, room, role, clientId) {
     // Backlog only for the room's current talk, so a late joiner never mixes two talks (contract audit).
     sendJson(ws, { t: 'caption_backlog', lines: state.captions.filter((c) => !state.talkId || c.talkId === state.talkId).slice(-50) });
   }
-  sendJson(ws, { t: 'room_settings', ...state.settings });
-  sendJson(ws, ctx.state.talkMessage(room));
-  if (state.slide) sendJson(ws, { t: 'slide', ...state.slide });
-  sendJson(ws, stats.statsMessage(room));
+  // Booth staff sockets get booth requests only: no room greeting (settings, talk, slide, stats).
+  if (role !== 'booth') {
+    sendJson(ws, { t: 'room_settings', ...state.settings });
+    sendJson(ws, ctx.state.talkMessage(room));
+    if (state.slide) sendJson(ws, { t: 'slide', ...state.slide });
+    sendJson(ws, stats.statsMessage(room));
+  }
   if (role === 'tech' || role === 'org') {
     // Lazy require: tickets/questions require the hub too.
     for (const m of require('./tickets').activeTicketMessages(room, { justFixed: role === 'tech', org: role === 'org' })) sendJson(ws, m);
