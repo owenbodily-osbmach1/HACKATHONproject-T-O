@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pulse · attendee preview</title>
+  <style>
+    body { margin: 0; background: #1a1a1a; color: #fff; font: 15px/1.4 Inter, system-ui, sans-serif; }
+    header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 20px; background: #000; border-bottom: 1px solid #333; position: sticky; top: 0; z-index: 2; }
+    header strong { font-size: 18px; margin-right: 8px; }
+    header .group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-left: 10px; border-left: 1px solid #333; }
+    header .group span { color: #b8b8b8; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; margin-right: 2px; }
+    button { min-height: 40px; padding: 0 12px; border-radius: 9px; border: 1px solid #5c5c5c; background: #000; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+    button.yellow { background: #ffd400; color: #000; border: 0; }
+    button.blue { background: #4d9aff; color: #000; border: 0; }
+    main { display: flex; flex-wrap: wrap; gap: 32px; padding: 28px 20px; align-items: flex-start; justify-content: center; }
+    figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    figcaption { color: #b8b8b8; font-size: 13px; font-weight: 700; }
+    .phone { border: 10px solid #000; border-radius: 40px; box-shadow: 0 0 0 2px #444; overflow: hidden; background: #000; }
+    iframe { display: block; border: 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Attendee preview</strong>
+    <div class="group"><span>Data</span>
+      <button type="button" id="modeBtn">Using fake data</button>
+    </div>
+    <div class="group"><span>Tech actions</span>
+      <button type="button" class="yellow" data-cmd="fixed_hear">Mark sound fixed</button>
+      <button type="button" class="yellow" data-cmd="fixed_see">Mark slides fixed</button>
+      <button type="button" class="blue" data-cmd="reply">Reply to my question</button>
+      <button type="button" data-cmd="broadcast">Broadcast</button>
+    </div>
+    <div class="group"><span>Room</span>
+      <button type="button" data-cmd="prev_slide">‹ Slide</button>
+      <button type="button" data-cmd="next_slide">Slide ›</button>
+      <button type="button" data-cmd="captions_off">Captions off</button>
+      <button type="button" data-cmd="captions_on">Captions on</button>
+      <button type="button" data-cmd="drop">Drop connection</button>
+    </div>
+  </header>
+  <main id="phones"></main>
+
+  <script>
+    // Three common phone sizes side by side. Each frame runs its own fake server,
+    // so votes in one frame don't count in another. Tap inside a frame like a phone.
+    const DEVICES = [
+      { name: 'Small phone (iPhone SE)', w: 320, h: 568 },
+      { name: 'iPhone 15', w: 393, h: 852 },
+      { name: 'Large Android (Pixel)', w: 412, h: 915 },
+    ];
+    const params = new URLSearchParams(location.search);
+    const room = params.get('room') || '151';
+    let live = params.has('live');
+
+    function src() {
+      return live ? `/r/${encodeURIComponent(room)}` : `/r.html?mock=1&room=${encodeURIComponent(room)}`;
+    }
+
+    function render() {
+      const main = document.getElementById('phones');
+      main.replaceChildren();
+      for (const d of DEVICES) {
+        const fig = document.createElement('figure');
+        const box = document.createElement('div');
+        box.className = 'phone';
+        const frame = document.createElement('iframe');
+        frame.width = d.w;
+        frame.height = d.h;
+        frame.title = `${d.name}, ${d.w} by ${d.h}`;
+        frame.src = src();
+        box.appendChild(frame);
+        const cap = document.createElement('figcaption');
+        cap.textContent = `${d.name} · ${d.w}×${d.h}`;
+        fig.append(box, cap);
+        main.appendChild(fig);
+      }
+      document.getElementById('modeBtn').textContent = live ? 'Using the live server' : 'Using fake data';
+      for (const b of document.querySelectorAll('[data-cmd]')) b.disabled = live;
+    }
+
+    document.querySelector('header').addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.id === 'modeBtn') { live = !live; render(); return; }
+      const cmd = b.dataset.cmd;
+      if (!cmd) return;
+      for (const f of document.querySelectorAll('iframe')) f.contentWindow.postMessage({ pulseMock: cmd }, location.origin);
+    });
+
+    render();
+  </script>
+</body>
+</html>
