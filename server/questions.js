@@ -74,9 +74,9 @@ function groupList(room) {
 function memoryQuestions(talkId) {
   const out = [];
   for (const q of questions.values()) {
-    if (q.talkId !== talkId) continue;
+    if (q.talkId !== talkId || q.hidden) continue; // hidden by the tech: not in the public report
     out.push({
-      qid: q.qid, talkId: q.talkId, room: q.room, text: q.text, clientId: q.clientId,
+      qid: q.qid, talkId: q.talkId, room: q.room, text: q.text,
       ts: q.ts, groupId: q.groupId, answered: q.answered, answeredSeq: q.answeredSeq,
     });
   }
@@ -198,6 +198,10 @@ function register(app, ctx) {
     const q = questions.get(qid);
     if (!q) return res.status(404).json({ error: 'unknown question' });
     Object.assign(q, patch);
+    es.update('pulse-questions', q.qid, Object.assign(
+      { hidden: !!q.hidden, answered: !!q.answered },
+      q.answeredSeq != null ? { answeredSeq: q.answeredSeq } : {}
+    ));
     const g = groups.get(q.groupId);
     if (g && patch.answered) g.answered = true;
     sendTech(q.room, { t: 'question_update', qid: q.qid, pinned: q.pinned, hidden: q.hidden, answered: q.answered });
@@ -216,6 +220,9 @@ function register(app, ctx) {
 
     state.room(room);
     const live = state.liveTalk(room);
+    // A question can only attach to a talk in this room (security audit: cross-room injection).
+    const asked = body.talkId ? state.talks.get(String(body.talkId)) : null;
+    if (body.talkId && (!asked || String(asked.room) !== room)) return res.status(400).json({ error: 'talk is not in this room' });
     const talkId = String(body.talkId || (live && live.talkId) || '');
     const w = words(text);
     let group = findGroup(room, talkId, w);
@@ -237,8 +244,8 @@ function register(app, ctx) {
     if (clientId) group.askers.add(clientId);
 
     es.index('pulse-questions', {
-      qid, groupId: group.groupId, talkId, room, text, clientId, ts, answered: false,
-    });
+      qid, groupId: group.groupId, talkId, room, text, clientId, ts, answered: false, hidden: false,
+    }, qid);
     sendTech(room, { t: 'question_groups', groups: groupList(room) });
     res.json({ qid, groupId: group.groupId });
   });
@@ -350,14 +357,15 @@ function register(app, ctx) {
       otel.span('pulse.report.questions', esAttrs(talkId), async (active) => {
         const rows = await es.search('pulse-questions', {
           size: 1000, sort: [{ ts: 'asc' }],
-          query: { term: { talkId } },
+          _source: { excludes: ['clientId', 'hidden'] }, // reports never expose device ids or moderation state
+          query: { bool: { filter: [{ term: { talkId } }], must_not: [{ term: { hidden: true } }] } },
         });
         countHits(active, rows.length);
         return rows;
       }),
     ]);
     const signalsByMinute = otel.span('pulse.report.signals_by_minute', talkAttrs(talkId), () => countSignals(signals));
-    const merged = otel.span('pulse.report.questions_merge', talkAttrs(talkId), () => asked.map((q) => {
+    const merged = otel.span('pulse.report.questions_merge', talkAttrs(talkId), () => asked.filter((q) => !(questions.get(q.qid) || {}).hidden).map((q) => {
       const mem = questions.get(q.qid);
       return mem ? Object.assign({}, q, { answered: mem.answered, answeredSeq: mem.answeredSeq }) : q;
     }));

@@ -1,6 +1,6 @@
 # Pulse demo: 3 minutes
 
-**Setup before we start:** Tyler's laptop runs the mic page (`/mic/demo?key=...`) with the slides deck (`/present/demo?key=...`) on the projector; the QR code is on the title slide. Owen's laptop has `/tech?key=...` and `/org` open. One browser tab each on Radar Cloud (Checks + the investigation), Dash0 (Services + the `pulse` metrics) and GitHub (the PR list). Fallback: `node scripts/simulate.js` against the same room if live speech recognition fails.
+**Setup before we start:** Everything runs in room `demo`; press **Start captions** on the mic page before showing the QR (votes open only while a talk is live). Tyler's laptop runs the mic page (`/mic/demo?key=...`) with the slides deck (`/present/demo?key=...`) on the projector; the QR code is on the title slide. Owen's laptop has `/tech?key=...&rooms=demo` and `/org` open. One browser tab each on Radar Cloud (Checks + the investigation), Dash0 (Services + the `pulse` metrics) and GitHub (the PR list). Fallback: `node scripts/simulate.js` against the same room if live speech recognition fails.
 
 | Time | Who | What happens on screen | What we say |
 | --- | --- | --- | --- |
