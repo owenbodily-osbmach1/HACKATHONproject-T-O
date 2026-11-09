@@ -1,0 +1,31 @@
+{
+  "name": "pulse",
+  "version": "1.0.0",
+  "description": "Cloud Native Hackathon with Kelsey Hightower, Salt Lake City, Nov 9, 2026. Team: Owen (UI) and Ty (backend).",
+  "main": "server/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server/index.js",
+    "dev": "node --watch --env-file-if-exists=.env server/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/owenbodily-osbmach1/HACKATHONproject-T-O.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/owenbodily-osbmach1/HACKATHONproject-T-O/issues"
+  },
+  "homepage": "https://github.com/owenbodily-osbmach1/HACKATHONproject-T-O#readme",
+  "private": "true",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.22.3",
+    "ws": "^8.22.2"
+  }
+}
