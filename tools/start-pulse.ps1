@@ -23,9 +23,20 @@ Write-Host "=== Pulse one-room test ===" -ForegroundColor Cyan
 if (-not (Have node)) { Write-Host "Node.js is not installed. Install it from https://nodejs.org (LTS), then run this again." -ForegroundColor Red; Read-Host "Press Enter to close"; exit 1 }
 
 if (Have git) {
-  Write-Host "Updating to the latest poc/one-room..."
+  Write-Host "Updating to the latest version of this branch..."
   & git pull --ff-only
-  if ($LASTEXITCODE -ne 0) { Write-Host "(git pull skipped, using the files already here)" -ForegroundColor Yellow }
+  if ($LASTEXITCODE -ne 0) {
+    # Usually local edits (hot fixes copied in) block the pull: stash them (kept, not deleted) and retry.
+    $before = & git rev-parse -q --verify refs/stash
+    & git stash push -m "start-pulse auto-stash" | Out-Host
+    $stashed = ((& git rev-parse -q --verify refs/stash) -ne $before)
+    & git pull --ff-only
+    if ($LASTEXITCODE -ne 0) {
+      # Still blocked: put the local edits back so the demo runs with them, as the message says.
+      if ($stashed) { & git stash pop | Out-Host }
+      Write-Host "(git pull skipped, using the files already here)" -ForegroundColor Yellow
+    }
+  }
 }
 # Reinstall packages when package-lock.json changed since the last install (new branch or pull).
 $lockHash = (Get-FileHash package-lock.json).Hash
@@ -82,13 +93,15 @@ Start-Sleep -Seconds 4
 $mic = "$url/mic/$room`?key=$speakerKey&base=$url"
 $tech = "$url/tech?key=$techKey&rooms=$room"
 $relay = "$url/relay/$room`?key=$speakerKey"
+$go = "$url/go/$room`?key=$speakerKey"
 $phone = "$url/r/$room"
 
 $chrome = @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe", "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
-if ($chrome) { Start-Process $chrome -ArgumentList "--new-window `"$mic`" `"$tech`" `"$relay`"" } else { Start-Process $mic; Start-Process $tech; Start-Process $relay }
+if ($chrome) { Start-Process $chrome -ArgumentList "--new-window `"$go`" `"$tech`"" } else { Start-Process $go; Start-Process $tech }
 
 @"
 Pulse is running.
+  >>> GO LIVE (one button):  $go
   Phone page (QR code):  $phone
   Podium mic page:       $mic
   Tech screen:           $tech
