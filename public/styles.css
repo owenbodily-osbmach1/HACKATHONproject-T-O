@@ -222,32 +222,32 @@ button:disabled { opacity: .4; cursor: default; }
 .eyebrow { margin: 0; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
 .podium-top h1 { margin: 2px 0 0; font-size: 28px; }
 .warn { margin: 0; background: #3a1513; border: 1px solid var(--red); border-radius: 12px; padding: 10px 12px; font-weight: 600; }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
 .card h2 { margin: 0 0 10px; font-size: 15px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
 .field-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 .field-row label { flex: 1 1 220px; display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
 .field-row input, .field-row select { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px; min-height: 42px; padding: 0 10px; font: inherit; font-size: 16px; }
 .big-btns button { width: 100%; min-height: 64px; border-radius: 14px; border: 0; font-size: 20px; font-weight: 800; }
 .big-btns small { font-weight: 500; font-size: 14px; opacity: .85; }
-.big-btns .start { background: var(--green); color: #00210f; }
+.big-btns .start { background: var(--text); color: var(--on-color); }
 .big-btns .stop { background: var(--red); color: #2a0503; }
 .status-line { margin: 8px 0 0; color: var(--muted); }
 .done { margin: 8px 0 0; font-weight: 700; }
-.done a { color: var(--accent); }
+.done a { color: var(--blue); }
 .meter { position: relative; height: 18px; background: var(--bg); border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
-.meter span { display: block; height: 100%; width: 0; background: var(--green); transition: width .1s linear; }
-.meter span[data-zone="low"] { background: var(--amber); }
+.meter span { display: block; height: 100%; width: 0; background: var(--blue); transition: width .1s linear; }
+.meter span[data-zone="low"] { background: var(--yellow); }
 .meter span[data-zone="hot"] { background: var(--red); }
 .meter-mark { position: absolute; top: 0; bottom: 0; left: calc(20 / 70 * 100%); width: 2px; background: var(--muted); opacity: .5; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0 0; }
-.stats div { background: var(--panel-2); border-radius: 10px; padding: 8px 10px; }
+.stats div { background: var(--raised); border-radius: 10px; padding: 8px 10px; }
 .stats dt { font-size: 12px; color: var(--muted); }
 .stats dd { margin: 2px 0 0; font-size: 20px; font-weight: 800; }
 .last-line { margin: 10px 0 0; color: var(--muted); font-size: 14px; min-height: 1.4em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .qr-card { text-align: center; }
 .qr { background: #fff; border-radius: 12px; padding: 10px; width: min(260px, 100%); margin: 0 auto; }
 .qr img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
-.qr-dl { display: inline-block; margin-top: 8px; color: var(--accent); font-weight: 700; }
+.qr-dl { display: inline-block; margin-top: 8px; color: var(--blue); font-weight: 700; }
 .qr-url { margin: 8px 0 0; font-size: 20px; font-weight: 800; word-break: break-all; }
 .hint-small { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 .hint-small code { color: var(--text); }
