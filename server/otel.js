@@ -88,10 +88,10 @@ function counter(name, description, unit) {
   }
 }
 
-function histogram(name, description, unit) {
+function histogram(name, description, unit, advice) {
   if (!meter) return noopHistogram;
   try {
-    return meter.createHistogram(name, { description, unit });
+    return meter.createHistogram(name, advice ? { description, unit, advice } : { description, unit });
   } catch (_) {
     return noopHistogram;
   }
@@ -122,12 +122,19 @@ function observableGauge(name, description, cb) {
 // Runs fn inside an active span. Propagation and span end are telemetry-only;
 // fn's value, promise and errors pass through untouched, and the live path is
 // never awaited. span(name, fn) is accepted for callers without attributes.
+// A throw or rejection also marks the span ERROR, so Dash0 error rates see it.
 function span(name, attrs, fn) {
   if (typeof attrs === 'function') {
     fn = attrs;
     attrs = undefined;
   }
   if (!tracer) return fn();
+
+  const fail = (active, err) => {
+    active.recordException(err);
+    active.setStatus({ code: api.SpanStatusCode.ERROR, message: err && err.message ? String(err.message) : 'error' });
+    active.end();
+  };
 
   let entered = false;
   try {
@@ -139,8 +146,7 @@ function span(name, attrs, fn) {
           return out.then(
             (value) => { active.end(); return value; },
             (err) => {
-              active.recordException(err);
-              active.end();
+              fail(active, err);
               throw err;
             }
           );
@@ -148,8 +154,7 @@ function span(name, attrs, fn) {
         active.end();
         return out;
       } catch (err) {
-        active.recordException(err);
-        active.end();
+        fail(active, err);
         throw err;
       }
     });

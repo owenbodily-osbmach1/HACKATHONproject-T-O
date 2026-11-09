@@ -25,6 +25,9 @@ const groups = new Map(); // groupId -> {groupId, room, talkId, text, words, cou
 const questions = new Map(); // qid -> {qid, groupId, room, talkId, text, clientId, ts, pinned, hidden, answered}
 const lastAsk = new Map(); // 'c:<clientId>' | 'v:<visitor>' -> epoch ms of the last question
 
+// The tech console gets the 50 most recently active groups: every question used to resend the whole room.
+const GROUP_SNAPSHOT_MAX = 50;
+
 // Lowercase, punctuation to spaces: the word set used for Jaccard grouping.
 // Stopwords dropped and a crude stem (drops/dropped -> drop) so rephrasings of one question match.
 const STOP = new Set('a an the and or but if of to in on at for with by from is are was were be been do does did you your we our us it its this that these those how what when where why who which can could should would will at as so not no than then there their them they i me my'.split(' '));
@@ -72,7 +75,7 @@ function groupList(room) {
   for (const g of groups.values()) {
     if (g.room === room && g.talkId === talkId) out.push({ groupId: g.groupId, qid: g.qid, text: g.text, count: g.count, answered: g.answered });
   }
-  return out;
+  return out.length > GROUP_SNAPSHOT_MAX ? out.slice(-GROUP_SNAPSHOT_MAX) : out;
 }
 
 function memoryQuestions(talkId) {
@@ -250,8 +253,10 @@ function register(app, ctx) {
         groupId: crypto.randomUUID(), room, talkId, text, words: w,
         count: 0, answered: false, askers: new Set(),
       };
-      groups.set(group.groupId, group);
+    } else {
+      groups.delete(group.groupId); // re-insert so recent activity counts as newest
     }
+    groups.set(group.groupId, group);
     const qid = crypto.randomUUID();
     if (!group.qid) group.qid = qid; // the group's actions (reply/queue/answered/hide) target its first question
     const ts = Date.now();
