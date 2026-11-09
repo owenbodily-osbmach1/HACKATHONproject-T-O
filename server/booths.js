@@ -2,6 +2,7 @@
 // Booth demos are ordinary talks in a room whose id is the booth id, so captions and reports need no special path.
 const crypto = require('crypto');
 const booths = require('./booths.json');
+const log = require('./log');
 
 const SUSPECT_MS = 30 * 1000;
 const MAX_HEARD = 20;
@@ -301,6 +302,7 @@ function register(app, ctx) {
     const ts = Date.now();
     queue.push({ requestId, kind, clientId, ts, done: false, doneAt: null });
     const position = queue.filter((r) => !r.done).length;
+    log.info('booth.request', { booth: booth.id, requestId, kind, position });
 
     ctx.hub.send(booth.id, { t: 'booth_request', requestId, kind, position, ts }, ['tech']);
     res.json({ requestId, position });

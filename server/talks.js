@@ -2,6 +2,7 @@
 const crypto = require('crypto');
 const express = require('express');
 const tickets = require('./tickets');
+const log = require('./log');
 
 const muted = new Map(); // clientId -> mute-until epoch ms
 
@@ -68,6 +69,7 @@ module.exports = {
       room.title = title;
       room.speaker = speaker;
       state.talks.set(talkId, { talkId, room: roomId, title, speaker, start, end: null });
+      log.info('talk.started', { room: roomId, talkId });
       require('./questions').attachPending(roomId, talkId);
       hub.send(roomId, state.talkMessage(roomId));
 
@@ -87,6 +89,7 @@ module.exports = {
       const talk = state.talks.get(req.params.talkId);
       if (!talk) return res.status(404).json({ error: 'not found' });
       talk.end = Date.now();
+      log.info('talk.ended', { room: talk.room, talkId: talk.talkId });
       hub.send(talk.room, state.talkMessage(talk.room));
       res.json({ reportUrl: `${ctx.config.PUBLIC_BASE_URL}/t/${talk.talkId}` });
     });

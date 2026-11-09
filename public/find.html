@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d10">
+  <title>Pulse · Find the right talk</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23FFD400'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/find.css">
+</head>
+<body class="find-page">
+  <main id="app" class="find-wrap">
+    <header class="find-top">
+      <p class="find-eyebrow">KubeCon NA 2026</p>
+      <h1>Find the right talk</h1>
+      <p class="find-sub">Search the schedule and what speakers already said in the rooms.</p>
+    </header>
+
+    <section class="find-card" aria-labelledby="nextH">
+      <h2 id="nextH">Next talks for you</h2>
+      <p class="find-note" id="nextNote" role="status">Finding talks for you…</p>
+      <ol class="find-next" id="nextList"></ol>
+    </section>
+
+    <form class="find-card find-form" id="findForm" role="search">
+      <label for="q">What do you want to learn about?</label>
+      <div class="find-row">
+        <input id="q" name="q" type="search" autocomplete="off" enterkeyhint="search" required
+          placeholder="GPU autoscaling, AI agents, observability…">
+        <button class="pill" type="submit" id="findBtn">Search</button>
+      </div>
+      <p class="find-note" id="formNote" role="status" aria-live="polite"></p>
+    </form>
+
+    <div id="results" aria-live="polite">
+      <section class="find-card" id="sessionSection" hidden aria-labelledby="sessionH">
+        <h2 id="sessionH">Upcoming sessions</h2>
+        <ol class="find-list" id="sessionList"></ol>
+        <p class="find-note" id="sessionEmpty" hidden>No upcoming sessions match that.</p>
+      </section>
+
+      <section class="find-card" id="saidSection" hidden aria-labelledby="saidH">
+        <h2 id="saidH">Already said in a talk</h2>
+        <ol class="find-list" id="saidList"></ol>
+        <p class="find-note" id="saidEmpty" hidden>Nothing said yet matches that.</p>
+      </section>
+    </div>
+
+    <p class="find-foot">No app · no login · captions only</p>
+  </main>
+
+  <script type="module" src="/find.js"></script>
+</body>
+</html>

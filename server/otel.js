@@ -1,8 +1,9 @@
 // OpenTelemetry -> Dash0 over OTLP/HTTP. No endpoint set = no-op.
 // Helpers: counter(name, desc, unit), histogram(name, desc, unit),
-// observableGauge(name, desc, cb), span(name, attrs, fn).
+// observableGauge(name, desc, cb), span(name, attrs, fn), emitLog(level, event, attrs).
 // Exporters read OTEL_EXPORTER_OTLP_ENDPOINT/HEADERS themselves, so Dash0 auth
 // (Authorization=Bearer ...) stays in the environment and is never logged here.
+const api = require('@opentelemetry/api');
 const config = require('./config');
 
 const SERVICE_NAME = config.OTEL_SERVICE_NAME;
@@ -12,9 +13,12 @@ const DEPLOYMENT_ENVIRONMENT = process.env.DEPLOY_ENV || 'hackathon';
 const noopCounter = { add() {} };
 const noopHistogram = { record() {} };
 
+const SEVERITY = { info: api.SeverityNumber.INFO, warn: api.SeverityNumber.WARN, error: api.SeverityNumber.ERROR };
+
 let started = false;
 let tracer = null;
 let meter = null;
+let logger = null;
 
 function start() {
   if (started || !config.OTEL_EXPORTER_OTLP_ENDPOINT) return;
@@ -24,10 +28,11 @@ function start() {
     const { PeriodicExportingMetricReader } = require('@opentelemetry/sdk-metrics');
     const { OTLPMetricExporter } = require('@opentelemetry/exporter-metrics-otlp-http');
     const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
+    const { BatchLogRecordProcessor } = require('@opentelemetry/sdk-logs');
+    const { OTLPLogExporter } = require('@opentelemetry/exporter-logs-otlp-http');
     const { HttpInstrumentation } = require('@opentelemetry/instrumentation-http');
     const { ExpressInstrumentation } = require('@opentelemetry/instrumentation-express');
     const { defaultResource, resourceFromAttributes } = require('@opentelemetry/resources');
-    const api = require('@opentelemetry/api');
 
     // Resource semconv: service.name, service.version, deployment.environment.name.
     const resource = defaultResource().merge(
@@ -42,6 +47,9 @@ function start() {
       serviceName: SERVICE_NAME,
       resource,
       traceExporter: new OTLPTraceExporter(),
+      // NodeSDK registers this provider with the global logs API, so log.js
+      // emits through the same resource and batch pipeline as traces/metrics.
+      logRecordProcessors: [new BatchLogRecordProcessor({ exporter: new OTLPLogExporter() })],
       metricReaders: [
         new PeriodicExportingMetricReader({
           exporter: new OTLPMetricExporter(),
@@ -59,11 +67,14 @@ function start() {
 
     tracer = api.trace.getTracer(SERVICE_NAME);
     meter = api.metrics.getMeter(SERVICE_NAME);
+    logger = api.logs.getLogger(SERVICE_NAME);
   } catch (err) {
     // Telemetry is best-effort: a bad exporter config must never stop the app.
     tracer = null;
     meter = null;
-    console.warn('otel: disabled:', err.message);
+    logger = null;
+    // Lazy require: log.js reads emitLog from this module.
+    try { require('./log').warn('otel.disabled', { error: err.message }); } catch (_) {}
   }
 }
 
@@ -148,4 +159,21 @@ function span(name, attrs, fn) {
   }
 }
 
-module.exports = { start, counter, histogram, observableGauge, span };
+// Structured event -> OTel log record. Synchronous enqueue into the batch
+// processor: never awaited, never blocks a request or the live path.
+// The active span context is attached so Dash0 links the log to its trace.
+function emitLog(level, event, attrs) {
+  if (!logger) return;
+  const severity = SEVERITY[level] || SEVERITY.info;
+  try {
+    logger.emit({
+      body: event,
+      attributes: attrs || {},
+      severityNumber: severity,
+      severityText: String(level).toUpperCase(),
+      context: api.context.active(),
+    });
+  } catch (_) {}
+}
+
+module.exports = { start, counter, histogram, observableGauge, span, emitLog };

@@ -2,6 +2,7 @@
 // Interface: attach(server, ctx), handleUpgrade(req, socket, head), micDb(room) -> latest dBFS or null.
 const { WebSocketServer } = require('ws');
 const otel = require('./otel');
+const log = require('./log');
 
 const wss = new WebSocketServer({ noServer: true });
 const senders = new Map(); // room -> sender ws (one active)
@@ -76,8 +77,12 @@ function relay(room, frame) {
 
 function addSender(ws, room) {
   const old = senders.get(room);
-  if (old && old !== ws) closeQuietly(old, 4409, 'replaced');
+  if (old && old !== ws) {
+    closeQuietly(old, 4409, 'replaced');
+    log.info('mic.replaced', { room });
+  }
   senders.set(room, ws);
+  log.info('mic.connected', { room });
   ws.on('message', (data, isBinary) => {
     if (!isBinary || senders.get(room) !== ws) return;
     relay(room, Buffer.isBuffer(data) ? data : Buffer.from(data));
