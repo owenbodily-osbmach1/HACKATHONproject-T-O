@@ -91,6 +91,6 @@
   .present-stage { padding-top: 6px; }
   .qr-card { width: clamp(150px, 20vw, 240px); }
   .qr-hint { display: none; }
-  .present-bar .ghost { min-height: 42px; }
+  .present-bar .ghost { min-height: 44px; }
   .present-bar { padding-top: 4px; }
 }
