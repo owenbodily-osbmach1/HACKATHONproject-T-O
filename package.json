@@ -6,7 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server/index.js",
-    "dev": "node --watch --env-file-if-exists=.env server/index.js"
+    "dev": "node --watch --env-file-if-exists=.env server/index.js",
+    "check": "set -e; for d in server scripts public; do if [ -d \"$d\" ]; then find \"$d\" -name '*.js' -exec node --check {} \\; ; fi; done; for f in scripts/*-check.js; do if [ -e \"$f\" ]; then node \"$f\"; fi; done",
+    "smoke": "node scripts/smoke.js"
   },
   "repository": {
     "type": "git",
