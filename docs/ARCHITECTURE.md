@@ -1,6 +1,6 @@
 # Pulse architecture
 
-Pulse is one Node 20 process in one pod. Express serves the pages and the HTTP API; `ws` carries captions, slides, tickets, questions and audio. Live state is in memory. Elasticsearch keeps history. Dash0 receives OpenTelemetry. Argo CD deploys the pod.
+Pulse is one Node 22 process in one pod. Express serves the pages and the HTTP API; `ws` carries captions, slides, tickets, questions and audio. Live state is in memory. Elasticsearch keeps history. Dash0 receives OpenTelemetry. Argo CD deploys the pod.
 
 ## Diagram
 
