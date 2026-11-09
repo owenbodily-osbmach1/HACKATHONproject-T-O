@@ -213,10 +213,17 @@ function ticketMessage(ticket) {
   };
 }
 
+// /org has no key: it gets the ticket without the techs' names (aggregate status only).
+function orgTicketMessage(ticket) {
+  const { claimedBy, fixedBy, ...rest } = ticketMessage(ticket);
+  return rest;
+}
+
 function ticketChanged(ticket, statusChanged = true) {
   index('pulse-tickets', ticketDoc(ticket));
   if (!ctx || !ctx.hub) return;
-  ctx.hub.send(ticket.room, ticketMessage(ticket), ['tech', 'org']);
+  ctx.hub.send(ticket.room, ticketMessage(ticket), ['tech']);
+  ctx.hub.send(ticket.room, orgTicketMessage(ticket), ['org']);
   if (!statusChanged) return; // 300 phones x every vote was 179,400 messages for one burst
   ctx.hub.send(
     ticket.room,
@@ -488,7 +495,8 @@ function register(app, context) {
 
 // Snapshot for a tech/org socket that joins mid-talk.
 // justFixed: AV consoles only (org's dashboard would count the same fix again).
-function activeTicketMessages(room, { justFixed: withFixed = false } = {}) {
+// org: the unkeyed /org page gets tickets without the techs' names.
+function activeTicketMessages(room, { justFixed: withFixed = false, org = false } = {}) {
   const id = String(room);
   const out = [];
   const now = Date.now();
@@ -496,7 +504,7 @@ function activeTicketMessages(room, { justFixed: withFixed = false } = {}) {
     if (ticket.room !== id) continue;
     // Also tickets fixed in the last 3 min: a console opened after the fix still shows "Better now?" results.
     const justFixed = withFixed && ticket.status === 'fixed' && now - Date.parse(ticket.fixedAt || 0) < 180000;
-    if (ACTIVE.has(ticket.status) || justFixed) out.push(ticketMessage(ticket));
+    if (ACTIVE.has(ticket.status) || justFixed) out.push(org ? orgTicketMessage(ticket) : ticketMessage(ticket));
   }
   return out;
 }

@@ -107,10 +107,15 @@ const vote = (clientId, type, on = true) =>
   assert.deepEqual(res.body, { count: 3, ticketStatus: 'open' });
   assert.equal(tickets.openTickets('151'), 1, 'one ticket per room+type');
 
-  const opened = sent.filter((x) => x.msg.t === 'ticket' && x.msg.type === 'cant_hear');
+  // The keyed console gets the full ticket; the unkeyed /org page a copy without the techs' names.
+  const opened = sent.filter((x) => x.msg.t === 'ticket' && x.msg.type === 'cant_hear' && x.roles.includes('tech'));
   assert.equal(opened.length, 1);
   const ticket = opened[0].msg;
-  assert.deepEqual(opened[0].roles, ['tech', 'org']);
+  assert.deepEqual(opened[0].roles, ['tech']);
+  const forOrg = sent.filter((x) => x.msg.t === 'ticket' && x.msg.type === 'cant_hear' && x.roles.includes('org'));
+  assert.equal(forOrg.length, 1);
+  assert.deepEqual(forOrg[0].roles, ['org']);
+  assert.ok(!('claimedBy' in forOrg[0].msg) && !('fixedBy' in forOrg[0].msg), '/org never gets tech names');
   assert.equal(ticket.status, 'open');
   assert.equal(ticket.people, 3);
   assert.equal(ticket.cause, 'Mic is silent or muted');
@@ -122,14 +127,14 @@ const vote = (clientId, type, on = true) =>
   res = await vote('a', 'cant_hear');
   assert.equal(res.body.count, 3, 'repeat tap does not inflate distinct count');
   assert.equal(
-    sent.filter((x) => x.msg.t === 'ticket' && x.msg.type === 'cant_hear').length,
+    sent.filter((x) => x.roles.includes('tech') && x.msg.t === 'ticket' && x.msg.type === 'cant_hear').length,
     1,
     'repeat tap does not duplicate ticket'
   );
 
   res = await vote('b', 'cant_hear', false);
   assert.deepEqual(res.body, { count: 2, ticketStatus: 'open' });
-  const updates = sent.filter((x) => x.msg.t === 'ticket' && x.msg.type === 'cant_hear');
+  const updates = sent.filter((x) => x.roles.includes('tech') && x.msg.t === 'ticket' && x.msg.type === 'cant_hear');
   assert.equal(updates[updates.length - 1].msg.people, 2, 'ticket people follows active votes');
 
   res = await call('POST', `/api/tickets/${ticket.id}/claim`, {
@@ -172,7 +177,7 @@ const vote = (clientId, type, on = true) =>
     { count: 3, ticketStatus: 'reopened' },
     'threshold again within 2 min reopens'
   );
-  const reopened = sent.filter((x) => x.msg.t === 'ticket' && x.msg.type === 'cant_hear');
+  const reopened = sent.filter((x) => x.roles.includes('tech') && x.msg.t === 'ticket' && x.msg.type === 'cant_hear');
   assert.equal(reopened[reopened.length - 1].msg.id, ticket.id, 'reopen keeps ticket id');
   assert.equal(tickets.openTickets('151'), 1);
 
