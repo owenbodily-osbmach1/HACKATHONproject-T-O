@@ -226,6 +226,9 @@ button:disabled { opacity: .4; cursor: default; }
 .vote.on .icon-on { display: block; }
 .vote.on .icon-off { display: none; }
 .vote.on .vote-sub { color: var(--text); }
+.vote[aria-disabled="true"] { opacity: .55; }
+.vote-gate { margin: 8px 0 0; font-size: 14px; font-weight: 600; color: var(--muted); }
+.vote-gate a { color: var(--blue); font-weight: 700; }
 .vote:active { transform: scale(.98); }
 
 .hint { display: flex; align-items: center; gap: 10px; background: var(--raised); border-radius: 12px; padding: 10px 10px 10px 14px; font-size: 15px; font-weight: 600; }

@@ -11,6 +11,7 @@ if (new URLSearchParams(location.search).has('mock')) await import('/dev/mock.js
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const key = params.get('key') || '';
+const explicitRooms = params.has('rooms') || params.has('room');
 const roomList = (params.get('rooms') || params.get('room') || '151').split(',').map((r) => r.trim()).filter(Boolean);
 
 const TYPE_WORD = { cant_hear: 'SPEAK UP', cant_see: "CAN'T SEE SLIDES", room_full: 'ROOM FULL' };
@@ -415,16 +416,29 @@ async function loadRooms() {
   try {
     const list = await (await fetch('/api/rooms')).json();
     for (const r of list) {
-      const st = rooms.get(String(r.room));
-      if (st) st.talk = r.talkId ? { talkId: r.talkId, title: r.title, speaker: r.speaker } : null;
+      const id = String(r.room);
+      let st = rooms.get(id);
+      if (!st) {
+        if (explicitRooms) continue;
+        // No ?rooms= in the URL: follow every room the server knows about, including the demo room.
+        st = { status: null, captions: [], settings: { captions: true, listen: true, slides: true }, groups: [], conn: 'connecting' };
+        rooms.set(id, st);
+        subscribe(id);
+      }
+      if (r.talkId) {
+        if (!st.talk || st.talk.talkId !== r.talkId) st.talk = { talkId: r.talkId, title: r.title };
+      } else if (!st.talk || st.talk.status !== 'ended') {
+        st.talk = null;
+      }
     }
+    render();
     renderDrawer();
   } catch { /* retry on next status */ }
 }
 setInterval(loadRooms, 15000);
 
 // ---------- one socket per room ----------
-for (const room of roomList) {
+function subscribe(room) {
   const st = rooms.get(room);
   connectRoom({
     room,
@@ -455,11 +469,17 @@ for (const room of roomList) {
         case 'room_settings': st.settings = { ...st.settings, ...m }; if (room === selected) renderDrawer(); break;
         case 'question_groups': st.groups = m.groups || []; if (room === selected) renderQuestions(); break;
         case 'question_update': onQuestionUpdate(m); break;
+        case 'talk':
+          st.talk = m.talkId ? { talkId: m.talkId, title: m.title, speaker: m.speaker, status: m.status } : null;
+          if (room === selected) renderDrawer();
+          break;
         default: break;
       }
     },
   });
 }
+
+for (const room of roomList) subscribe(room);
 
 render();
 renderDrawer();
