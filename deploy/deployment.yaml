@@ -35,13 +35,17 @@ spec:
             - secretRef:
                 name: app-credentials
                 optional: true
+          # Right-sized from Radar + a load test (Nov 9): 500 phones on one pod peaked at ~52m CPU / 41 MiB
+          # (Radar showed 11m / 35 MiB idle vs 100m / 128 MiB requested). Memory limit keeps room for the
+          # 128 MB slide-frame cache. Memory request covers that cache (~41 MiB + 128 MB) so the
+          # pod is not first in line for eviction under node memory pressure (Gitar).
           resources:
             requests:
-              cpu: 100m
-              memory: 128Mi
+              cpu: 50m
+              memory: 192Mi
             limits:
-              cpu: "1"
-              memory: 512Mi
+              cpu: 500m
+              memory: 256Mi
           # Radar AI investigation (12:12 PM): the only Warning event was a readiness failure in the
           # first second, before the server logged it was listening. The startup probe gives boot a grace window.
           startupProbe:

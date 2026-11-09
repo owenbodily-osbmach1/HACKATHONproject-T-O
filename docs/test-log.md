@@ -112,3 +112,12 @@ All passed:
 2. Double-click `tools\start-pulse.bat`. It asks before installing `cloudflared`, starts the tunnel and the server with fresh keys, and opens the mic page and `/tech` in Chrome. It also prints the links and keys and saves them to `%TEMP%\pulse-test-urls.txt`; the transcript in `start-pulse.log` contains the keys too. The alert limit is 1 vote for testing.
 3. On the mic page press **Start captions**, then scan the QR code with a phone on mobile data.
 4. Press Enter in the script window to stop the server and the tunnel. Anyone with the link can reach the server until you do.
+
+## 2026-11-09 12:30–12:40 PM: load test + right-sizing (Ty)
+
+**Setup:** app pod on our kind cluster (image from `main`), `scripts/simulate.js --no-scenario` streaming captions at 2 lines/s into room 151, `scripts/loadtest.js` opening N attendee sockets for 30 s.
+
+- **Direct to the pod** (kubectl port-forward, no Cloudflare): **500 / 500 sockets connected**, about **51 captions per socket** in 30 s. `kubectl top` during the run: **~52m CPU / 41 MiB** at peak (30m / 41 MiB mid-run).
+- **Through the Cloudflare quick tunnel:** about **230 sockets** connected before Cloudflare answered **429** for further new WebSockets from the same client IP. That is the tunnel's per-client limit, not the pod; a real ingress or named tunnel removes it.
+- **Idle, per Radar (after installing metrics-server):** ~11m CPU / 35 MiB against 100m / 128 MiB requested.
+- **Decision (#24):** requests 50m CPU / 192Mi memory (the memory request covers the 128 MB slide-frame cache from #23), limits 500m / 256Mi.
