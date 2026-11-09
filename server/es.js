@@ -58,7 +58,7 @@ function index(name, doc) {
 async function search(name, body) {
   if (!enabled) return [];
   try {
-    const out = await raw('POST', `/${name}/_search`, body);
+    const out = await raw('POST', `/${name}/_search`, body, 8000);
     return ((out && out.hits && out.hits.hits) || []).map((h) => h._source).filter(Boolean);
   } catch (err) {
     warn('search', err, name);

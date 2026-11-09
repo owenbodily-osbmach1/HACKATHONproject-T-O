@@ -74,9 +74,9 @@ function groupList(room) {
 function memoryQuestions(talkId) {
   const out = [];
   for (const q of questions.values()) {
-    if (q.talkId !== talkId) continue;
+    if (q.talkId !== talkId || q.hidden) continue; // hidden by the tech: not in the public report
     out.push({
-      qid: q.qid, talkId: q.talkId, room: q.room, text: q.text, clientId: q.clientId,
+      qid: q.qid, talkId: q.talkId, room: q.room, text: q.text,
       ts: q.ts, groupId: q.groupId, answered: q.answered, answeredSeq: q.answeredSeq,
     });
   }
@@ -216,6 +216,9 @@ function register(app, ctx) {
 
     state.room(room);
     const live = state.liveTalk(room);
+    // A question can only attach to a talk in this room (security audit: cross-room injection).
+    const asked = body.talkId ? state.talks.get(String(body.talkId)) : null;
+    if (body.talkId && (!asked || String(asked.room) !== room)) return res.status(400).json({ error: 'talk is not in this room' });
     const talkId = String(body.talkId || (live && live.talkId) || '');
     const w = words(text);
     let group = findGroup(room, talkId, w);
@@ -350,6 +353,7 @@ function register(app, ctx) {
       otel.span('pulse.report.questions', esAttrs(talkId), async (active) => {
         const rows = await es.search('pulse-questions', {
           size: 1000, sort: [{ ts: 'asc' }],
+          _source: { excludes: ['clientId'] }, // the public report never names a device (security audit)
           query: { term: { talkId } },
         });
         countHits(active, rows.length);
@@ -357,7 +361,7 @@ function register(app, ctx) {
       }),
     ]);
     const signalsByMinute = otel.span('pulse.report.signals_by_minute', talkAttrs(talkId), () => countSignals(signals));
-    const merged = otel.span('pulse.report.questions_merge', talkAttrs(talkId), () => asked.map((q) => {
+    const merged = otel.span('pulse.report.questions_merge', talkAttrs(talkId), () => asked.filter((q) => !(questions.get(q.qid) || {}).hidden).map((q) => {
       const mem = questions.get(q.qid);
       return mem ? Object.assign({}, q, { answered: mem.answered, answeredSeq: mem.answeredSeq }) : q;
     }));
