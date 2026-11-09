@@ -7,6 +7,7 @@
 //   listeners(room)                     number of open attendee sockets in room
 //   on(t, fn)                           subscribe to inbound messages: fn(msg, {room, role, clientId})
 const { WebSocketServer } = require('ws');
+const otel = require('./otel');
 
 const ROLES = new Set(['attendee', 'viewer', 'mic', 'present', 'tech', 'org']);
 const wss = new WebSocketServer({ noServer: true });
@@ -16,6 +17,7 @@ const heardRooms = new Map(); // attendee clientId -> Set(room) joined while con
 
 let ctx = null;
 let pingTimer = null;
+let captionFanout = null;
 
 function closeQuietly(ws, code, reason) {
   try { ws.close(code, reason); } catch {}
@@ -93,7 +95,18 @@ function onCaption(rec, msg) {
   if (room.captions.length > 50) room.captions.splice(0, room.captions.length - 50);
   room.lastCaptionTs = Date.now();
 
-  send(rec.room, { t: 'caption', talkId, seq, text, ts }, ['attendee', 'viewer', 'tech']);
+  let roomListeners = 0;
+  const roomSet = rooms.get(rec.room);
+  if (roomSet) for (const other of roomSet) if (other.role === 'attendee') roomListeners += 1;
+  const started = captionFanout ? performance.now() : 0;
+  otel.span(
+    'pulse.caption.relay',
+    { 'pulse.room': rec.room, 'pulse.listeners': roomListeners },
+    () => send(rec.room, { t: 'caption', talkId, seq, text, ts }, ['attendee', 'viewer', 'tech'])
+  );
+  if (captionFanout) {
+    captionFanout.record(performance.now() - started, { 'pulse.room': rec.room });
+  }
   esIndex('pulse-captions', {
     talkId, room: rec.room, seq, text, ts, minute: talkMinute(talkId, ts),
   });
@@ -191,6 +204,11 @@ module.exports = {
   attach(server, c) {
     ctx = c;
     ctx.state.heardRooms = heardRooms;
+    captionFanout = otel.histogram(
+      'pulse.caption.fanout.duration',
+      'Milliseconds to send one caption to every socket in the room',
+      'ms'
+    );
     wss.on('error', () => {});
     if (pingTimer) return;
     pingTimer = setInterval(() => {
