@@ -130,6 +130,17 @@ async function main() {
     assert.equal(cards.status, 200, `/cards must return 200, got ${cards.status}`);
     assert.ok(cards.text.includes('/vendor/qrcode.js'), '/cards must load the vendored QR library');
 
+    // Narrow phones: /tech and /mic must not scroll horizontally at 320 px. No browser
+    // dependency here, so assert the served CSS carries the guards that prevent it.
+    const css = await http(base, 'GET', '/styles.css');
+    assert.equal(css.status, 200, `/styles.css must return 200, got ${css.status}`);
+    assert.ok(
+      /\.podium-top > \*[^{]*\{[^}]*min-width: 0/.test(css.text) &&
+        /\.b-room[^{]*\{[^}]*overflow-wrap: anywhere/.test(css.text) &&
+        /@media \(max-width: 360px\)[\s\S]*?\.tech-main \{ padding-left: 10px; padding-right: 10px; \}/.test(css.text),
+      '/styles.css must keep /tech and /mic cards inside a 320 px viewport'
+    );
+
     // Prometheus metrics.
     const metrics = await http(base, 'GET', '/metrics');
     assert.equal(metrics.status, 200, `/metrics must return 200, got ${metrics.status}`);

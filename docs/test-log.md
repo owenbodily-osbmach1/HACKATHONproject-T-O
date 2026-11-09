@@ -313,3 +313,9 @@ All passed:
 ## 2:45 PM: listen-in relay latency (public URL)
 
 100 frames of 3200 bytes (100 ms of 16 kHz PCM) sent on `/ws/audio-in` in room `lat1`, received on `/ws/audio-out` through the Cloudflare tunnel: 100/100 delivered, median 56 ms, p95 100 ms, max 338 ms. This is relay time only; add the 100 ms frame and the phone's playback buffer for mic-to-ear.
+## 2026-11-09: submission audit fixes
+
+- License: `LICENSE` is the standard Apache-2.0 text (copyright 2026 the Pulse team); `package.json` says `"license": "Apache-2.0"`.
+- 320 px: headless Chrome (Playwright, system Chrome) at 320×640 measured `document.documentElement.scrollWidth` 320 for `/tech?key=tk` and `/mic/<room>?key=sk`, including a 32-character room id, unbroken title/speaker tokens and a long `base=` URL. `/mic` measured 606 before the CSS guard.
+- Docs: README and `docs/DEMO.md` now say each ticket lifecycle step is its own span tagged with the ticket id, not one trace.
+- `.env.example` now lists `DASH0_RUM_TOKEN` and `DASH0_RUM_ENDPOINT`.
