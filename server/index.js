@@ -14,6 +14,7 @@ const audio = require('./audio');
 const tickets = require('./tickets');
 const talks = require('./talks');
 const questions = require('./questions');
+const slides = require('./slides');
 
 otel.start();
 
@@ -39,13 +40,18 @@ app.get('/org', page('org.html'));
 app.get('/tech', auth.page('TECH_KEY'), page('tech.html'));
 app.get('/mic/:room', auth.page('SPEAKER_KEY'), page('mic.html'));
 app.get('/present/:room', auth.page('SPEAKER_KEY'), page('present.html'));
+app.get('/relay/:room', auth.page('SPEAKER_KEY'), page('relay.html'));
 // Keyed pages are reachable only through their routes above, never as static files.
-const keyedFiles = /^\/(tech|mic|present)(\.html)?$/i;
-app.use((req, res, next) => (keyedFiles.test(req.path) ? res.status(404).end() : next()));
+const keyedFiles = /^\/(tech|mic|present|relay)(\.html)?$/i;
+app.use((req, res, next) => {
+  let p;
+  try { p = path.posix.normalize(decodeURIComponent(req.path)).replace(/\/+/g, '/'); } catch { return res.status(400).end(); }
+  return keyedFiles.test(p) ? res.status(404).end() : next();
+});
 app.use(express.static(pub, { extensions: ['html'], index: false }));
 
 const ctx = { config, state, auth, es, hub, otel };
-for (const m of [tickets, talks, questions]) m.register(app, ctx);
+for (const m of [tickets, talks, questions, slides]) m.register(app, ctx);
 
 const server = http.createServer(app);
 hub.attach(server, ctx);

@@ -139,11 +139,12 @@ function showSlide(n) {
   const img = $('slideImg');
   if (!s) return;
   if (img.getAttribute('src') !== s.url) img.src = s.url;
-  img.alt = s.alt || `Slide ${s.n} of ${s.total}`;
+  img.alt = s.alt || (s.total ? `Slide ${s.n} of ${s.total}` : `Slide ${s.n}`);
   img.hidden = false;
   $('slideEmpty').hidden = true;
   const live = n === state.liveN;
-  $('slideLabel').textContent = `Slide ${s.n} / ${s.total}` + (live ? ' · Following live' : '');
+  // Captured decks (slide relay) don't know the total: show "Slide 7" instead of "7 / 0".
+  $('slideLabel').textContent = `Slide ${s.n}${s.total ? ` / ${s.total}` : ''}` + (live ? ' · Following live' : '');
   $('slideLive').hidden = live;
   $('slidePrev').disabled = !state.slides[n - 2];
   $('slideNext').disabled = !state.slides[n] || n >= state.liveN;
@@ -189,7 +190,7 @@ function openZoom() {
   const s = state.slides[state.viewN - 1];
   if (!s) return;
   $('zoomImg').src = s.url;
-  $('zoomImg').alt = s.alt || `Slide ${s.n} of ${s.total}`;
+  $('zoomImg').alt = s.alt || (s.total ? `Slide ${s.n} of ${s.total}` : `Slide ${s.n}`);
   $('zoom').hidden = false;
 }
 $('slideImg').onclick = openZoom;

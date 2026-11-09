@@ -104,7 +104,7 @@ function minuteFor(talkId, ts) {
   const talks = ctx && ctx.state && ctx.state.talks;
   if (!talks || typeof talks.get !== 'function') return 0;
   const talk = talks.get(String(talkId));
-  const start = talk && Date.parse(talk.start);
+  const start = talk && (typeof talk.start === 'number' ? talk.start : Date.parse(talk.start));
   return Number.isFinite(start) ? Math.max(0, Math.floor((ts - start) / 60000)) : 0;
 }
 
@@ -196,7 +196,8 @@ function createTicket(room, talkId, type, people, now) {
 // Creation/reopening only happens when a vote was added.
 function refreshTicket(room, talkId, type, allowCreate) {
   const now = Date.now();
-  const people = countFor(room, null, type, now, windowMs());
+  const people = countFor(room, null, type, now, VOTE_TTL_MS); // everyone with an active vote
+  const recent = countFor(room, null, type, now, windowMs()); // threshold uses the alert window
   const active = activeTicket(room, type);
   if (active) {
     if (active.people !== people) {
@@ -205,7 +206,7 @@ function refreshTicket(room, talkId, type, allowCreate) {
     }
     return active;
   }
-  if (!allowCreate || people < alertThreshold) return null;
+  if (!allowCreate || recent < alertThreshold) return null;
 
   const prior = recentFixed(room, type, now);
   if (prior) {
@@ -231,7 +232,11 @@ function clearVotes(room, type) {
 }
 
 function configBody() {
-  return { alertThreshold, nudgeThreshold: Math.max(1, alertThreshold - 1) };
+  return {
+    alertThreshold,
+    nudgeThreshold: Math.max(1, alertThreshold - 1),
+    publicBaseUrl: require('./config').PUBLIC_BASE_URL,
+  };
 }
 
 function register(app, context) {
@@ -338,8 +343,7 @@ function register(app, context) {
     pruneVotes(now);
     for (const room of ctx.state.rooms.values()) {
       const id = room && room.room != null ? String(room.room) : String(room);
-      const listeners = ctx.hub.listeners(id);
-      if (!listeners) continue;
+      const listeners = ctx.hub.listeners(id); // sent even at 0 so the mic page can show "0 phones"
       const last = room && Number(room.lastCaptionTs);
       const gap = Number.isFinite(last) && last > 0 ? Math.max(0, Math.floor((now - last) / 1000)) : null;
       ctx.hub.send(
@@ -352,15 +356,24 @@ function register(app, context) {
           captionGapSec: gap,
           openTickets: openTickets(id),
         },
-        ['tech', 'org']
+        ['tech', 'org', 'mic']
       );
     }
   }, 2000);
   if (ticker.unref) ticker.unref();
 }
 
+// Snapshot for a tech/org socket that joins mid-talk.
+function activeTicketMessages(room) {
+  const id = String(room);
+  const out = [];
+  for (const ticket of tickets.values()) if (ticket.room === id && ACTIVE.has(ticket.status)) out.push(ticketMessage(ticket));
+  return out;
+}
+
 module.exports = {
   register,
   openTickets,
+  activeTicketMessages,
   _test: { countDistinct, VOTE_TTL_MS, REOPEN_MS },
 };

@@ -8,7 +8,7 @@
 //   on(t, fn)                           subscribe to inbound messages: fn(msg, {room, role, clientId})
 const { WebSocketServer } = require('ws');
 
-const ROLES = new Set(['attendee', 'mic', 'present', 'tech', 'org']);
+const ROLES = new Set(['attendee', 'viewer', 'mic', 'present', 'tech', 'org']);
 const wss = new WebSocketServer({ noServer: true });
 const rooms = new Map(); // room -> Set<{ws, role, clientId, alive}>
 const handlers = new Map(); // t -> Set<fn>
@@ -88,10 +88,11 @@ function onCaption(rec, msg) {
 
   const line = { talkId, seq, text, ts };
   room.captions.push(line);
+  ctx.state.addLine(line);
   if (room.captions.length > 50) room.captions.splice(0, room.captions.length - 50);
   room.lastCaptionTs = Date.now();
 
-  send(rec.room, { t: 'caption', talkId, seq, text, ts }, ['attendee', 'tech']);
+  send(rec.room, { t: 'caption', talkId, seq, text, ts }, ['attendee', 'viewer', 'tech']);
   esIndex('pulse-captions', {
     talkId, room: rec.room, seq, text, ts, minute: talkMinute(talkId, ts),
   });
@@ -113,7 +114,7 @@ function onSlide(rec, msg) {
     talkId,
     actor: rec.clientId || rec.role,
     action: 'slide',
-    detail: slide,
+    detail: JSON.stringify(slide), // mapped as text in pulse-actions
     ts: Date.now(),
   });
 }
@@ -138,7 +139,7 @@ function inbound(rec, msg) {
     if (rec.role !== 'mic') return;
     if (msg.t === 'caption') return onCaption(rec, msg);
     const text = typeof msg.text === 'string' ? msg.text : '';
-    if (text.trim()) send(rec.room, { t: 'caption_interim', text }, ['attendee']);
+    if (text.trim()) send(rec.room, { t: 'caption_interim', text }, ['attendee', 'viewer']);
     return;
   }
 
@@ -157,11 +158,16 @@ function join(ws, room, role, clientId) {
   set.add(rec);
 
   const state = ctx.state.room(room);
-  if (role === 'attendee' || role === 'tech') {
+  if (role === 'attendee' || role === 'viewer' || role === 'tech') {
     sendJson(ws, { t: 'caption_backlog', lines: state.captions.slice(-50) });
   }
   sendJson(ws, { t: 'room_settings', ...state.settings });
   if (state.slide) sendJson(ws, { t: 'slide', ...state.slide });
+  if (role === 'tech' || role === 'org') {
+    // Lazy require: tickets/questions require the hub too.
+    for (const m of require('./tickets').activeTicketMessages(room)) sendJson(ws, m);
+    sendJson(ws, { t: 'question_groups', groups: require('./questions').groupList(room) });
+  }
 
   ws.on('pong', () => { rec.alive = true; });
   ws.on('message', (data, isBinary) => {

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d10">
+  <title>Pulse · Organizer overview</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/org.css">
+</head>
+<body class="org">
+  <div class="org-app">
+    <header class="org-top">
+      <div>
+        <p class="org-kicker">Pulse · Organizer</p>
+        <h1>Live rooms overview</h1>
+      </div>
+      <p class="conn org-conn" id="conn" data-status="connecting" role="status">
+        <span class="dot" aria-hidden="true"></span><span class="conn-word">Connecting…</span>
+      </p>
+    </header>
+
+    <section class="org-stats" aria-label="Live totals">
+      <div class="stat">
+        <span class="stat-num" id="statRooms">0</span>
+        <span class="stat-label">Rooms live</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="statListeners">0</span>
+        <span class="stat-label">Total listeners</span>
+      </div>
+      <div class="stat" id="statOpen">
+        <span class="stat-num" id="statTickets">0</span>
+        <span class="stat-label">Open tickets</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="statMedian">—</span>
+        <span class="stat-label">Median time to fix</span>
+      </div>
+    </section>
+
+    <div class="org-layout">
+      <section class="org-rooms" aria-labelledby="roomsHeading">
+        <h2 class="org-h2" id="roomsHeading">Rooms</h2>
+        <p class="org-empty" id="roomsEmpty" role="status">Waiting for rooms…</p>
+        <div class="room-grid" id="roomGrid"></div>
+      </section>
+
+      <aside class="org-feed" aria-labelledby="feedHeading">
+        <h2 class="org-h2" id="feedHeading">Ticket activity</h2>
+        <p class="org-empty" id="feedEmpty" role="status">No ticket activity yet.</p>
+        <ol class="feed-list" id="feedList" aria-label="Ticket activity, newest first" aria-live="polite" aria-relevant="additions" hidden></ol>
+      </aside>
+    </div>
+
+    <p class="org-foot" id="updated">Loading rooms…</p>
+  </div>
+
+  <script type="module" src="/org.js"></script>
+</body>
+</html>
