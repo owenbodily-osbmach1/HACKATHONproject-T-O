@@ -169,3 +169,12 @@ All passed:
 - `npm run check`: passed (`booths-check`, `find-check`, `relay-check`, `tickets-check`, plus JavaScript syntax checks).
 - `npm run smoke`: passed.
 - Focused mock-Elasticsearch check: verified stable-id question indexing, `hidden` updates, and hidden-question exclusion from the report after re-registering the question routes to simulate a restart. No live Elasticsearch cluster was used.
+
+## 2026-11-09 1:55 PM: Gitar fixes for relay, Go live and the phone (Owen + Claude, headless)
+
+**Setup:** branch `ui/demo-ready` (main + #29, #31, #34, #35 + fixes), local server on :8098, Playwright Chromium with a fake mic, fake speech recognition and a canvas "screen" (screen 1920×1080).
+
+- **Full-screen gate is now exact size:** a 1920×1080 frame is sent; a 1600×900 frame (same 16:9 shape, like a maximized window) is **not** sent: "Waiting for Slideshow". Before, the aspect-only check would have sent it.
+- **Go live after End talk starts a new talk:** talk `9ce0f0af` ended, Go live again created `d3fd738a`. Phones show live again.
+- **Caption crawl with a 30-word caption:** split into lines of up to 8 words. Newest line fully inside the box and on screen at 320×568, 360×640 and 390×844, at default, 28 px and 36 px text. The box is capped at 32vh.
+- `npm run check`: all checks ok.
