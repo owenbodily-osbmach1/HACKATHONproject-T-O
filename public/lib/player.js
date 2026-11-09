@@ -17,6 +17,7 @@ export function createPlayer({ room, onLevel, onState }) {
   let retryTimer = null;
 
   function start() {
+    clearTimeout(retryTimer);
     // iPhone: without this, Web Audio is silent when the ringer switch is off (iOS 17+).
     try {
       if (navigator.audioSession) navigator.audioSession.type = 'playback';
@@ -41,12 +42,14 @@ export function createPlayer({ room, onLevel, onState }) {
     if (stopped) return;
     onState?.('connecting');
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(`${proto}//${location.host}/ws/audio-out?room=${encodeURIComponent(room)}`);
-    ws.binaryType = 'arraybuffer';
-    ws.onopen = () => { retry = 0; onState?.('playing'); };
-    ws.onmessage = (ev) => { if (ev.data instanceof ArrayBuffer) playFrame(ev.data); };
-    ws.onclose = () => {
-      if (stopped) return;
+    const sock = new WebSocket(`${proto}//${location.host}/ws/audio-out?room=${encodeURIComponent(room)}`);
+    ws = sock;
+    sock.binaryType = 'arraybuffer';
+    // Every handler ignores events from a socket that has been replaced (stop → start quickly).
+    sock.onopen = () => { if (ws !== sock) return; retry = 0; onState?.('playing'); };
+    sock.onmessage = (ev) => { if (ws === sock && ev.data instanceof ArrayBuffer) playFrame(ev.data); };
+    sock.onclose = () => {
+      if (stopped || ws !== sock) return;
       onState?.('reconnecting');
       const delay = [1000, 2000, 4000, 8000, 10000][Math.min(retry++, 4)];
       retryTimer = setTimeout(openSocket, delay);
