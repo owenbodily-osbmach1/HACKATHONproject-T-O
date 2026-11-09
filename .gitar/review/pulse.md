@@ -12,7 +12,8 @@ In addition to standard code review, check the following and flag any violation 
 - `getUserMedia` called anywhere outside `public/mic.html` / its scripts (`captions.js`, `capture.js`).
 - Any page other than `/mic/:room` served without `Permissions-Policy: microphone=(), camera=()`.
 - The server accepting binary audio on any socket other than `/ws/audio-in` with a valid `SPEAKER_KEY`, or reading anything a client sends on `/ws/audio-out`.
-- `/mic`, `/present` or admin routes reachable without the right key (`SPEAKER_KEY` / `TECH_KEY`).
+- Any route or page listed in the `CONTRACT.md` Auth table reachable without its key, or a key read from anywhere other than the `x-pulse-key` header (HTTP) / `key` query param (pages, WebSocket).
+- The server relaying `caption`, `caption_interim` or `slide` from a socket that isn't a keyed `mic`/`present` socket.
 
 ## Voting correctness
 - Counts must be the number of distinct `clientId`s with an active vote, never the number of taps.
