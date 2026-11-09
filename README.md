@@ -79,11 +79,11 @@ GitOps: a GitHub Action builds a multi-arch image to GHCR, bumps `deploy/kustomi
 
 **Where:** Review instructions in `.gitar/review/pulse.md`; rules in `.gitar/rules/`. Every change lands as a PR.
 
-**Evidence:** Real catches today include a malformed WebSocket upgrade URL that crashed the single pod; keyed pages served without a key through static files and through percent-encoded or `//` paths; and a deploy change that would have deleted the hackathon HTTPRoute. By 2:45 PM: 39 pull requests, 38 reviewed by Gitar (the 39th was a duplicate merged in 90 seconds), 78 inline findings (41 bugs, 17 edge cases, 7 security), first review in a median 1.9 minutes. Gitar auto-apply pushed 6 fix commits itself: `5adff59` (#26), `fdb6b34` (#27, restored a redesign our merge had overwritten), `d30dba5` (#30, venue-local schedule times), `250df99` and `2ab2b03` (#32, question moderation persisted across restarts), `b1ddc78` (#36, keyboard focus on the Better-now prompt). Gitar approval is the gate; whoever of us was free merged (6 PRs were merged by the other teammate).
+**Evidence:** Real catches today include a malformed WebSocket upgrade URL that crashed the single pod; keyed pages served without a key through static files and through percent-encoded or `//` paths; and a deploy change that would have deleted the hackathon HTTPRoute. By 4:30 PM: 48 merged pull requests, 47 of them reviewed by Gitar (the other was a duplicate merged in 90 seconds), 85 inline findings (46 bugs, 20 edge cases, 9 security), first review in a median of about 2 minutes. Gitar auto-apply pushed 6 fix commits itself: `5adff59` (#26), `fdb6b34` (#27, restored a redesign our merge had overwritten), `d30dba5` (#30, venue-local schedule times), `250df99` and `2ab2b03` (#32, question moderation persisted across restarts), `b1ddc78` (#36, keyboard focus on the Better-now prompt). Gitar approval is the gate; whoever of us was free merged (6 PRs were merged by the other teammate).
 
 ## Architecture
 
-One Node 20 pod runs Express and `ws`. Phones connect by WebSocket; the podium laptop sends captions and 100 ms audio frames; the tech console receives tickets. Elasticsearch stores history, Dash0 receives telemetry, and Argo CD deploys the pod. Rooms, sockets and vote windows live in memory, so `replicas: 1`.
+One Node 22 pod runs Express and `ws`. Phones connect by WebSocket; the podium laptop sends captions and 100 ms audio frames; the tech console receives tickets. Elasticsearch stores history, Dash0 receives telemetry, and Argo CD deploys the pod. Rooms, sockets and vote windows live in memory, so `replicas: 1`.
 
 Details, message flows, failure modes and security: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
