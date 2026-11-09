@@ -138,6 +138,18 @@ async function findOrCreateTalk() {
   return (await res.json()).talkId;
 }
 
+async function serverLastSeq(talkId) {
+  try {
+    const r = await fetch(`/api/talks/${encodeURIComponent(talkId)}/transcript?format=json`);
+    if (!r.ok) return 0;
+    const j = await r.json();
+    const lines = Array.isArray(j) ? j : (j.lines || []);
+    return lines.reduce((m, l) => Math.max(m, Number(l.seq) || 0), 0);
+  } catch {
+    return 0;
+  }
+}
+
 async function start() {
   warn('');
   $('startBtn').disabled = true;
@@ -145,7 +157,9 @@ async function start() {
   store.set(`pulse.mic.speaker.${room}`, $('speaker').value);
   try {
     state.talkId = await findOrCreateTalk();
-    state.seq = store.get(`pulse.mic.seq.${state.talkId}`, 0);
+    // Resuming on another laptop/browser: continue after the highest seq the server already has,
+    // or phones would drop the new lines as duplicates.
+    state.seq = Math.max(store.get(`pulse.mic.seq.${state.talkId}`, 0), await serverLastSeq(state.talkId));
 
     state.stream = await openMic($('micSelect').value);
     refreshMics(); // labels appear once permission is granted
@@ -174,6 +188,7 @@ async function start() {
     await state.captioner.start();
 
     state.running = true;
+    renderSlidePos();
     $('startBtn').hidden = true;
     $('stopBtn').hidden = false;
     $('doneLine').hidden = true;
@@ -207,7 +222,8 @@ async function stopAndSave() {
   if (!state.talkId) return;
   try {
     const res = await api(`/api/talks/${encodeURIComponent(state.talkId)}/end`, { method: 'POST' });
-    const { reportUrl } = res.ok ? await res.json() : {};
+    if (!res.ok) throw new Error(res.status === 401 ? 'The server rejected the speaker key.' : `HTTP ${res.status}`);
+    const { reportUrl } = await res.json();
     const link = reportUrl || `/t/${state.talkId}`;
     $('doneLine').innerHTML = '';
     $('doneLine').append('Transcript saved: ');
@@ -217,10 +233,13 @@ async function stopAndSave() {
     a.target = '_blank';
     $('doneLine').append(a);
     $('doneLine').hidden = false;
-  } catch {
-    warn('Stopped, but ending the talk on the server failed. The transcript lines already sent are saved.');
+  } catch (e) {
+    // Keep talkId so pressing Start resumes the same talk.
+    warn(`Stopped, but ending the talk on the server failed (${e?.message || e}). Lines already sent are saved; the talk is still open.`);
+    return;
   }
   state.talkId = null;
+  renderSlidePos();
 }
 
 // A two-step stop instead of confirm(): browser dialogs can block the page.
@@ -282,12 +301,12 @@ async function loadDeck() {
 function renderSlidePos() {
   const total = state.slides.length;
   $('slidePos').textContent = total ? (state.slideN ? `Slide ${state.slideN} / ${total}` : `${total} slides ready`) : 'No deck loaded';
-  $('prevSlide').disabled = !total || state.slideN <= 1;
-  $('nextSlide').disabled = !total || state.slideN >= total;
+  $('prevSlide').disabled = !total || !state.talkId || state.slideN <= 1;
+  $('nextSlide').disabled = !total || !state.talkId || state.slideN >= total;
 }
 function goSlide(n) {
   const s = state.slides[n - 1];
-  if (!s) return;
+  if (!s || !state.talkId) return; // slides belong to a talk: press Start first
   state.slideN = n;
   sock.send({ t: 'slide', talkId: state.talkId, n, total: state.slides.length, url: s.url, alt: s.alt });
   renderSlidePos();
