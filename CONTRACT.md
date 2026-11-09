@@ -29,7 +29,7 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 | POST | `/api/feedback` | `{ticketId, clientId, better}` | `{better, stillBad}` |
 | POST | `/api/tickets/:id/claim` · `/fixed` · `/dismiss` | `{by}` | `{status}` |
 | GET | `/api/report/:talkId` | — | `{transcript[], signalsByMinute[], questions[]}` |
-| GET / POST | `/api/config` | `{alertThreshold}` | `{alertThreshold, nudgeThreshold}` |
+| GET / POST | `/api/config` | `{alertThreshold}` | `{alertThreshold, nudgeThreshold, publicBaseUrl}` (`publicBaseUrl` = `PUBLIC_BASE_URL`; the mic page builds the QR code from it) |
 | GET | `/healthz` | — | `ok` |
 
 - Vote `type`: `cant_hear` | `cant_see` (`room_full` is a stretch goal).
