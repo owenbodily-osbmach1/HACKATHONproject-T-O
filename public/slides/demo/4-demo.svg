@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-labelledby="slideTitle">
+  <title id="slideTitle">Live demo: watch the room respond</title>
+  <rect width="1600" height="900" fill="#0b0d10"/>
+  <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+    <circle cx="108" cy="88" r="9" fill="#4cc2ff"/>
+    <text x="132" y="96" font-size="22" font-weight="800" letter-spacing="7" fill="#f4f6f8">PULSE</text>
+
+    <text x="100" y="222" font-size="22" font-weight="800" letter-spacing="5" fill="#4cc2ff">LIVE DEMO</text>
+    <text x="100" y="316" font-size="72" font-weight="800" letter-spacing="-1" fill="#f4f6f8">Watch the room respond.</text>
+
+    <g>
+      <rect x="100" y="392" width="62" height="62" rx="14" fill="#151920" stroke="#2a313c" stroke-width="2"/>
+      <text x="131" y="433" text-anchor="middle" font-size="24" font-weight="800" fill="#4cc2ff">01</text>
+      <text x="192" y="420" font-size="30" font-weight="800" fill="#f4f6f8">Scan the title slide</text>
+      <text x="192" y="454" font-size="22" fill="#a7b0bc">Join the room as an attendee.</text>
+    </g>
+
+    <g>
+      <rect x="100" y="512" width="62" height="62" rx="14" fill="#151920" stroke="#2a313c" stroke-width="2"/>
+      <text x="131" y="553" text-anchor="middle" font-size="24" font-weight="800" fill="#4cc2ff">02</text>
+      <text x="192" y="540" font-size="30" font-weight="800" fill="#f4f6f8">Speak into the mic</text>
+      <text x="192" y="574" font-size="22" fill="#a7b0bc">Captions appear on every phone.</text>
+    </g>
+
+    <g>
+      <rect x="100" y="632" width="62" height="62" rx="14" fill="#151920" stroke="#2a313c" stroke-width="2"/>
+      <text x="131" y="673" text-anchor="middle" font-size="24" font-weight="800" fill="#4cc2ff">03</text>
+      <text x="192" y="660" font-size="30" font-weight="800" fill="#f4f6f8">Tap “Can't hear”</text>
+      <text x="192" y="694" font-size="22" fill="#a7b0bc">A ticket opens on the technician console.</text>
+    </g>
+
+    <g>
+      <rect x="960" y="392" width="540" height="352" rx="20" fill="#151920" stroke="#2a313c" stroke-width="2"/>
+      <circle cx="1000" cy="430" r="6" fill="#3ddc84"/>
+      <text x="1016" y="437" font-size="18" font-weight="800" letter-spacing="3" fill="#a7b0bc">TECH CONSOLE</text>
+      <line x1="960" y1="462" x2="1500" y2="462" stroke="#2a313c" stroke-width="2"/>
+
+      <rect x="1000" y="494" width="460" height="196" rx="14" fill="#1d232c" stroke="#ff5a52" stroke-width="2"/>
+      <text x="1028" y="536" font-size="26" font-weight="800" fill="#f4f6f8">Can't hear</text>
+      <rect x="1348" y="510" width="86" height="38" rx="19" fill="#3a1513" stroke="#ff5a52" stroke-width="2"/>
+      <text x="1391" y="536" text-anchor="middle" font-size="17" font-weight="800" fill="#ff5a52">OPEN</text>
+      <text x="1028" y="578" font-size="21" fill="#a7b0bc">Room 151 · 12 s ago</text>
+      <text x="1028" y="614" font-size="28" font-weight="700" fill="#f4f6f8">3 people affected</text>
+      <g font-size="18" fill="#a7b0bc">
+        <text x="1028" y="654">Check the rear speakers</text>
+        <text x="1028" y="678">Confirm the mic is live</text>
+      </g>
+    </g>
+
+    <rect x="100" y="796" width="12" height="44" rx="6" fill="#3ddc84"/>
+    <text x="132" y="830" font-size="26" font-weight="700" fill="#f4f6f8">One vote is a signal. Three votes are a ticket.</text>
+
+    <text x="1500" y="866" text-anchor="end" font-size="20" fill="#6f7a88">04 / 06</text>
+  </g>
+</svg>
