@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-labelledby="slideTitle">
+  <title id="slideTitle">The problem: the back row is guessing</title>
+  <rect width="1600" height="900" fill="#0b0d10"/>
+  <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+    <circle cx="108" cy="88" r="9" fill="#4cc2ff"/>
+    <text x="132" y="96" font-size="22" font-weight="800" letter-spacing="7" fill="#f4f6f8">PULSE</text>
+
+    <text x="100" y="222" font-size="22" font-weight="800" letter-spacing="5" fill="#4cc2ff">THE PROBLEM</text>
+    <text x="100" y="316" font-size="72" font-weight="800" letter-spacing="-1" fill="#f4f6f8">The back row is guessing.</text>
+
+    <g>
+      <rect x="100" y="380" width="440" height="336" rx="20" fill="#151920" stroke="#2a313c" stroke-width="2"/>
+      <circle cx="164" cy="452" r="34" fill="#1d232c"/>
+      <g stroke="#ff5a52" stroke-width="4" stroke-linecap="round" fill="none">
+        <path d="M150 440 L164 452 L178 440"/>
+        <path d="M164 452 V468"/>
+        <path d="M148 430 C142 440 142 456 148 466"/>
+        <path d="M180 430 C186 440 186 456 180 466"/>
+        <path d="M142 424 C132 440 132 460 142 476"/>
+        <path d="M186 424 C196 440 196 460 186 476"/>
+      </g>
+      <text x="132" y="546" font-size="38" font-weight="800" fill="#f4f6f8">Can't hear</text>
+      <text x="132" y="596" font-size="23" fill="#a7b0bc">The PA works at the front and</text>
+      <text x="132" y="630" font-size="23" fill="#a7b0bc">disappears at the back. Nobody</text>
+      <text x="132" y="664" font-size="23" fill="#a7b0bc">knows how many people missed it.</text>
+    </g>
+
+    <g>
+      <rect x="580" y="380" width="440" height="336" rx="20" fill="#151920" stroke="#2a313c" stroke-width="2"/>
+      <circle cx="644" cy="452" r="34" fill="#1d232c"/>
+      <g stroke="#ffb547" stroke-width="4" stroke-linecap="round" fill="none">
+        <path d="M622 452 C632 434 656 434 666 452 C656 470 632 470 622 452 Z"/>
+        <circle cx="644" cy="452" r="7"/>
+        <path d="M622 476 L666 428"/>
+      </g>
+      <text x="612" y="546" font-size="38" font-weight="800" fill="#f4f6f8">Can't see</text>
+      <text x="612" y="596" font-size="23" fill="#a7b0bc">Slides on a distant screen. Small</text>
+      <text x="612" y="630" font-size="23" fill="#a7b0bc">text, glare and the wrong seat all</text>
+      <text x="612" y="664" font-size="23" fill="#a7b0bc">look the same from the back.</text>
+    </g>
+
+    <g>
+      <rect x="1060" y="380" width="440" height="336" rx="20" fill="#151920" stroke="#2a313c" stroke-width="2"/>
+      <circle cx="1124" cy="452" r="34" fill="#1d232c"/>
+      <g stroke="#ffb547" stroke-width="4" stroke-linecap="round" fill="none">
+        <path d="M1100 432 H1148 V464 L1136 456 H1100 Z"/>
+        <path d="M1112 444 H1136"/>
+        <path d="M1124 476 V486"/>
+        <path d="M1114 486 H1134"/>
+      </g>
+      <text x="1092" y="546" font-size="38" font-weight="800" fill="#f4f6f8">No signal</text>
+      <text x="1092" y="596" font-size="23" fill="#a7b0bc">Problems surface after the talk —</text>
+      <text x="1092" y="630" font-size="23" fill="#a7b0bc">if someone bothers to mention</text>
+      <text x="1092" y="664" font-size="23" fill="#a7b0bc">them at all.</text>
+    </g>
+
+    <rect x="100" y="792" width="12" height="52" rx="6" fill="#4cc2ff"/>
+    <text x="132" y="830" font-size="30" font-weight="700" fill="#f4f6f8">Pulse closes the loop while the talk is still happening.</text>
+
+    <text x="1500" y="866" text-anchor="end" font-size="20" fill="#6f7a88">02 / 06</text>
+  </g>
+</svg>
