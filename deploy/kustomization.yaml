@@ -7,8 +7,7 @@ namespace: team-pulse
 resources:
   - deployment.yaml
   - service.yaml
-  # httproute.yaml routes the hackathon gateway; our laptop cluster uses deploy/tunnel.yaml instead.
-  - tunnel.yaml
+  - httproute.yaml
 images:
   - name: app
     newName: ghcr.io/owenbodily-osbmach1/hackathonproject-t-o

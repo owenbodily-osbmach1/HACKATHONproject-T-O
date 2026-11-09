@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: https://github.com/owenbodily-osbmach1/HACKATHONproject-T-O.git
     targetRevision: main
-    path: deploy
+    path: deploy-byo
   destination:
     server: https://kubernetes.default.svc
     namespace: team-pulse

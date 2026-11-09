@@ -28,6 +28,8 @@ spec:
           env:
             - name: TEAM_NAME
               value: "pulse"
+            - name: PUBLIC_BASE_URL
+              value: "https://pulse.cnh.radarhq.io"
           # Keys live only in this Secret (created in Radar Cloud or by kubectl), never in git.
           envFrom:
             - secretRef:
