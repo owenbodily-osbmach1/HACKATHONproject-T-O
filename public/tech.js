@@ -169,6 +169,18 @@ function render() {
   document.title = (active.some((t) => RED.has(t.status)) ? '🔴 ' : '') + 'Pulse · AV tech';
 }
 
+// Every ticket lifecycle span carries pulse.ticket.id: this opens that ticket's spans in Dash0.
+function traceLink(t, cls) {
+  const a = document.createElement('a');
+  a.className = cls;
+  a.textContent = 'Dash0 trace';
+  a.target = '_blank';
+  a.rel = 'noopener';
+  a.href = 'https://app.dash0.com/goto/traces/explorer?from=now-1h&to=now&filter='
+    + encodeURIComponent(JSON.stringify([{ key: 'pulse.ticket.id', operator: 'is', value: t.id }]));
+  return a;
+}
+
 // Fixed in the last 3 minutes: who fixed it and what the phones answered to "Better now?".
 function renderFixed() {
   const recent = [...tickets.values()]
@@ -181,6 +193,7 @@ function renderFixed() {
     const answers = t.better || t.stillBad ? `Better ${t.better} · Still bad ${t.stillBad}` : 'Waiting for "Better now?" answers';
     li.textContent = `✓ Room ${t.room} ${TYPE_WORD[t.type] || t.type} fixed${t.fixedBy ? ` by ${t.fixedBy}` : ''} · ${answers}`;
     if (t.stillBad > t.better) li.className = 'worse';
+    li.append(' · ', traceLink(t, 'b-trace'));
     return li;
   }));
 }
@@ -309,7 +322,10 @@ function blockEl(t) {
   dismiss.className = 'ghost small';
   dismiss.textContent = 'Not AV';
   dismiss.onclick = (e) => { e.stopPropagation(); act(t, 'dismiss', dismiss); };
-  row.append(main, dismiss);
+  // Every lifecycle span carries pulse.ticket.id, so this opens the ticket's spans in Dash0.
+  const trace = traceLink(t, 'ghost small b-trace');
+  trace.onclick = (e) => e.stopPropagation();
+  row.append(main, dismiss, trace);
 
   // Keyboard users select a room from the card body. Actions stay outside this
   // button role so they keep their own tab stops.
