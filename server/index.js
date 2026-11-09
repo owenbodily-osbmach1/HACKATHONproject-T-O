@@ -33,6 +33,8 @@ app.use((req, res, next) => {
 });
 
 app.get('/healthz', (req, res) => res.type('text').send('ok'));
+// Browsers still probe /favicon.ico; point them at the SVG instead of 404ing.
+app.get('/favicon.ico', (req, res) => res.redirect(301, '/favicon.svg'));
 
 // Public browser config: ingest-only Dash0 token, never the OTLP auth secret.
 app.get('/rum-config.js', (req, res) => {
