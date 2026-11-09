@@ -42,8 +42,9 @@ app.get('/b/:booth', page('b.html'));
 app.get('/booth/:booth', auth.page('TECH_KEY'), page('booth.html'));
 app.get('/mic/:room', auth.page('SPEAKER_KEY'), page('mic.html'));
 app.get('/present/:room', auth.page('SPEAKER_KEY'), page('present.html'));
+app.get('/relay/:room', auth.page('SPEAKER_KEY'), page('relay.html'));
 // Keyed pages are reachable only through their routes above, never as static files.
-const keyedFiles = /^\/(tech|mic|present|booth)(\.html)?$/i;
+const keyedFiles = /^\/(tech|mic|present|booth|relay)(\.html)?$/i;
 app.use((req, res, next) => {
   let p;
   try { p = path.posix.normalize(decodeURIComponent(req.path)).replace(/\/+/g, '/'); } catch { return res.status(400).end(); }

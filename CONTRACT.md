@@ -30,9 +30,13 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 | POST | `/api/tickets/:id/claim` · `/fixed` · `/dismiss` | `{by}` | `{status}` |
 | GET | `/api/report/:talkId` | — | `{transcript[], signalsByMinute[], questions[]}` |
 | GET / POST | `/api/config` | `{alertThreshold}` | `{alertThreshold, nudgeThreshold, publicBaseUrl}` (`publicBaseUrl` = `PUBLIC_BASE_URL`; the mic page builds the QR code from it) |
+| POST | `/api/rooms/:room/slide-frame` | raw `image/jpeg` (≤ 1.5 MB), `SPEAKER_KEY` | `{n, url}` (slide relay; server then sends `slide` with `total: 0`) |
+| GET | `/slides/live/:talkId/:n.jpg` | — | the captured slide JPEG (`Cache-Control: public, max-age=31536000, immutable`) |
 | GET | `/healthz` | — | `ok` |
 
-- Vote `type`: `cant_hear` | `cant_see` (`room_full` is a stretch goal).
+- Slide relay uploads are kept in memory (last 150 frames per talk or per room while no talk is live); a second upload less than 1 s after the previous one for the same room returns `429`.
+- Vote `type`: `cant_hear` | `cant_see` (`room_full` is a stretch goal). With no live talk in the room, `PUT /api/votes` returns `409 {error:'no_live_talk'}`.
+- Questions sent before a talk starts are kept under the room and attached to the next talk when it starts.
 - Ticket `status`: `open` | `claimed` | `fixed` | `reopened` | `dismissed`.
 - One vote per `clientId` per type per talk. `on: false` takes the vote back. Votes expire after 10 min and clear when a ticket is marked fixed.
 - "Still bad": the phone sends `POST /api/feedback` with `better: false` **and then** `PUT /api/votes` with `on: true`. The feedback route only records the answer; it does not re-add the vote itself.
@@ -56,7 +60,7 @@ One mechanism everywhere. Keyed **pages** are opened with `?key=...` in the URL 
 | Key | HTTP routes and pages that require it |
 | --- | --- |
 | `TECH_KEY` | `POST /api/tickets/:id/claim` · `/fixed` · `/dismiss` · `POST /api/config` · `POST /api/rooms/:room/settings` · `POST /api/questions/:qid/*` · `POST /api/rooms/:room/broadcast` · `POST /api/clients/:clientId/mute` · page `/tech` |
-| `SPEAKER_KEY` | `POST /api/talks` · `POST /api/talks/:talkId/end` · pages `/mic/:room` and `/present/:room` |
+| `SPEAKER_KEY` | `POST /api/talks` · `POST /api/talks/:talkId/end` · `POST /api/rooms/:room/slide-frame` · pages `/mic/:room`, `/present/:room` and `/relay/:room` |
 | none | `GET /api/rooms`, `PUT /api/votes`, `POST /api/questions`, `POST /api/feedback`, `GET /api/report/:talkId`, `GET /api/config`, transcript routes, `/healthz`, pages `/r/:room`, `/t/:talkId`, `/room/:room`, `/org` |
 
 ## WebSocket: `/ws?room=151&role=attendee|viewer|mic|present|tech|org`
@@ -83,7 +87,8 @@ All messages are JSON with a `t` field. `role=mic` and `role=present` must also 
 | `question_reply` | server → | `qid, text` | the askers only |
 | `broadcast` | server → | `text` | attendee |
 | `feed` | server → | `kind, room, text, ts, refId` | tech |
-| `slide` | present/mic → server → room | `talkId, n, total, url, alt?` | all (and new phones on join) |
+| `slide` | present/mic → server → room (or server, after a relay upload) | `talkId, n, total, url, alt?` (`total: 0` = unknown, captured deck) | all (and new phones on join) |
+| `talk` | server → (on join and on every change) | `talkId, title, speaker, status: 'waiting'\|'live'\|'ended', startedAt, reportUrl?, next?: {title, start}` | all |
 | `ping` / `pong` | both, every 20 s | — | all |
 
 Audio uses its own binary-only sockets:
@@ -101,6 +106,7 @@ Audio uses its own binary-only sockets:
 
 - `GET /present/:room?key=SPEAKER_KEY` (connects as `role=present`), static images in `public/slides/<deck>/` plus `slides.json` = `[{n, url, alt}]`.
 - Slide changes are saved in `pulse-actions` with `action: 'slide'`.
+- Slide relay: `GET /relay/:room?key=SPEAKER_KEY` captures the slideshow screen and posts changed frames to `POST /api/rooms/:room/slide-frame`; the server stores the last 150 frames per talk (or under a room `preshow` bucket while no talk is live), serves them at `/slides/live/:talkId/:n.jpg`, and sends the normal `slide` message with `total: 0`. A frame upload less than 1 s after the previous one for the room returns `429`.
 
 ## Elasticsearch indices
 

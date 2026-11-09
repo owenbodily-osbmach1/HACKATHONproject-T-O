@@ -1,5 +1,6 @@
 // Talks + rooms + room settings + broadcast + mute routes (CONTRACT.md "HTTP routes").
 const crypto = require('crypto');
+const express = require('express');
 const tickets = require('./tickets');
 
 const muted = new Map(); // clientId -> mute-until epoch ms
@@ -42,6 +43,8 @@ module.exports = {
       room.title = title;
       room.speaker = speaker;
       state.talks.set(talkId, { talkId, room: roomId, title, speaker, start, end: null });
+      require('./questions').attachPending(roomId, talkId);
+      hub.send(roomId, state.talkMessage(roomId));
 
       esIndex(ctx, 'pulse-talks', {
         talkId,
@@ -59,7 +62,60 @@ module.exports = {
       const talk = state.talks.get(req.params.talkId);
       if (!talk) return res.status(404).json({ error: 'not found' });
       talk.end = Date.now();
+      hub.send(talk.room, state.talkMessage(talk.room));
       res.json({ reportUrl: `${ctx.config.PUBLIC_BASE_URL}/t/${talk.talkId}` });
+    });
+
+    // Slide relay: the presenting computer posts a JPEG only when the slide changes.
+    // express.raw is scoped to this route; the global JSON parser ignores image bodies.
+    app.post(
+      '/api/rooms/:room/slide-frame',
+      ctx.auth.api('SPEAKER_KEY'),
+      express.raw({ type: 'image/*', limit: '1.5mb' }),
+      (req, res) => {
+        const roomId = String(req.params.room);
+        const buf = req.body;
+        if (!Buffer.isBuffer(buf) || !buf.length) {
+          return res.status(400).json({ error: 'image body required' });
+        }
+
+        const now = Date.now();
+        const last = state.frameUploadAt.get(roomId) || 0;
+        if (now - last < 1000) return res.status(429).json({ error: 'too_fast' });
+        state.frameUploadAt.set(roomId, now);
+
+        const talk = state.liveTalk(roomId);
+        const talkId = talk ? talk.talkId : null;
+        const bucket = talk ? talk.talkId : `preshow:${roomId}`;
+        let list = state.frames.get(bucket);
+        if (!list) state.frames.set(bucket, (list = []));
+        const n = list.length ? list[list.length - 1].n + 1 : 1;
+        list.push({ n, buf, ts: now });
+        if (list.length > state.MAX_FRAMES) list.splice(0, list.length - state.MAX_FRAMES);
+
+        const url = `/slides/live/${encodeURIComponent(bucket)}/${n}.jpg`;
+        const slide = { talkId, n, total: 0, url };
+        state.room(roomId).slide = slide;
+        hub.send(roomId, { t: 'slide', ...slide });
+        esIndex(ctx, 'pulse-actions', {
+          room: roomId,
+          talkId: talkId || '',
+          actor: 'relay',
+          action: 'slide',
+          detail: JSON.stringify(slide), // mapped as text in pulse-actions
+          ts: now,
+        });
+        res.json({ n, url });
+      }
+    );
+
+    app.get('/slides/live/:talkId/:n.jpg', (req, res) => {
+      const list = state.frames.get(String(req.params.talkId));
+      const n = Number(req.params.n);
+      const frame = list && list.find((f) => f.n === n);
+      if (!frame) return res.status(404).end();
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.type('image/jpeg').send(frame.buf);
     });
 
     app.get('/api/rooms', (req, res) => {
