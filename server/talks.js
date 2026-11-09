@@ -24,7 +24,24 @@ function startOf(talk) {
   return Number.isFinite(n) ? n : 0;
 }
 
+// Frames live in pod memory: cap the total so a long day of full-screen captures can't OOM the pod.
+const BOOT_ID = Date.now().toString(36);
+const MAX_FRAME_BYTES = 128 * 1024 * 1024;
+function evictFrames(state, keepBucket, cap = MAX_FRAME_BYTES) {
+  let total = 0;
+  for (const list of state.frames.values()) for (const f of list) total += f.buf.length;
+  if (total <= cap) return;
+  // Least recently written buckets first; the live bucket keeps at least its newest frame.
+  const buckets = [...state.frames.entries()].sort((a, b) => (a[1].touched || 0) - (b[1].touched || 0));
+  for (const [key, list] of buckets) {
+    while (list.length > (key === keepBucket ? 1 : 0) && total > cap) total -= list.shift().buf.length;
+    if (!list.length) state.frames.delete(key);
+    if (total <= cap) return;
+  }
+}
+
 module.exports = {
+  _test: { evictFrames },
   register(app, ctx) {
     const { state, hub } = ctx;
 
@@ -86,12 +103,15 @@ module.exports = {
 
         const talk = state.liveTalk(roomId);
         const talkId = talk ? talk.talkId : null;
-        const bucket = talk ? talk.talkId : `preshow:${roomId}`;
+        // BOOT_ID makes pre-show URLs unique per process: they are cached immutable, so a restart must never reuse one.
+        const bucket = talk ? talk.talkId : `preshow-${roomId}-${BOOT_ID}`;
         let list = state.frames.get(bucket);
         if (!list) state.frames.set(bucket, (list = []));
         const n = list.length ? list[list.length - 1].n + 1 : 1;
         list.push({ n, buf, ts: now });
         if (list.length > state.MAX_FRAMES) list.splice(0, list.length - state.MAX_FRAMES);
+        list.touched = now;
+        evictFrames(state, bucket);
 
         const url = `/slides/live/${encodeURIComponent(bucket)}/${n}.jpg`;
         const slide = { talkId, n, total: 0, url };
