@@ -24,7 +24,7 @@
   "homepage": "https://github.com/owenbodily-osbmach1/HACKATHONproject-T-O#readme",
   "private": "true",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.23 <23"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.10.0",
