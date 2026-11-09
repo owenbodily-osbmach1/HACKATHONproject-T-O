@@ -46,6 +46,8 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 - Ticket `status`: `open` | `claimed` | `fixed` | `reopened` | `dismissed`.
 - One vote per `clientId` per type per talk. `on: false` takes the vote back. Votes expire after 10 min and clear when a ticket is marked fixed.
 - "Still bad": the phone sends `POST /api/feedback` with `better: false` **and then** `PUT /api/votes` with `on: true`. The feedback route only records the answer; it does not re-add the vote itself.
+- A live talk ends by itself when no keyed `mic` socket has been in the room and no caption has arrived for `AUTO_END_MIN` minutes (default 10, `0` = never): a presenter who walked off doesn't leave it live for the next speaker. A caption with an unknown `talkId` (the server restarted mid-talk) re-creates that talk from the caption's `title`/`speaker`.
+- `POST /api/questions`: one question per phone every 20 s (`429 {error:'too_fast'}`), keyed on `clientId` and the visitor cookie. `ticket_status` reaches phones only when a ticket's status changes. `GET /api/report/:talkId` fills `signalsByMinute` from memory when Elasticsearch is off.
 - Going live again after a talk ended starts a **new** talk (Go live and the mic page resume only a talk whose `status` is `live`), so phones flip from Ended back to Live.
 - Demo room: on start the server seeds room `MOCK_ROOM` (default `255`, `off` disables) with a live talk, a transcript that keeps growing, a fake mic level, 3 questions and a "can't see" ticket. It is `simulated: true` in `/api/rooms` and is never written to Elasticsearch.
 - Room switches: `POST /api/rooms/:room/settings` `{captions, listen, slides, capacity?}` (tech only; `capacity` = seats, for the room-fill bar).
@@ -86,8 +88,8 @@ All messages are JSON with a `t` field. `role=mic` and `role=present` must also 
 | `caption_interim` | mic → server → room | `text` | attendee |
 | `caption_backlog` | server → (on join) | `lines[]` (last 50) | attendee, tech |
 | `ticket` (snapshot) | server → (on join) | one `ticket` message per open / claimed / reopened ticket in the room, plus the current `question_groups` | tech, org |
-| `vote_count` | server → | `type, count, windowSec` | attendee |
-| `ticket` | server → | `id, room, type, people, status, openedAt, cause, steps[]` | tech, org |
+| `vote_count` | server → (at most every 300 ms per room+type) | `type, count, windowSec` | attendee |
+| `ticket` | server → | `id, room, type, people, status, openedAt, reopenedAt, cause, steps[], claimedBy, fixedBy, fixedAt, better, stillBad` (`claimedBy`/`fixedBy` = the tech's "I'm" name from `{by}`; console only, never indexed) | tech, org (`better`/`stillBad` updates and the 3-min "just fixed" snapshot: tech only) |
 | `ticket_status` | server → | `ticketId, type, status` | attendee |
 | `room_status` (every 2 s) | server → | `room, listeners, micDb, captionGapSec, openTickets` | tech, org, mic |
 | `room_settings` | server → | `captions, listen, slides` | all |
@@ -152,7 +154,7 @@ Set `inference_id` explicitly from `ES_INFERENCE_ID`. If inference isn't availab
 
 Kubernetes Secret (entered in the Radar UI) or local `.env`. **Never committed.** See `.env.example`.
 
-`PORT` · `MOCK_ROOM=255` · `ROOM_CAPACITY=120` · `SIGNIN=on` · `PUBLIC_BASE_URL` · `SPEAKER_KEY` · `TECH_KEY` · `ALERT_THRESHOLD=3` · `ALERT_WINDOW_SEC=60` · `CAPTIONS_DEFAULT=on` · `ELASTIC_URL` · `ELASTIC_API_KEY` · `ES_INFERENCE_ID` · `OTEL_SERVICE_NAME=pulse` · `OTEL_EXPORTER_OTLP_ENDPOINT` · `OTEL_EXPORTER_OTLP_HEADERS` · `DASH0_RUM_TOKEN` (public, ingest-only) · `DASH0_RUM_ENDPOINT=https://ingress.us-west-2.aws.dash0.com`
+`PORT` · `MOCK_ROOM=255` · `ROOM_CAPACITY=120` · `SIGNIN=on` · `AUTO_END_MIN=10` · `PUBLIC_BASE_URL` · `SPEAKER_KEY` · `TECH_KEY` · `ALERT_THRESHOLD=3` · `ALERT_WINDOW_SEC=60` · `CAPTIONS_DEFAULT=on` · `ELASTIC_URL` · `ELASTIC_API_KEY` · `ES_INFERENCE_ID` · `OTEL_SERVICE_NAME=pulse` · `OTEL_EXPORTER_OTLP_ENDPOINT` · `OTEL_EXPORTER_OTLP_HEADERS` · `DASH0_RUM_TOKEN` (public, ingest-only) · `DASH0_RUM_ENDPOINT=https://ingress.us-west-2.aws.dash0.com`
 
 ## Booths (expo floor)
 

@@ -229,7 +229,7 @@ function join(ws, room, role, clientId) {
   sendJson(ws, stats.statsMessage(room));
   if (role === 'tech' || role === 'org') {
     // Lazy require: tickets/questions require the hub too.
-    for (const m of require('./tickets').activeTicketMessages(room)) sendJson(ws, m);
+    for (const m of require('./tickets').activeTicketMessages(room, { justFixed: role === 'tech' })) sendJson(ws, m);
     sendJson(ws, { t: 'question_groups', groups: require('./questions').groupList(room) });
   }
 

@@ -139,6 +139,7 @@ function render() {
     blocks.append(p);
   }
 
+  renderFixed();
   const busyRooms = new Set(active.map((t) => String(t.room)));
   const tiles = [...rooms.keys()].filter((r) => !busyRooms.has(r)).map((r) => {
     const b = document.createElement('button');
@@ -158,6 +159,23 @@ function render() {
   $('cGreen').textContent = tiles.length;
   document.title = (active.some((t) => RED.has(t.status)) ? '🔴 ' : '') + 'Pulse · AV tech';
 }
+
+// Fixed in the last 3 minutes: who fixed it and what the phones answered to "Better now?".
+function renderFixed() {
+  const recent = [...tickets.values()]
+    .filter((t) => t.status === 'fixed' && t.fixedAt && Date.now() - Date.parse(t.fixedAt) < 180000 && rooms.has(String(t.room)))
+    .sort((a, b) => Date.parse(b.fixedAt) - Date.parse(a.fixedAt));
+  const ul = $('fixedList');
+  ul.hidden = !recent.length;
+  ul.replaceChildren(...recent.map((t) => {
+    const li = document.createElement('li');
+    const answers = t.better || t.stillBad ? `Better ${t.better} · Still bad ${t.stillBad}` : 'Waiting for "Better now?" answers';
+    li.textContent = `✓ Room ${t.room} ${TYPE_WORD[t.type] || t.type} fixed${t.fixedBy ? ` by ${t.fixedBy}` : ''} · ${answers}`;
+    if (t.stillBad > t.better) li.className = 'worse';
+    return li;
+  }));
+}
+setInterval(renderFixed, 15000);
 
 // ---------- room switcher ----------
 const STATUS_WORD = { live: 'Live', ended: 'Ended', waiting: 'Not started' };
@@ -250,11 +268,11 @@ function blockEl(t) {
   const band = document.createElement('div');
   band.className = 'band';
   const label = document.createElement('span');
-  label.textContent = `${TYPE_WORD[t.type] || t.type}${t.status === 'reopened' ? ' · REOPENED' : ''}${red ? '' : ' · CLAIMED'}`;
+  label.textContent = `${TYPE_WORD[t.type] || t.type}${t.status === 'reopened' ? ' · REOPENED' : ''}${red ? '' : ` · CLAIMED${t.claimedBy ? ` BY ${t.claimedBy.toUpperCase()}` : ''}`}`;
   const age = document.createElement('span');
   age.className = 'age';
-  age.dataset.since = t.openedAt;
-  age.textContent = ageText(t.openedAt);
+  age.dataset.since = t.reopenedAt || t.openedAt; // a reopened ticket is a new complaint: count from then
+  age.textContent = ageText(age.dataset.since);
   band.append(label, age);
 
   const head = document.createElement('div');

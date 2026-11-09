@@ -564,3 +564,8 @@ body[data-talk="ended"] .interim { display: none; }
 .join-why { margin: 4px 0 14px; color: var(--muted); font-size: 13px; }
 .join-btn { width: 100%; min-height: 56px; border: 0; border-radius: 14px; background: var(--yellow); color: var(--on-color); font-size: 18px; font-weight: 800; }
 .join-msg { margin: 10px 0 0; min-height: 1.2em; color: var(--muted); font-size: 14px; text-align: center; }
+
+/* AV: just-fixed tickets with the phones' "Better now?" answers */
+.fixed-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+.fixed-list li { padding: 8px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line-strong); font-size: 14px; font-weight: 700; }
+.fixed-list li.worse { border-color: var(--red); color: var(--red); }

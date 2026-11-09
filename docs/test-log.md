@@ -19,7 +19,19 @@ What has been tested, how, what broke and what is still open. Newest first. Add 
 | AV: old talk's captions under the new title; tabs numbered differently per console; typo'd `/r/152` added a tab; reminder chime for ended talks; silent rooms invisible | captions filtered by talk; tabs sorted by room id; only rooms with a talk (or the demo room) are added; chime only for live talks; ⚠ "silent N min" / "mic quiet" / "CC off" on the tab |
 | `/mic` page kept captioning after the AV ended the talk; half-said line stayed on phones after the mic page closed | `/mic` stops like Go live; interim cleared when the last mic socket leaves |
 
-Not fixed yet (follow-ups): ticket `claimedBy` / "Better now?" results on the console, reopened-ticket age, report shows 0 signals without Elasticsearch (and returns `clientId`s), auto-ending a talk whose presenter walked off, `/go` layout on a phone, a friendlier 401 page.
+Follow-ups, fixed in a third commit (15:00–15:10), each checked against a running server:
+
+| Follow-up | Fix | Check |
+| --- | --- | --- |
+| Who claimed / fixed, "Better now?" answers invisible to the AV | `claimedBy`, `fixedBy`, `better`, `stillBad` on `ticket` (console only, not in Elasticsearch); "CLAIMED BY …" on the block; "Just fixed" list for 3 min, also for a console opened after the fix | ✅ "fixed by Sam · Better 2 · Still bad 1" |
+| Reopened ticket showed its original age | age counts from `reopenedAt` | code |
+| Report "0 signals" without Elasticsearch | signals kept in memory too (same anonymous rows) | ✅ `signalsByMinute` filled; questions carry no `clientId` (already on main) |
+| Presenter walked off: talk live forever, next speaker inherits it | auto-end after `AUTO_END_MIN` (10) with no mic socket and no captions; Go live offers "End that talk and start a new one" | ✅ phone flipped to Ended (test with 3 s) |
+| Burst of votes at 300 phones | `vote_count` coalesced per room+type (300 ms); `ticket_status` only on status change | ✅ 20 votes → 1 `vote_count`, 1 `ticket_status` per phone |
+| No question rate limit on the server | 1 per 20 s per `clientId` and visitor cookie | ✅ second question `429` |
+| `/go` on a phone: one word per line, raw `getDisplayMedia` error | narrow layout fixed; clear "can't share slides from this device" | ✅ screenshot at 390 px |
+| Bare 401 page | styled, says to use the links start-pulse prints | ✅ |
+| Dash0 had no headcounts | gauges `pulse.room.scanned`, `pulse.room.here`, `pulse.room.fill`, `pulse.room.signed_in` (counts only, `pulse.simulated` marks the demo room) | not checked against Dash0 (no `OTEL_*` on this laptop) |
 
 **Sign-in, scan counts, telemetry** (PR folder, `node server/index.js` on 8099, desktop app browser at 375×812 and headless Chrome at 390 / 320 / 1440):
 

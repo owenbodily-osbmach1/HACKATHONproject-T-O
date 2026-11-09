@@ -154,7 +154,16 @@ function index(name, doc) {
   } catch (_) {}
 }
 
+// The same anonymous rows kept in memory (capped), so the post-talk report has "signals by minute"
+// without Elasticsearch too (it showed 0 signals for a talk with a raised and fixed ticket).
+const signalLog = new Map(); // talkId -> [{type, clientId, on, ts, minute}]
+function memorySignals(talkId) { return signalLog.get(String(talkId)) || []; }
+
 function indexSignal(vote, on, now) {
+  let rows = signalLog.get(vote.talkId);
+  if (!rows) signalLog.set(vote.talkId, (rows = []));
+  rows.push({ type: vote.type, clientId: vote.clientId, on, ts: now, minute: minuteFor(vote.talkId, now) });
+  if (rows.length > 20000) rows.shift();
   index('pulse-signals', {
     talkId: vote.talkId,
     room: vote.room,
@@ -192,15 +201,23 @@ function ticketMessage(ticket) {
     people: ticket.people,
     status: ticket.status,
     openedAt: ticket.openedAt,
+    reopenedAt: ticket.reopenedAt || null,
     cause: ticket.cause,
     steps: ticket.steps,
+    // Console only (tech/org sockets). The tech's name never goes to Elasticsearch (ticketDoc).
+    claimedBy: ticket.claimedBy || null,
+    fixedBy: ticket.fixedBy || null,
+    fixedAt: ticket.fixedAt || null,
+    better: ticket.better || 0,
+    stillBad: ticket.stillBad || 0,
   };
 }
 
-function ticketChanged(ticket) {
+function ticketChanged(ticket, statusChanged = true) {
   index('pulse-tickets', ticketDoc(ticket));
   if (!ctx || !ctx.hub) return;
   ctx.hub.send(ticket.room, ticketMessage(ticket), ['tech', 'org']);
+  if (!statusChanged) return; // 300 phones x every vote was 179,400 messages for one burst
   ctx.hub.send(
     ticket.room,
     { t: 'ticket_status', ticketId: ticket.id, type: ticket.type, status: ticket.status },
@@ -243,7 +260,7 @@ function refreshTicket(room, talkId, type, allowCreate) {
   if (active) {
     if (active.people !== people) {
       active.people = people;
-      ticketChanged(active);
+      ticketChanged(active, false);
     }
     return active;
   }
@@ -282,6 +299,19 @@ function configBody() {
     nudgeThreshold: Math.max(1, alertThreshold - 1),
     publicBaseUrl: require('./config').PUBLIC_BASE_URL,
   };
+}
+
+// One vote_count per room+type every 300 ms at most: a burst of votes at 300 phones otherwise
+// sends every phone a message per vote and pins the CPU (chaos test: p95 1.5 s, captions 1 s late).
+const pendingCounts = new Map(); // room|type -> timer
+function sendVoteCount(room, talkId, type) {
+  const key = `${room}|${type}`;
+  if (pendingCounts.has(key)) return;
+  pendingCounts.set(key, setTimeout(() => {
+    pendingCounts.delete(key);
+    const count = countFor(room, talkId, type, Date.now());
+    ctx.hub.send(room, { t: 'vote_count', type, count, windowSec: Math.round(windowMs() / 1000) }, ['attendee']);
+  }, 300));
 }
 
 function register(app, context) {
@@ -346,17 +376,14 @@ function register(app, context) {
     }
 
     const count = countFor(room, talkId, type, now);
-    ctx.hub.send(
-      room,
-      { t: 'vote_count', type, count, windowSec: Math.round(windowMs() / 1000) },
-      ['attendee']
-    );
+    sendVoteCount(room, talkId, type);
 
     const ticket = refreshTicket(room, talkId, type, body.on !== false);
     res.json({ count, ticketStatus: ticket && ACTIVE.has(ticket.status) ? ticket.status : null });
   });
 
   const tech = ctx.auth.api('TECH_KEY');
+  const techName = (v) => String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 40) || null;
   const action = (status) => (req, res) => {
     const ticket = tickets.get(String(req.params.id));
     if (!ticket) return res.status(404).json({ error: 'not found' });
@@ -367,6 +394,7 @@ function register(app, context) {
     ticket.status = status;
     const attrs = { 'pulse.room': ticket.room, 'pulse.signal.type': ticket.type };
     if (status === 'claimed') {
+      ticket.claimedBy = techName(req.body && req.body.by);
       ticket.ackAt = now;
       const sec = secondsSince(ticket.reopenedAt || ticket.openedAt, nowMs); // same base as time_to_fix
       if (mTimeToAck && sec !== null) mTimeToAck.record(sec, attrs);
@@ -375,6 +403,10 @@ function register(app, context) {
       });
     }
     if (status === 'fixed') {
+      ticket.fixedBy = techName(req.body && req.body.by) || ticket.claimedBy || null;
+      ticket.better = 0;
+      ticket.stillBad = 0;
+      feedback.delete(ticket.id); // a new round of "Better now?" for this fix
       ticket.fixedAt = now;
       const sec = secondsSince(ticket.reopenedAt || ticket.openedAt, nowMs);
       if (mTimeToFix && sec !== null) mTimeToFix.record(sec, attrs);
@@ -410,6 +442,7 @@ function register(app, context) {
     ticket.better = better;
     ticket.stillBad = stillBad;
     index('pulse-tickets', ticketDoc(ticket));
+    if (ctx.hub) ctx.hub.send(ticket.room, ticketMessage(ticket), ['tech']); // the AV console shows the answers live
     res.json({ better, stillBad });
   });
 
@@ -452,10 +485,17 @@ function register(app, context) {
 }
 
 // Snapshot for a tech/org socket that joins mid-talk.
-function activeTicketMessages(room) {
+// justFixed: AV consoles only (org's dashboard would count the same fix again).
+function activeTicketMessages(room, { justFixed: withFixed = false } = {}) {
   const id = String(room);
   const out = [];
-  for (const ticket of tickets.values()) if (ticket.room === id && ACTIVE.has(ticket.status)) out.push(ticketMessage(ticket));
+  const now = Date.now();
+  for (const ticket of tickets.values()) {
+    if (ticket.room !== id) continue;
+    // Also tickets fixed in the last 3 min: a console opened after the fix still shows "Better now?" results.
+    const justFixed = withFixed && ticket.status === 'fixed' && now - Date.parse(ticket.fixedAt || 0) < 180000;
+    if (ACTIVE.has(ticket.status) || justFixed) out.push(ticketMessage(ticket));
+  }
   return out;
 }
 
@@ -463,5 +503,6 @@ module.exports = {
   register,
   openTickets,
   activeTicketMessages,
+  memorySignals,
   _test: { countDistinct, VOTE_TTL_MS, REOPEN_MS },
 };

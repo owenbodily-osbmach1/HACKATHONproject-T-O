@@ -95,6 +95,10 @@ function renderPill() {
       : `Last talk "${roomTalk.title || 'Untitled talk'}" has ended. Go live starts a new one.`;
     line.hidden = false;
   } else line.hidden = true;
+  // Someone else's talk is still live here (presenter walked off): offer a clean start.
+  const other = connState === 'live' && roomTalk?.status === 'live' && !st.running;
+  const btn = $('newTalkBtn');
+  if (btn) btn.hidden = !other;
 }
 const sock = connectRoom({
   room, role: 'mic', key,
@@ -158,6 +162,12 @@ function sendInterim(text) {
 
 // ---------- slides (relay) ----------
 async function startSlides() {
+  // Phones and tablets can't share a screen: say what to do instead of a raw browser error.
+  if (!navigator.mediaDevices?.getDisplayMedia) {
+    check('ckSlides', 'bad', "Can't share slides from this device: run Go live (or /relay) on the computer showing the slides");
+    $('shareBtn').hidden = true;
+    return false;
+  }
   try {
     st.display = await navigator.mediaDevices.getDisplayMedia({
       video: { frameRate: { ideal: 5, max: 10 } }, // native size: the full-screen check compares exact pixels
@@ -366,6 +376,19 @@ function showGoBtn() {
 }
 
 $('goBtn').onclick = goLive;
+$('newTalkBtn').onclick = async () => {
+  if (!roomTalk?.talkId) return;
+  $('newTalkBtn').disabled = true;
+  try {
+    const res = await api(`/api/talks/${encodeURIComponent(roomTalk.talkId)}/end`, { method: 'POST' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    liveTalkId = null;
+    await goLive(); // a click: Chrome still allows the screen-share picker
+  } catch (e) {
+    warn(`Couldn't end the old talk (${e.message}).`);
+  }
+  $('newTalkBtn').disabled = false;
+};
 $('endBtn').onclick = endTalk;
 
 async function refreshMics() {

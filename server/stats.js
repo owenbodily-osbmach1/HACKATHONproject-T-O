@@ -11,6 +11,10 @@
 const crypto = require('crypto');
 
 const DEFAULT_CAPACITY = Number(process.env.ROOM_CAPACITY || 120);
+// A presenter who walked off without End: the talk ends itself once no Go live / mic page has been
+// in the room and no caption has arrived for AUTO_END_MIN minutes (0 turns this off).
+const AUTO_END_MS = Math.max(0, Number(process.env.AUTO_END_MIN ?? 10)) * 60 * 1000;
+const micGoneAt = new Map(); // room -> when the last mic socket was seen gone
 const visitors = new Map(); // room -> Set(visitor id)
 const lastStats = new Map(); // room -> JSON of the last room_stats sent
 const phoneLog = new Map(); // room -> {left: Map(clientId -> ts), reconnects: [ts]}
@@ -124,6 +128,24 @@ function visitorFromHeaders(headers) {
   return /^[a-f0-9]{16}$/.test(vid) ? vid : '';
 }
 
+function autoEnd(r) {
+  if (!AUTO_END_MS) return;
+  const talk = ctx.state.liveTalk(r.room);
+  if (!talk || talk.simulated) { micGoneAt.delete(r.room); return; }
+  const now = Date.now();
+  if (ctx.hub.roleCount && ctx.hub.roleCount(r.room, 'mic') > 0) { micGoneAt.delete(r.room); return; }
+  if (!micGoneAt.has(r.room)) micGoneAt.set(r.room, now);
+  const start = typeof talk.start === 'number' ? talk.start : Date.parse(talk.start) || now;
+  const quietSince = Math.max(micGoneAt.get(r.room), Number(r.lastCaptionTs) || 0, start);
+  if (now - quietSince < AUTO_END_MS) return;
+  talk.end = now;
+  talk.autoEnded = true;
+  micGoneAt.delete(r.room);
+  try { require('./log').info('talk.auto_ended', { room: r.room, talkId: talk.talkId }); } catch {}
+  ctx.hub.send(r.room, { t: 'caption_interim', text: '' }, ['attendee', 'viewer']);
+  ctx.hub.send(r.room, ctx.state.talkMessage(r.room));
+}
+
 module.exports = {
   scan,
   visitorFromHeaders,
@@ -134,9 +156,22 @@ module.exports = {
   capacityOf,
   register(app, c) {
     ctx = c;
+    // Dash0: headcounts per room (counts only, never who). pulse.simulated marks the demo room.
+    const perRoom = (pick) => () => [...ctx.state.rooms.values()].map((r) => {
+      const st = statsFor(r.room);
+      return { value: pick(st), attributes: { 'pulse.room': r.room, 'pulse.simulated': !!r.simulated } };
+    }).filter((p) => typeof p.value === 'number');
+    try {
+      const otel = require('./otel');
+      otel.observableGauge('pulse.room.scanned', 'Unique phones that opened the room link', perRoom((st) => st.joined));
+      otel.observableGauge('pulse.room.here', 'Phones in the room right now', perRoom((st) => st.here));
+      otel.observableGauge('pulse.room.fill', 'Phones here / seats (0-1)', perRoom((st) => st.fill));
+      otel.observableGauge('pulse.room.signed_in', 'Phones signed in to the room', perRoom((st) => st.signedIn));
+    } catch { /* telemetry never breaks the app */ }
     const timer = setInterval(() => {
       for (const r of ctx.state.rooms.values()) {
         const id = r.room;
+        autoEnd(r);
         const msg = statsMessage(id);
         const json = JSON.stringify(msg);
         if (lastStats.get(id) !== json) { lastStats.set(id, json); ctx.hub.send(id, msg); }
