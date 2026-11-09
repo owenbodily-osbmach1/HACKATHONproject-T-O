@@ -25,7 +25,12 @@ if (-not (Have node)) { Write-Host "Node.js is not installed. Install it from ht
 if (Have git) {
   Write-Host "Updating to the latest poc/one-room..."
   & git pull --ff-only
-  if ($LASTEXITCODE -ne 0) { Write-Host "(git pull skipped, using the files already here)" -ForegroundColor Yellow }
+  if ($LASTEXITCODE -ne 0) {
+    # Usually local edits (hot fixes copied in) block the pull: stash them (kept, not deleted) and retry.
+    & git stash push -m "start-pulse auto-stash" | Out-Host
+    & git pull --ff-only
+    if ($LASTEXITCODE -ne 0) { Write-Host "(git pull skipped, using the files already here)" -ForegroundColor Yellow }
+  }
 }
 # Reinstall packages when package-lock.json changed since the last install (new branch or pull).
 $lockHash = (Get-FileHash package-lock.json).Hash
