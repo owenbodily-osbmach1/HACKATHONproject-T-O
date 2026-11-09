@@ -211,3 +211,7 @@ All passed:
 - `/present/wscheck` opened on `127.0.0.1`: warning visible and QR URL `http://127.0.0.1:8181/r/wscheck`; with `?base=https://pulse.example.test` the warning was hidden and the URL used the base.
 - `/tech?key=tk` without `rooms`: discovered `demo2` and `wscheck`; `&rooms=151` stayed on 151 only. The drawer showed "Discovery talk · Grace" from the `talk` message.
 - `npm run check` passes.
+
+## 2:45 PM: listen-in relay latency (public URL)
+
+100 frames of 3200 bytes (100 ms of 16 kHz PCM) sent on `/ws/audio-in` in room `lat1`, received on `/ws/audio-out` through the Cloudflare tunnel: 100/100 delivered, median 56 ms, p95 100 ms, max 338 ms. This is relay time only; add the 100 ms frame and the phone's playback buffer for mic-to-ear.
