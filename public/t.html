@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d10">
+  <title>Pulse · Talk transcript</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/t.css">
+</head>
+<body class="report-page">
+  <div id="app" class="report">
+    <header class="top report-top">
+      <div class="room-line">
+        <span class="room-badge" id="roomBadge">Talk report</span>
+        <span class="conn" id="conn" role="status" hidden><span class="dot"></span><span class="conn-word">Connecting…</span></span>
+      </div>
+      <h1 id="pageTitle">Transcript</h1>
+      <p class="speaker" id="pageSpeaker"></p>
+      <p class="report-meta" id="talkMeta"></p>
+    </header>
+
+    <p class="report-error" id="loadError" role="alert" hidden></p>
+    <p class="report-note" id="loading">Loading…</p>
+
+    <section id="talkView" hidden aria-label="Talk transcript and report">
+      <form class="search" id="searchForm" role="search">
+        <label for="q">Search this talk</label>
+        <div class="search-row">
+          <input id="q" name="q" type="search" autocomplete="off" enterkeyhint="search" placeholder="Search captions…">
+          <button type="submit" class="pill" id="searchBtn">Search</button>
+        </div>
+        <p class="report-note" id="searchNote" role="status" aria-live="polite"></p>
+      </form>
+
+      <section class="hits" id="hits" aria-labelledby="hitsH" hidden>
+        <h2 id="hitsH">Search hits</h2>
+        <ol id="hitList"></ol>
+      </section>
+
+      <section class="panel" aria-labelledby="summaryH">
+        <h2 id="summaryH">At a glance</h2>
+        <div class="stats" id="stats"></div>
+        <p class="report-note" id="reportNote" role="status"></p>
+      </section>
+
+      <section class="panel" id="chartPanel" aria-labelledby="chartH">
+        <h2 id="chartH">Signals by minute</h2>
+        <p class="report-note">Each minute is a button; it jumps to the captions from that minute.</p>
+        <ul class="report-legend">
+          <li><span class="swatch hear" aria-hidden="true"></span><span>Can't hear — solid line, round markers</span></li>
+          <li><span class="swatch see" aria-hidden="true"></span><span>Can't see — dashed line, diamond markers</span></li>
+        </ul>
+        <div class="chart-scroll" id="chart"></div>
+        <p class="report-note" id="chartNote" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel" id="questionsPanel" aria-labelledby="questionsH">
+        <h2 id="questionsH">Top question groups</h2>
+        <ol class="report-questions" id="qList"></ol>
+        <p class="report-note" id="qEmpty" hidden>No questions were asked during this talk.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="trH">
+        <div class="panel-head">
+          <h2 id="trH">Transcript</h2>
+          <a class="pill" id="download" href="#">Download .txt</a>
+        </div>
+        <p class="report-note" id="trCount" role="status"></p>
+        <p class="report-note" id="trEmpty" hidden></p>
+        <div class="transcript" id="transcript" aria-live="polite" aria-relevant="additions"></div>
+      </section>
+    </section>
+
+    <section id="roomView" hidden aria-label="Room archive">
+      <section class="panel">
+        <h2 id="roomH">Talks in this room</h2>
+        <p class="report-note" id="roomIntro">Newest first. Open a talk for its transcript and report.</p>
+        <ol class="archive" id="talkList"></ol>
+        <p class="report-note" id="roomEmpty" hidden>No talks recorded in this room yet.</p>
+        <p class="report-error" id="roomError" role="alert" hidden></p>
+        <p class="room-home"><a class="pill" id="liveRoomLink" href="#">Open the live room</a></p>
+      </section>
+    </section>
+  </div>
+
+  <script type="module" src="/t.js"></script>
+</body>
+</html>
