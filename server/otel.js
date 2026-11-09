@@ -56,7 +56,8 @@ function start() {
           exportIntervalMillis: 10000,
         }),
       ],
-      instrumentations: [new HttpInstrumentation(), new ExpressInstrumentation()],
+      // Keyed pages/sockets carry ?key= in the URL; HttpInstrumentation would export it as url.query (security audit).
+      instrumentations: [new HttpInstrumentation({ ignoreIncomingRequestHook: (req) => /[?&]key=/i.test(req.url || '') }), new ExpressInstrumentation()],
     });
     sdk.start();
     // index.js loads http and express before otel.start(); re-requiring the
