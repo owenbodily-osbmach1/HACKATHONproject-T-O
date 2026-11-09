@@ -27,7 +27,8 @@ app.use(express.json({ limit: '64kb' }));
 
 // Mic lock: only the podium mic page may ask for the microphone.
 app.use((req, res, next) => {
-  const isMic = req.path.startsWith('/mic/');
+  // /go/:room is the one-button control page: it runs the same podium mic.
+  const isMic = req.path.startsWith('/mic/') || req.path.startsWith('/go/');
   res.setHeader('Permissions-Policy', isMic ? 'microphone=(self), camera=()' : 'microphone=(), camera=()');
   next();
 });
@@ -62,8 +63,9 @@ app.get('/find', page('find.html'));
 app.get('/mic/:room', auth.page('SPEAKER_KEY'), page('mic.html'));
 app.get('/present/:room', auth.page('SPEAKER_KEY'), page('present.html'));
 app.get('/relay/:room', auth.page('SPEAKER_KEY'), page('relay.html'));
+app.get('/go/:room', auth.page('SPEAKER_KEY'), page('go.html'));
 // Keyed pages are reachable only through their routes above, never as static files.
-const keyedFiles = /^\/(tech|mic|present|booth|relay)(\.html)?$/i;
+const keyedFiles = /^\/(tech|mic|present|booth|relay|go)(\.html)?$/i;
 app.use((req, res, next) => {
   let p;
   try { p = path.posix.normalize(decodeURIComponent(req.path)).replace(/\/+/g, '/'); } catch { return res.status(400).end(); }

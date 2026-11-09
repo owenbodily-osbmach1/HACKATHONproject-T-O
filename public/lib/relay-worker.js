@@ -20,9 +20,11 @@ let changingSince = 0;
 let lastSendAt = 0;
 let paused = false;
 let forceNext = false;
+let notPresentingSince = 0;
 let timer = null;
 let busy = false;
 let stopped = false;
+let wasPresenting = null;
 
 const thumbCanvas = new OffscreenCanvas(THUMB_W, THUMB_H);
 const thumbCtx = thumbCanvas.getContext('2d', { willReadFrequently: true });
@@ -43,6 +45,7 @@ self.onmessage = (e) => {
     case 'pause': paused = true; break;
     case 'resume': paused = false; prevThumb = null; break;
     case 'force': forceNext = true; break;
+    case 'screens': if (cfg && Array.isArray(m.screens)) cfg.screens = m.screens; break;
     case 'stop':
       stopped = true;
       clearInterval(timer);
@@ -108,6 +111,22 @@ async function tick() {
   try {
     const width = source.displayWidth || source.width;
     const height = source.displayHeight || source.height;
+    // Presenting = the captured tab/window is full screen: same shape as the screen
+    // (a normal browser tab is shorter because of the tabs/address bar).
+    if (cfg.requireFullscreen) {
+      // Exact screen size in device pixels (±2), not just the same shape: a maximized
+      // window or a normal tab is smaller than the screen. Best effort, see relay.html.
+      const presenting = (cfg.screens || []).some((s) => Math.abs(width - s.w) <= 2 && Math.abs(height - s.h) <= 2);
+      if (presenting !== wasPresenting) {
+        wasPresenting = presenting;
+        notPresentingSince = presenting ? 0 : Date.now();
+        post({ type: presenting ? 'presenting' : 'skip', reason: presenting ? undefined : 'not-presenting' });
+      } else if (!presenting && notPresentingSince && Date.now() - notPresentingSince > 20000) {
+        notPresentingSince = 0; // say it once: probably a slideshow on a different screen
+        post({ type: 'skip', reason: 'not-presenting', long: true, size: `${width}x${height}` });
+      }
+      if (!presenting) { prevThumb = null; return; }
+    }
     const t = thumbOf(source);
     const now = Date.now();
     const dPrev = diff(t, prevThumb);
@@ -142,6 +161,7 @@ async function tick() {
       headers: { 'content-type': 'image/jpeg', 'x-pulse-key': cfg.key },
       body: blob,
     });
+    if (res.status === 429) { if (force) forceNext = true; return; } // per-room rate limit: retry on the next sample
     if (!res.ok) {
       post({ type: 'error', status: res.status, message: res.status === 401 ? 'Wrong speaker key' : `Upload failed (${res.status})` });
       if (res.status === 401) { stopped = true; clearInterval(timer); }

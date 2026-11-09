@@ -64,7 +64,7 @@ One mechanism everywhere. Keyed **pages** are opened with `?key=...` in the URL 
 | Key | HTTP routes and pages that require it |
 | --- | --- |
 | `TECH_KEY` | `POST /api/tickets/:id/claim` · `/fixed` · `/dismiss` · `POST /api/config` · `POST /api/rooms/:room/settings` · `POST /api/questions/:qid/*` · `POST /api/rooms/:room/broadcast` · `POST /api/clients/:clientId/mute` · page `/tech` |
-| `SPEAKER_KEY` | `POST /api/talks` · `POST /api/talks/:talkId/end` · `POST /api/rooms/:room/slide-frame` · pages `/mic/:room`, `/present/:room` and `/relay/:room` |
+| `SPEAKER_KEY` | `POST /api/talks` · `POST /api/talks/:talkId/end` · `POST /api/rooms/:room/slide-frame` · pages `/mic/:room`, `/present/:room`, `/relay/:room` and `/go/:room` |
 | none | `GET /api/rooms`, `PUT /api/votes`, `POST /api/questions`, `POST /api/feedback`, `GET /api/report/:talkId`, `GET /api/config`, transcript routes, `/healthz`, pages `/r/:room`, `/t/:talkId`, `/room/:room`, `/org`, `/find` |
 
 ## WebSocket: `/ws?room=151&role=attendee|viewer|mic|present|tech|org`
@@ -103,13 +103,14 @@ Audio uses its own binary-only sockets:
 
 ## Mic lock (security)
 
-- Every page except `/mic/:room` is served with `Permissions-Policy: microphone=(), camera=()`. Only `/mic/:room` gets `microphone=(self)`.
+- Every page except `/mic/:room` is served with `Permissions-Policy: microphone=(), camera=()`. Only `/mic/:room` and `/go/:room` (the one-button control page) get `microphone=(self)`.
 - Attendee pages never call `getUserMedia`.
 
 ## Slides
 
 - `GET /present/:room?key=SPEAKER_KEY` (connects as `role=present`), static images in `public/slides/<deck>/` plus `slides.json` = `[{n, url, alt}]`.
 - Slide changes are saved in `pulse-actions` with `action: 'slide'`.
+- One-button control: `GET /go/:room?key=SPEAKER_KEY` combines the podium mic (`role=mic` socket, captions, `/ws/audio-in`) and the slide relay in one page with a single Go live button.
 - Slide relay: `GET /relay/:room?key=SPEAKER_KEY` captures the slideshow screen and posts changed frames to `POST /api/rooms/:room/slide-frame`; the server stores the last 150 frames per talk (or under a room `preshow` bucket while no talk is live), serves them at `/slides/live/:talkId/:n.jpg`, and sends the normal `slide` message with `total: 0`. A frame upload less than 1 s after the previous one for the room returns `429`.
 
 ## Elasticsearch indices
