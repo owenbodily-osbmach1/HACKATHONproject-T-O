@@ -12,7 +12,13 @@ const questions = new Map(); // qid -> {qid, groupId, room, talkId, text, client
 // Lowercase, punctuation to spaces: the word set used for Jaccard grouping.
 // Stopwords dropped and a crude stem (drops/dropped -> drop) so rephrasings of one question match.
 const STOP = new Set('a an the and or but if of to in on at for with by from is are was were be been do does did you your we our us it its this that these those how what when where why who which can could should would will at as so not no than then there their them they i me my'.split(' '));
-const stem = (w) => w.replace(/(ing|ed|es|s)$/, '') || w;
+// Light stem: dropped/dropping/drops -> drop, nodes -> node. Undo a doubled final consonant (dropp -> drop).
+const stem = (w) => {
+  if (w.length <= 3) return w;
+  let s = w.replace(/(ing|ed)$/, '');
+  if (s !== w && s.length > 2) return /([b-df-hj-np-tv-z])\1$/.test(s) ? s.slice(0, -1) : s;
+  return w.endsWith('ss') ? w : w.replace(/s$/, '');
+};
 function words(text) {
   return new Set(
     String(text || '')
@@ -29,7 +35,10 @@ function jaccard(a, b) {
   if (!a.size || !b.size) return 0;
   let shared = 0;
   for (const w of a) if (b.has(w)) shared++;
-  return shared >= 3 ? shared / Math.min(a.size, b.size) : 0;
+  const small = Math.min(a.size, b.size);
+  if (small < 3) return a.size === b.size && shared === small ? 1 : 0; // short questions group only if identical in content
+  return shared >= 3 ? shared / small : 0;
+
 }
 
 function findGroup(room, talkId, w) {
@@ -43,7 +52,7 @@ function findGroup(room, talkId, w) {
 function groupList(room) {
   const out = [];
   for (const g of groups.values()) {
-    if (g.room === room) out.push({ groupId: g.groupId, text: g.text, count: g.count, answered: g.answered });
+    if (g.room === room) out.push({ groupId: g.groupId, qid: g.qid, text: g.text, count: g.count, answered: g.answered });
   }
   return out;
 }
@@ -62,10 +71,9 @@ function memoryQuestions(talkId) {
 
 // transcript rows from the room's rolling buffer while the talk is live.
 function memoryCaptions(talkId, from) {
-  const talk = state.talks.get(talkId);
-  const room = talk && state.rooms.get(String(talk.room));
-  if (!room) return null;
-  return room.captions
+  const lines = state.transcripts.get(talkId);
+  if (!lines || !lines.length) return null;
+  return lines
     .filter((c) => c.talkId === talkId && (from == null || c.seq >= from))
     .map((c) => ({ talkId: c.talkId, seq: c.seq, text: c.text, ts: c.ts }));
 }
@@ -189,6 +197,7 @@ function register(app, ctx) {
       groups.set(group.groupId, group);
     }
     const qid = crypto.randomUUID();
+    if (!group.qid) group.qid = qid; // the group's actions (reply/queue/answered/hide) target its first question
     const ts = Date.now();
     questions.set(qid, {
       qid, groupId: group.groupId, room, talkId, text, clientId, ts,
@@ -245,7 +254,7 @@ function register(app, ctx) {
     const from = Number.isFinite(parsed) ? parsed : null;
 
     let rows;
-    const buffered = isLive(talkId) ? memoryCaptions(talkId, from) : null;
+    const buffered = memoryCaptions(talkId, from); // full transcript held in memory; ES covers talks from before a restart
     if (buffered) {
       rows = buffered;
     } else {
@@ -305,4 +314,4 @@ function register(app, ctx) {
   }));
 }
 
-module.exports = { register };
+module.exports = { register, groupList };

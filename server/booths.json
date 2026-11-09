@@ -1,0 +1,50 @@
+[
+  {
+    "id": "gitar",
+    "sponsor": "Sonar",
+    "table": "A1",
+    "pitch": "AI code review that fixes and verifies pull requests.",
+    "about": "Gitar is an AI code review product from Sonar. It reviews pull requests and can suggest and apply fixes. It checks that continuous integration passes before a change is merged.",
+    "resourcesUrl": "https://gitar.ai/"
+  },
+  {
+    "id": "dash0",
+    "sponsor": "Dash0",
+    "table": "A2",
+    "pitch": "OpenTelemetry-native observability with Agent0 investigations.",
+    "about": "Dash0 is an observability platform built on OpenTelemetry. It collects traces, metrics and logs and connects them to services and deployments. Agent0 is Dash0's AI assistant for querying telemetry and investigating incidents.",
+    "resourcesUrl": "https://www.dash0.com/"
+  },
+  {
+    "id": "radar",
+    "sponsor": "Skyhook",
+    "table": "A3",
+    "pitch": "Open-source Kubernetes UI and AI investigations.",
+    "about": "Radar is an open-source Kubernetes user interface from Skyhook. It shows cluster issues, resource topology, events and GitOps state. It also provides an MCP server so AI agents can investigate cluster problems.",
+    "resourcesUrl": "https://radarhq.io/"
+  },
+  {
+    "id": "elastic",
+    "sponsor": "Elastic",
+    "table": "A4",
+    "pitch": "Elasticsearch semantic search with reciprocal rank fusion.",
+    "about": "Elasticsearch is a search and analytics engine. It supports lexical search, vector search and semantic_text fields. Reciprocal rank fusion combines ranked results from multiple retrievers into one list.",
+    "resourcesUrl": "https://www.elastic.co/"
+  },
+  {
+    "id": "openai",
+    "sponsor": "OpenAI",
+    "table": "A5",
+    "pitch": "AI models and APIs for text, images and audio.",
+    "about": "OpenAI develops AI models and provides an API for them. The API covers text generation, image generation and speech. Developers use it to add model-based features to applications.",
+    "resourcesUrl": "https://openai.com/"
+  },
+  {
+    "id": "merge-forward",
+    "sponsor": "CNCF",
+    "table": "A6",
+    "pitch": "Accessibility and inclusion in cloud native communities.",
+    "about": "Merge Forward is a CNCF Technical Community Group. It supports underrepresented groups in open source and runs working groups on accessibility. Its subgroups include Deaf and Hard of Hearing and Blind and Visually Impaired.",
+    "resourcesUrl": "https://community.cncf.io/merge-forward"
+  }
+]

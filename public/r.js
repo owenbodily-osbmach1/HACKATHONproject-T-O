@@ -3,6 +3,10 @@ import { connectRoom } from '/lib/socket.js';
 import { store, getClientId } from '/lib/store.js';
 import { createPlayer } from '/lib/player.js';
 
+// Preview mode for design work: /r.html?mock=1 fakes the server (see public/dev/README.md).
+// Must load before anything below opens a socket or calls fetch.
+if (new URLSearchParams(location.search).has('mock')) await import('/dev/mock.js');
+
 const $ = (id) => document.getElementById(id);
 const room = (location.pathname.match(/^\/r\/([^/?#]+)/)?.[1]) || new URLSearchParams(location.search).get('room') || '151';
 const clientId = getClientId();
@@ -36,6 +40,7 @@ function setTalk({ talkId, title, speaker }) {
   if (talkId && talkId !== state.talkId) {
     const hadTalk = state.talkId !== null;
     state.talkId = talkId;
+    state.lastSeq = 0; // seq restarts per talk, even if the backlog came from an earlier one
     if (hadTalk) resetForNewTalk();
     loadVotes();
     if (!title) loadRoomInfo(); // a new talk started after this phone joined
@@ -252,8 +257,9 @@ function setVoteCount(type, count) {
   lastCount[type] = count;
   const b = document.querySelector(`.vote[data-type="${type}"]`);
   if (!b) return;
-  const base = type === 'cant_hear' ? "Can't hear" : 'the slides';
-  b.querySelector('.vote-sub').textContent = isOn(type) ? (count > 1 ? `Counted · ${count} people` : 'Counted') : base;
+  const base = type === 'cant_hear' ? "I can't hear" : 'the slides';
+  const voted = count > 1 ? `Voted · ${count} people · tap to undo` : 'Voted · tap to undo';
+  b.querySelector('.vote-sub').textContent = isOn(type) ? voted : base;
 }
 
 async function sendVote(type, on) {
