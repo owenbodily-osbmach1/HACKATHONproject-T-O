@@ -38,6 +38,8 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 - "Still bad": the phone sends `POST /api/feedback` with `better: false` **and then** `PUT /api/votes` with `on: true`. The feedback route only records the answer; it does not re-add the vote itself.
 - Room switches: `POST /api/rooms/:room/settings` `{captions, listen, slides}` (tech only). Server sends `room_settings` to every role in the room.
 
+Search: `GET /api/search?q=&talkId=` → `[{talkId, seq, text, ts}]`, hybrid (RRF of a match query and a semantic query on `text_sem`), falling back to a plain match.
+
 Transcript and admin routes:
 
 - `GET /api/talks/:talkId/transcript?from=<seq>&format=json|txt` (public)
@@ -57,7 +59,9 @@ One mechanism everywhere. Keyed **pages** are opened with `?key=...` in the URL 
 | `SPEAKER_KEY` | `POST /api/talks` · `POST /api/talks/:talkId/end` · pages `/mic/:room` and `/present/:room` |
 | none | `GET /api/rooms`, `PUT /api/votes`, `POST /api/questions`, `POST /api/feedback`, `GET /api/report/:talkId`, `GET /api/config`, transcript routes, `/healthz`, pages `/r/:room`, `/t/:talkId`, `/room/:room`, `/org` |
 
-## WebSocket: `/ws?room=151&role=attendee|mic|present|tech|org`
+## WebSocket: `/ws?room=151&role=attendee|viewer|mic|present|tech|org`
+
+`viewer` (no key) is for transcript/report pages: it receives `caption`, `caption_interim` and `caption_backlog` like `attendee` but is not counted in `listeners`.
 
 All messages are JSON with a `t` field. `role=mic` and `role=present` must also pass `&key=SPEAKER_KEY`; `role=tech` must pass `&key=TECH_KEY`.
 
