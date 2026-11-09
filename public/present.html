@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d10">
+  <title>Pulse · Presenter</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="present">
+  <div id="app">
+    <main class="present-stage" id="stage" aria-label="Presenter slides">
+      <div class="slide-layout" id="slideLayout" data-qr="0">
+        <div class="slide-frame">
+          <img id="slideImg" alt="" draggable="false">
+          <p class="slide-msg" id="slideMsg" hidden></p>
+        </div>
+        <aside class="qr-card" id="qrCard" aria-labelledby="qrTitle" hidden>
+          <p class="qr-kicker" id="qrTitle">Join this room</p>
+          <canvas id="qrCanvas" role="img" aria-label="QR code for the attendee page"></canvas>
+          <p class="qr-url" id="qrUrl"></p>
+          <p class="qr-hint">Scan with your phone camera</p>
+        </aside>
+      </div>
+
+      <div class="present-hud" role="status" aria-live="polite">
+        <span class="hud-item conn" id="conn"><span class="dot"></span><span class="conn-word">Connecting…</span></span>
+        <span class="hud-item" id="listeners">0 listeners</span>
+        <span class="hud-item" id="tickets">No open tickets</span>
+      </div>
+    </main>
+
+    <footer class="present-bar">
+      <button type="button" class="ghost" id="prevBtn" aria-label="Previous slide">‹<span class="bar-word"> Prev</span></button>
+      <p class="present-label" id="slideLabel" aria-live="polite">Loading deck…</p>
+      <button type="button" class="ghost" id="nextBtn" aria-label="Next slide"><span class="bar-word">Next </span>›</button>
+      <button type="button" class="ghost present-fs" id="fsBtn" aria-label="Enter full screen" aria-pressed="false" hidden>⛶</button>
+    </footer>
+    <p class="sr-only" id="deckError" role="alert"></p>
+  </div>
+
+  <script type="module" src="/present.js"></script>
+</body>
+</html>
