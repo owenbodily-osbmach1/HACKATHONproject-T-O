@@ -105,6 +105,12 @@ $('fontDown').onclick = () => { sizeIdx = Math.max(0, sizeIdx - 1); applySize();
 $('fontUp').onclick = () => { sizeIdx = Math.min(SIZES.length - 1, sizeIdx + 1); applySize(); };
 applySize();
 
+// Looking back is temporary: after BACK_TO_LIVE_MS without touching the slide controls,
+// the next slide (or caption) brings the phone back to live by itself.
+const BACK_TO_LIVE_MS = 10000;
+let lastSlideTouch = 0;
+let lastCaptionScroll = 0;
+
 const capEl = $('captions');
 const MAX_LINES = 400;
 
@@ -119,6 +125,7 @@ function addCaption({ seq, text }) {
   capEl.appendChild(p);
   while (capEl.children.length > MAX_LINES) capEl.firstElementChild.remove();
   $('interim').textContent = '';
+  if (!state.autoScroll && Date.now() - lastCaptionScroll > BACK_TO_LIVE_MS) state.autoScroll = true;
   if (state.autoScroll) scrollCaptionsToEnd();
   else $('jumpLive').hidden = false;
 }
@@ -133,6 +140,7 @@ capEl.addEventListener('scroll', () => {
   const atBottom = capEl.scrollHeight - capEl.scrollTop - capEl.clientHeight < 40;
   state.autoScroll = atBottom;
   if (atBottom) $('jumpLive').hidden = true;
+  else lastCaptionScroll = Date.now();
 });
 $('jumpLive').onclick = scrollCaptionsToEnd;
 
@@ -159,8 +167,9 @@ function onSlide({ n, total, url, alt, talkId }) {
   if (!n || !url) return;
   state.slides[n - 1] = { n, total, url, alt };
   state.liveN = n;
+  if (!state.followLive && Date.now() - lastSlideTouch > BACK_TO_LIVE_MS) state.followLive = true;
   if (state.followLive) showSlide(n);
-  else $('slideLive').hidden = false;
+  else showSlide(state.viewN); // refresh "Back to live" and the arrows for the new live slide
   // First slide arrives while on captions-only: offer Both once.
   if (!store.get('pulse.slidesOffered') && $('stage').dataset.mode === 'captions' && state.settings.slides) {
     store.set('pulse.slidesOffered', true);
@@ -171,6 +180,7 @@ function onSlide({ n, total, url, alt, talkId }) {
 function step(dir) {
   const target = state.viewN + dir;
   if (!state.slides[target - 1]) return;
+  lastSlideTouch = Date.now();
   state.followLive = target === state.liveN;
   showSlide(target);
 }
@@ -178,14 +188,20 @@ $('slidePrev').onclick = () => step(-1);
 $('slideNext').onclick = () => step(1);
 $('slideLive').onclick = () => { state.followLive = true; showSlide(state.liveN); };
 
-// Swipe left/right on the slide to step through slides seen so far.
-let touchX = null;
-$('slideFrame').addEventListener('touchstart', (e) => { touchX = e.touches.length === 1 ? e.touches[0].clientX : null; }, { passive: true });
+// Swipe left/right on the slide to step through slides seen so far. Only a quick, clearly
+// sideways swipe counts: scrolling the page up/down over the slide must never leave live.
+let touch = null;
+$('slideFrame').addEventListener('touchstart', (e) => {
+  touch = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() } : null;
+}, { passive: true });
+$('slideFrame').addEventListener('touchmove', (e) => { if (e.touches.length > 1) touch = null; }, { passive: true });
 $('slideFrame').addEventListener('touchend', (e) => {
-  if (touchX === null) return;
-  const dx = e.changedTouches[0].clientX - touchX;
-  touchX = null;
-  if (Math.abs(dx) > 50) step(dx < 0 ? 1 : -1);
+  if (!touch) return;
+  const dx = e.changedTouches[0].clientX - touch.x;
+  const dy = e.changedTouches[0].clientY - touch.y;
+  const quick = Date.now() - touch.t < 700;
+  touch = null;
+  if (quick && Math.abs(dx) > 70 && Math.abs(dx) > 2.5 * Math.abs(dy)) step(dx < 0 ? 1 : -1);
 });
 
 // Tap the slide: full screen, pinch to zoom.
