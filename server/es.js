@@ -51,7 +51,7 @@ async function raw(method, path, body, timeoutMs = 3000) {
 // Writes are non-blocking by default and always absorb Elasticsearch errors.
 function index(name, doc, id) {
   if (!enabled) return;
-  // Writes run ELSER inference for semantic_text fields; a cold model can take several seconds.
+  // Writes run embedding inference for semantic_text fields; a cold model can take several seconds.
   // Fire-and-forget, so a longer timeout never touches the live path (Radar investigation found 3 s too short).
   const write = () => raw(
     id == null ? 'POST' : 'PUT',
