@@ -1,0 +1,16 @@
+// All env vars from CONTRACT.md, read once.
+const e = process.env;
+module.exports = {
+  PORT: Number(e.PORT || 8080),
+  PUBLIC_BASE_URL: e.PUBLIC_BASE_URL || '',
+  SPEAKER_KEY: e.SPEAKER_KEY || '',
+  TECH_KEY: e.TECH_KEY || '',
+  ALERT_THRESHOLD: Number(e.ALERT_THRESHOLD || 3),
+  ALERT_WINDOW_SEC: Number(e.ALERT_WINDOW_SEC || 60),
+  CAPTIONS_DEFAULT: (e.CAPTIONS_DEFAULT || 'on') === 'on',
+  ELASTIC_URL: e.ELASTIC_URL || '',
+  ELASTIC_API_KEY: e.ELASTIC_API_KEY || '',
+  ES_INFERENCE_ID: e.ES_INFERENCE_ID || '',
+  OTEL_SERVICE_NAME: e.OTEL_SERVICE_NAME || 'pulse',
+  OTEL_EXPORTER_OTLP_ENDPOINT: e.OTEL_EXPORTER_OTLP_ENDPOINT || '',
+};

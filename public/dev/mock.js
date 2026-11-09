@@ -1,11 +1,14 @@
 // Preview mode for design work. Loaded only when the page URL has ?mock=1.
-// Fakes the backend inside the browser so /r.html can be designed and checked
-// without the server: captions stream in, slides advance, votes get counts,
-// and the preview page (dev/preview.html) can trigger tech actions.
+// Fakes the backend inside the browser so /r.html and /tech.html can be designed and
+// checked without the server: captions stream in, slides advance, votes get counts,
+// tickets open, questions arrive, and the preview page (dev/preview.html) can act as
+// the tech. Every open preview tab/frame shares one fake room through a
+// BroadcastChannel, so a vote on a phone frame shows up as a block on the tech frame.
 // It only ever sends messages and fields defined in CONTRACT.md.
 
 const TALK_ID = 'demo-talk';
-const ROOM = new URLSearchParams(location.search).get('room') || '151';
+const ROOM = '151'; // the room with the scripted talk; 255 is a second room for the tech view
+const FRAME = Math.random().toString(36).slice(2, 8); // one fake voter per frame (frames share localStorage)
 
 const LINES = [
   "Raise your hand if you've ever sat at the back of a talk and couldn't hear.",
@@ -54,6 +57,9 @@ class MockSocket {
 
   constructor(url) {
     this.url = String(url);
+    const q = new URL(this.url, location.href).searchParams;
+    this.role = q.get('role') || 'attendee';
+    this.room = q.get('room') || ROOM;
     this.readyState = 0;
     this.binaryType = 'blob';
     this.audio = this.url.includes('/ws/audio-out');
@@ -100,7 +106,80 @@ class MockSocket {
 window.WebSocket = MockSocket;
 window.__pulseRealWebSocket = RealWebSocket;
 
-function broadcast(msg) { for (const s of jsonSockets) s.deliver(msg); }
+// Send to sockets in this frame. roles: list of roles, or null for every role.
+function send(msg, { roles = null, room = ROOM } = {}) {
+  for (const s of jsonSockets) {
+    if (roles && !roles.includes(s.role)) continue;
+    if (room && s.room !== room) continue;
+    s.deliver(msg);
+  }
+}
+const toPhones = (msg) => send(msg, { roles: ['attendee'] });
+const toTech = (msg, room = ROOM) => send(msg, { roles: ['tech', 'org'], room });
+
+// ---------- shared fake room state ----------
+const t0 = Date.now();
+const others = { cant_hear: 3, cant_see: 1 }; // pretend other people already voted
+const voters = { cant_hear: new Set(), cant_see: new Set() }; // preview frames that voted
+const CAUSE = {
+  cant_hear: ['Podium mic gain too low or muted', ['Check the podium mic is on and unmuted', 'Raise the mic channel 3–6 dB', 'Check the back speakers are powered']],
+  cant_see: ['Projector too dim or slides too small', ['Turn off the front lights', 'Check projector brightness', 'Ask the speaker to zoom in']],
+};
+const tickets = new Map([
+  ['t-hear', ticket('t-hear', ROOM, 'cant_hear', 3, 'open', t0 - 42000)],
+  ['t-255', ticket('t-255', '255', 'cant_see', 5, 'claimed', t0 - 95000)],
+]);
+const groups = [
+  { qid: 'qa', text: 'Is the transcript saved after the talk?', count: 3, answered: false },
+  { qid: 'qb', text: 'Which mic does the room use?', count: 1, answered: false },
+];
+let lastCaptionAt = Date.now();
+
+function ticket(id, room, type, people, status, openedAt) {
+  const [cause, steps] = CAUSE[type];
+  return { id, room, type, people, status, openedAt: new Date(openedAt).toISOString(), cause, steps };
+}
+const count = (type) => others[type] + voters[type].size;
+const ticketFor = (type) => [...tickets.values()].find((t) => t.room === ROOM && t.type === type && ['open', 'reopened', 'claimed'].includes(t.status));
+
+// Every change goes through apply(): this frame applies it now and every other preview
+// frame applies the same event, so they all stay in step.
+const chan = 'BroadcastChannel' in window ? new BroadcastChannel('pulse-mock') : null;
+if (chan) chan.onmessage = (e) => apply(e.data, false);
+function share(ev) { apply(ev, true); chan?.postMessage(ev); }
+
+function apply(ev, local) {
+  switch (ev.kind) {
+    case 'vote': {
+      if (ev.on) voters[ev.type].add(ev.voter); else voters[ev.type].delete(ev.voter);
+      const n = count(ev.type);
+      toPhones({ t: 'vote_count', type: ev.type, count: n, windowSec: 60 });
+      let t = ticketFor(ev.type);
+      if (!t && n >= 3) { t = ticket(`t-${ev.type}-${ev.at}`, ROOM, ev.type, n, 'open', ev.at); tickets.set(t.id, t); }
+      if (t) { t.people = n; toTech({ t: 'ticket', ...t }); }
+      break;
+    }
+    case 'ticket': {
+      const t = tickets.get(ev.id);
+      if (!t) break;
+      t.status = ev.status;
+      if (ev.status === 'fixed' || ev.status === 'dismissed') { others[t.type] = 0; voters[t.type].clear(); }
+      toTech({ t: 'ticket', ...t }, t.room);
+      if (t.room === ROOM) toPhones({ t: 'ticket_status', ticketId: t.id, type: t.type, status: t.status });
+      break;
+    }
+    case 'question':
+      groups.unshift({ qid: ev.qid, text: ev.text, count: 1, answered: false });
+      toTech({ t: 'question_groups', groups });
+      break;
+    case 'reply': toPhones({ t: 'question_reply', qid: ev.qid, text: ev.text }); break;
+    case 'bcast': toPhones({ t: 'broadcast', text: ev.text }); break;
+    case 'settings': send({ t: 'room_settings', ...ev.settings }, { room: ev.room }); break;
+    case 'slide': nextSlide(ev.step); break;
+    case 'drop': if (local || ev.all) for (const s of [...jsonSockets]) s.close(); break;
+    default: break;
+  }
+}
 
 // ---------- scripted talk ----------
 let seq = 0;
@@ -108,35 +187,60 @@ let lineIdx = 0;
 let slideIdx = 0;
 let captionTimer = null;
 let slideTimer = null;
+let statusTimer = null;
 
 function hello(sock) {
   sock.deliver({ t: 'room_settings', captions: true, listen: true, slides: true });
-  const backlog = [];
-  for (let i = 0; i < 2 && lineIdx < LINES.length; i++) backlog.push({ seq: ++seq, text: LINES[lineIdx++], talkId: TALK_ID });
-  sock.deliver({ t: 'caption_backlog', lines: backlog });
-  sock.deliver({ t: 'slide', talkId: TALK_ID, n: slideIdx + 1, total: SLIDES.length, url: slideUrl(slideIdx), alt: SLIDES[slideIdx].join(' ') });
+  if (sock.role === 'tech' || sock.role === 'org') {
+    // join snapshot: one ticket message per active ticket, then the question groups
+    for (const t of tickets.values()) if (t.room === sock.room && ['open', 'reopened', 'claimed'].includes(t.status)) sock.deliver({ t: 'ticket', ...t });
+    if (sock.room === ROOM) {
+      sock.deliver({ t: 'question_groups', groups });
+      sock.deliver({ t: 'caption_backlog', lines: LINES.slice(0, 3).map((text, i) => ({ seq: i + 1, text, talkId: TALK_ID })) });
+    }
+    if (!statusTimer) statusTimer = setInterval(roomStatus, 2000);
+    roomStatus();
+  } else {
+    const backlog = [];
+    for (let i = 0; i < 2 && lineIdx < LINES.length; i++) backlog.push({ seq: ++seq, text: LINES[lineIdx++], talkId: TALK_ID });
+    sock.deliver({ t: 'caption_backlog', lines: backlog });
+    sock.deliver({ t: 'slide', talkId: TALK_ID, n: slideIdx + 1, total: SLIDES.length, url: slideUrl(slideIdx), alt: SLIDES[slideIdx].join(' ') });
+    if (!slideTimer) slideTimer = setInterval(() => nextSlide(), 9000);
+  }
   if (!captionTimer) captionTimer = setInterval(nextCaption, 2600);
-  if (!slideTimer) slideTimer = setInterval(() => nextSlide(), 9000);
+}
+
+function roomStatus() {
+  for (const room of [ROOM, '255']) {
+    const open = [...tickets.values()].filter((t) => t.room === room && ['open', 'reopened', 'claimed'].includes(t.status)).length;
+    toTech({
+      t: 'room_status', room,
+      listeners: room === ROOM ? 14 : 31,
+      micDb: room === ROOM ? Math.round(-30 + Math.random() * 8) : -18,
+      captionGapSec: room === ROOM ? Math.floor((Date.now() - lastCaptionAt) / 1000) : 1,
+      openTickets: open,
+    }, room);
+  }
 }
 
 function nextCaption() {
   const text = LINES[lineIdx % LINES.length];
   lineIdx++;
   const words = text.split(' ');
-  broadcast({ t: 'caption_interim', text: words.slice(0, Math.ceil(words.length / 2)).join(' ') });
-  setTimeout(() => broadcast({ t: 'caption', talkId: TALK_ID, seq: ++seq, text, ts: Date.now() }), 900);
+  toPhones({ t: 'caption_interim', text: words.slice(0, Math.ceil(words.length / 2)).join(' ') });
+  setTimeout(() => {
+    lastCaptionAt = Date.now();
+    send({ t: 'caption', talkId: TALK_ID, seq: ++seq, text, ts: Date.now() });
+  }, 900);
 }
 
 function nextSlide(step = 1) {
   slideIdx = (slideIdx + step + SLIDES.length) % SLIDES.length;
-  broadcast({ t: 'slide', talkId: TALK_ID, n: slideIdx + 1, total: SLIDES.length, url: slideUrl(slideIdx), alt: SLIDES[slideIdx].join(' ') });
+  toPhones({ t: 'slide', talkId: TALK_ID, n: slideIdx + 1, total: SLIDES.length, url: slideUrl(slideIdx), alt: SLIDES[slideIdx].join(' ') });
 }
 
 // ---------- fake HTTP API ----------
-const others = { cant_hear: 3, cant_see: 1 }; // pretend other people already voted
-const mine = { cant_hear: false, cant_see: false };
 let lastQid = null;
-let qCounter = 0;
 const realFetch = window.fetch.bind(window);
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -145,44 +249,73 @@ window.fetch = async (input, init = {}) => {
   const url = new URL(typeof input === 'string' ? input : input.url, location.href);
   const method = (init.method || 'GET').toUpperCase();
   const body = init.body ? JSON.parse(init.body) : {};
+  const path = url.pathname;
+  let m;
   await new Promise((r) => setTimeout(r, 150)); // feel like a network
 
-  if (url.pathname === '/api/rooms' && method === 'GET') {
-    return json([{ room: ROOM, talkId: TALK_ID, title: 'Room Pulse demo', speaker: 'Tyler & Owen', listeners: 14, openTickets: 0, simulated: false }]);
+  if (path === '/api/rooms' && method === 'GET') {
+    return json([
+      { room: ROOM, talkId: TALK_ID, title: 'Room Pulse demo', speaker: 'Tyler & Owen', listeners: 14, openTickets: 1, simulated: false },
+      { room: '255', talkId: 'other-talk', title: 'Scaling Argo CD to 500 clusters', speaker: 'Guest speaker', listeners: 31, openTickets: 1, simulated: true },
+    ]);
   }
-  if (url.pathname === '/api/votes' && method === 'PUT') {
-    mine[body.type] = !!body.on;
-    const count = others[body.type] + (mine[body.type] ? 1 : 0);
-    broadcast({ t: 'vote_count', type: body.type, count, windowSec: 60 });
-    return json({ count, ticketStatus: count >= 3 ? 'open' : null });
+  if (path === '/api/config') return json({ alertThreshold: 3 });
+  if (path === '/api/votes' && method === 'PUT') {
+    share({ kind: 'vote', type: body.type, on: !!body.on, voter: FRAME, at: Date.now() });
+    const n = count(body.type);
+    return json({ count: n, ticketStatus: ticketFor(body.type)?.status || null });
   }
-  if (url.pathname === '/api/questions' && method === 'POST') {
-    lastQid = `q${++qCounter}`;
-    return json({ qid: lastQid, groupId: 'g1' });
+  if (path === '/api/questions' && method === 'POST') {
+    lastQid = `q-${FRAME}-${Date.now()}`;
+    share({ kind: 'question', qid: lastQid, text: String(body.text || '') });
+    return json({ qid: lastQid, groupId: lastQid });
   }
-  if (url.pathname === '/api/feedback' && method === 'POST') {
+  if (path === '/api/feedback' && method === 'POST') {
     return json({ better: body.better ? 1 : 0, stillBad: body.better ? 0 : 1 });
   }
+  if ((m = path.match(/^\/api\/tickets\/([^/]+)\/(claim|fixed|dismiss)$/))) {
+    const status = { claim: 'claimed', fixed: 'fixed', dismiss: 'dismissed' }[m[2]];
+    share({ kind: 'ticket', id: decodeURIComponent(m[1]), status });
+    return json({ status });
+  }
+  if ((m = path.match(/^\/api\/rooms\/([^/]+)\/settings$/))) {
+    share({ kind: 'settings', room: decodeURIComponent(m[1]), settings: body });
+    return json({ ok: true });
+  }
+  if ((m = path.match(/^\/api\/rooms\/([^/]+)\/broadcast$/))) {
+    share({ kind: 'bcast', text: String(body.text || '') });
+    return json({ ok: true });
+  }
+  if ((m = path.match(/^\/api\/questions\/([^/]+)\/reply$/))) {
+    share({ kind: 'reply', qid: decodeURIComponent(m[1]), text: String(body.text || '') });
+    return json({ ok: true });
+  }
+  if (path.startsWith('/api/questions/')) return json({ ok: true }); // queue / answered / hide
   return realFetch(input, init);
 };
 
 // ---------- controls from dev/preview.html (postMessage) ----------
+// The preview page posts each command to every frame; only the frame that receives
+// it with lead: true shares it, so a button press happens once, not once per frame.
 const COMMANDS = {
-  fixed_hear: () => { mine.cant_hear = false; others.cant_hear = 0; broadcast({ t: 'ticket_status', ticketId: 't-hear', type: 'cant_hear', status: 'fixed' }); },
-  fixed_see: () => { mine.cant_see = false; others.cant_see = 0; broadcast({ t: 'ticket_status', ticketId: 't-see', type: 'cant_see', status: 'fixed' }); },
-  reply: () => { if (lastQid) broadcast({ t: 'question_reply', qid: lastQid, text: 'Room 255 has about 40 free seats.' }); },
-  broadcast: () => broadcast({ t: 'broadcast', text: 'Audio fixed. Tell us if it is better.' }),
-  captions_off: () => broadcast({ t: 'room_settings', captions: false, listen: true, slides: true }),
-  captions_on: () => broadcast({ t: 'room_settings', captions: true, listen: true, slides: true }),
-  next_slide: () => nextSlide(1),
-  prev_slide: () => nextSlide(-1),
-  drop: () => { for (const s of [...jsonSockets]) s.close(); },
+  fixed_hear: () => { const t = ticketFor('cant_hear'); if (t) share({ kind: 'ticket', id: t.id, status: 'fixed' }); },
+  fixed_see: () => { const t = ticketFor('cant_see'); if (t) share({ kind: 'ticket', id: t.id, status: 'fixed' }); },
+  reply: () => share({ kind: 'reply', qid: lastQid || 'none', text: 'Room 255 has about 40 free seats.' }),
+  broadcast: () => share({ kind: 'bcast', text: 'Audio fixed. Tell us if it is better.' }),
+  captions_off: () => share({ kind: 'settings', room: ROOM, settings: { captions: false, listen: true, slides: true } }),
+  captions_on: () => share({ kind: 'settings', room: ROOM, settings: { captions: true, listen: true, slides: true } }),
+  next_slide: () => share({ kind: 'slide', step: 1 }),
+  prev_slide: () => share({ kind: 'slide', step: -1 }),
+  drop: () => share({ kind: 'drop', all: true }),
 };
 
 window.addEventListener('message', (e) => {
   if (e.origin !== location.origin) return;
   const cmd = e.data && e.data.pulseMock;
-  if (cmd && COMMANDS[cmd]) COMMANDS[cmd]();
+  if (!cmd || !COMMANDS[cmd]) return;
+  // "reply" is per phone (it answers that phone's own question); everything else is room-wide.
+  if (cmd === 'reply') { if (lastQid) toPhones({ t: 'question_reply', qid: lastQid, text: 'Room 255 has about 40 free seats.' }); return; }
+  if (e.data.lead || !chan) COMMANDS[cmd]();
 });
 
 // A small tag so nobody mistakes fake data for the live room.
