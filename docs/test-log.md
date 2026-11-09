@@ -203,3 +203,11 @@ All passed:
 - **Go live after End talk starts a new talk:** talk `9ce0f0af` ended, Go live again created `d3fd738a`. Phones show live again.
 - **Caption crawl with a 30-word caption:** split into lines of up to 8 words. Newest line fully inside the box and on screen at 320×568, 360×640 and 390×844, at default, 28 px and 36 px text. The box is capped at 32vh.
 - `npm run check`: all checks ok.
+## 2026-11-09: demo fixes (UI)
+
+- `public/lib/socket.js` now sends the attendee `clientId`. A `/tmp` `ws` client connected as `role=attendee&clientId=...` received `question_reply` after `POST /api/questions` + tech reply (`sent: 1`).
+- `/r/wscheck` while waiting: both vote buttons `aria-disabled="true"` and sub-label "Voting opens when the talk starts". Live talk message enabled them and showed title/speaker. A rapid triple tap produced one `PUT /api/votes`. End showed "Talk ended · transcript saved" → `/t/373d9c39`.
+- Injected 409s: `stale_talk` was retried once and the retry returned 200; `no_live_talk` showed the gate with no network request.
+- `/present/wscheck` opened on `127.0.0.1`: warning visible and QR URL `http://127.0.0.1:8181/r/wscheck`; with `?base=https://pulse.example.test` the warning was hidden and the URL used the base.
+- `/tech?key=tk` without `rooms`: discovered `demo2` and `wscheck`; `&rooms=151` stayed on 151 only. The drawer showed "Discovery talk · Grace" from the `talk` message.
+- `npm run check` passes.

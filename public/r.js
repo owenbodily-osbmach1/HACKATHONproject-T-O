@@ -14,6 +14,7 @@ const clientId = getClientId();
 
 const state = {
   talkId: null,
+  talkStatus: 'waiting', // from the server's talk message: waiting | live | ended
   settings: { captions: true, listen: true, slides: true },
   slides: [],        // every slide seen this talk, index = n - 1
   liveN: 0,          // slide the presenter is on
@@ -48,6 +49,37 @@ function setTalk({ talkId, title, speaker }) {
   }
   if (title) $('talkTitle').textContent = title;
   if (speaker !== undefined) $('talkSpeaker').textContent = speaker || '';
+}
+
+// The server's talk message is the truth about whether votes count right now.
+function onTalk({ talkId, title, speaker, status }) {
+  if (talkId) setTalk({ talkId, title, speaker });
+  state.talkStatus = status || 'waiting';
+  applyTalkState();
+}
+
+function renderTalkGate() {
+  const gate = $('voteGate');
+  gate.replaceChildren();
+  if (state.talkStatus === 'live') { gate.hidden = true; return; }
+  gate.hidden = false;
+  if (state.talkStatus === 'ended') {
+    if (state.talkId) {
+      const a = document.createElement('a');
+      a.href = `/t/${encodeURIComponent(state.talkId)}`;
+      a.textContent = 'Talk ended · transcript saved';
+      gate.append(a);
+    } else {
+      gate.textContent = 'Talk ended · transcript saved';
+    }
+  } else {
+    gate.textContent = 'Voting opens when the talk starts.';
+  }
+}
+
+function applyTalkState() {
+  renderTalkGate();
+  renderVotes();
 }
 
 // A new talk in the same room: caption seq restarts at 1 and it has its own deck.
@@ -284,23 +316,32 @@ setInterval(expireVotes, 30000);
 function saveVotes() { store.set(voteKey(), { votes: state.votes, voted: state.voted }); }
 
 // Colour is never the only signal: the sub-label always says whether my vote counts.
+function voteSub(type) {
+  if (state.talkStatus === 'ended') return 'Voting closed';
+  if (state.talkStatus !== 'live') return 'Voting opens when the talk starts';
+  if (isOn(type)) {
+    const count = lastCount[type] ?? 0;
+    return count > 1 ? `Voted · ${count} people · tap to undo` : 'Voted · tap to undo';
+  }
+  return type === 'cant_hear' ? "I can't hear" : 'the slides';
+}
+
 function renderVotes() {
+  const open = state.talkStatus === 'live';
   for (const b of document.querySelectorAll('.vote')) {
     const t = b.dataset.type;
     const on = isOn(t);
     b.setAttribute('aria-pressed', String(on));
+    b.setAttribute('aria-disabled', String(!open));
     b.classList.toggle('on', on);
-    setVoteCount(t, lastCount[t] ?? 0);
+    b.querySelector('.vote-sub').textContent = voteSub(t);
   }
 }
 
 function setVoteCount(type, count) {
   lastCount[type] = count;
   const b = document.querySelector(`.vote[data-type="${type}"]`);
-  if (!b) return;
-  const base = type === 'cant_hear' ? "I can't hear" : 'the slides';
-  const voted = count > 1 ? `Voted · ${count} people · tap to undo` : 'Voted · tap to undo';
-  b.querySelector('.vote-sub').textContent = isOn(type) ? voted : base;
+  if (b) b.querySelector('.vote-sub').textContent = voteSub(type);
 }
 
 async function sendVote(type, on) {
@@ -309,12 +350,25 @@ async function sendVote(type, on) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ room, talkId: state.talkId, type, clientId, on }),
   });
-  if (!res.ok) throw new Error(`vote ${res.status}`);
-  return res.json();
+  let body = {};
+  try { body = await res.json(); } catch { /* no body */ }
+  if (!res.ok) {
+    const err = new Error(body.error || `vote ${res.status}`);
+    err.status = res.status;
+    err.body = body;
+    throw err;
+  }
+  return body;
 }
 
+const voteBusy = {}; // type -> a tap is in flight; ignore further taps
+
 async function toggleVote(type) {
+  if (state.talkStatus !== 'live') return; // no optimistic toggle while voting is closed
+  if (voteBusy[type]) return;             // out-of-order taps cannot flip the server's state
+  voteBusy[type] = true;
   const prev = state.votes[type];
+  const talkAtStart = state.talkId;
   const on = !isOn(type);
   state.votes[type] = on ? Date.now() : false;
   if (on) state.voted[type] = true;
@@ -333,14 +387,38 @@ async function toggleVote(type) {
   }
 
   try {
-    const r = await sendVote(type, on);
+    let r;
+    try {
+      r = await sendVote(type, on);
+    } catch (e) {
+      if (e.status === 409 && e.body?.error === 'stale_talk' && e.body.talkId) {
+        // This phone still had the previous talk: adopt the live one and retry once.
+        setTalk({ talkId: e.body.talkId });
+        state.votes[type] = on ? Date.now() : false;
+        if (on) state.voted[type] = true;
+        saveVotes();
+        renderVotes();
+        r = await sendVote(type, on);
+      } else if (e.status === 409 && e.body?.error === 'no_live_talk') {
+        state.votes[type] = prev ?? false;
+        saveVotes();
+        state.talkStatus = 'waiting';
+        applyTalkState();
+        hideHint();
+        return;
+      } else {
+        throw e;
+      }
+    }
     if (typeof r?.count === 'number') setVoteCount(type, r.count);
   } catch {
     // Undo so the button never lies about what the server has.
-    state.votes[type] = prev ?? false;
+    state.votes[type] = state.talkId === talkAtStart ? (prev ?? false) : false;
     saveVotes();
     renderVotes();
     showHint("Couldn't send that. Check your connection and tap again.");
+  } finally {
+    voteBusy[type] = false;
   }
 }
 document.querySelectorAll('.vote').forEach((b) => { b.onclick = () => toggleVote(b.dataset.type); });
@@ -493,12 +571,14 @@ function applySettings(s) {
 connectRoom({
   room,
   role: 'attendee',
+  clientId,
   onStatus: (s) => {
     setConn(s);
     if (s === 'live') loadRoomInfo();
   },
   onMessage: (m) => {
     switch (m.t) {
+      case 'talk': onTalk(m); break;
       case 'caption': if (m.talkId) setTalk({ talkId: m.talkId }); addCaption(m); break;
       case 'caption_interim': $('interim').textContent = m.text || ''; if (state.autoScroll) scrollCaptionsToEnd(); break;
       case 'caption_backlog': (m.lines || []).forEach(addCaption); break;
@@ -515,4 +595,5 @@ connectRoom({
 
 setMode(store.get('pulse.mode', 'captions'));
 loadVotes();
+applyTalkState();
 loadRoomInfo();
