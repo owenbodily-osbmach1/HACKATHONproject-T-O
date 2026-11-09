@@ -313,6 +313,7 @@ function goSlide(n) {
 }
 $('prevSlide').onclick = () => goSlide(state.slideN - 1);
 $('nextSlide').onclick = () => goSlide(state.slideN + 1);
+renderSlidePos();
 loadDeck();
 
 window.addEventListener('beforeunload', (e) => {
