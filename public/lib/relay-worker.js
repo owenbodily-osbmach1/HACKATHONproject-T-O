@@ -23,6 +23,7 @@ let forceNext = false;
 let timer = null;
 let busy = false;
 let stopped = false;
+let wasPresenting = null;
 
 const thumbCanvas = new OffscreenCanvas(THUMB_W, THUMB_H);
 const thumbCtx = thumbCanvas.getContext('2d', { willReadFrequently: true });
@@ -108,6 +109,13 @@ async function tick() {
   try {
     const width = source.displayWidth || source.width;
     const height = source.displayHeight || source.height;
+    // Presenting = the captured tab/window is full screen: same shape as the screen
+    // (a normal browser tab is shorter because of the tabs/address bar).
+    if (cfg.requireFullscreen) {
+      const presenting = Math.abs(width / height - cfg.screenAspect) < 0.025;
+      if (presenting !== wasPresenting) { wasPresenting = presenting; post({ type: presenting ? 'presenting' : 'skip', reason: presenting ? undefined : 'not-presenting' }); }
+      if (!presenting) { prevThumb = null; return; }
+    }
     const t = thumbOf(source);
     const now = Date.now();
     const dPrev = diff(t, prevThumb);
@@ -142,6 +150,7 @@ async function tick() {
       headers: { 'content-type': 'image/jpeg', 'x-pulse-key': cfg.key },
       body: blob,
     });
+    if (res.status === 429) return; // server's per-room rate limit: the next sample retries quietly
     if (!res.ok) {
       post({ type: 'error', status: res.status, message: res.status === 401 ? 'Wrong speaker key' : `Upload failed (${res.status})` });
       if (res.status === 401) { stopped = true; clearInterval(timer); }
