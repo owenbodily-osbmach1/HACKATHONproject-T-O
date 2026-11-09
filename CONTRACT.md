@@ -98,9 +98,9 @@ All messages are JSON with a `t` field. `role=mic` and `role=present` must also 
 | `feed` | server → | `kind, room, text, ts, refId` | tech |
 | `slide` | present/mic → server → room (or server, after a relay upload) | `talkId, n, total, url, alt?` (`total: 0` = unknown, captured deck) | all (and new phones on join) |
 | `talk` | server → (on join and on every change) | `talkId, title, speaker, status: 'waiting'\|'live'\|'ended', startedAt, endedAt?, reportUrl?, next?: {title, start}` | all (the attendee pill shows Live / Ended / Not started from this, not from the socket state) |
-| `room_stats` | server → (on join and when it changes, checked every 2 s) | `room, joined, here, capacity, fill` | all |
+| `room_stats` | server → (on join and when it changes, checked every 2 s) | `room, joined, here, capacity, fill, signedIn` | all |
 | `room_telemetry` | server → (every 2 s) | `room, talk, presenter, mic{state: live\|silent\|stopped, db}, captions{state: live\|silent\|stopped, gapSec, lines}, listen{state, listening}, slides{state: live\|none\|stopped, n, lastAt}, phones{here, joined, capacity, listening, reconnects5m}` | tech, org |
-| `ping` / `pong` | both, every 20 s | — | all (`lib/socket.js` replaces a socket that has received nothing, not even a `pong`, for 45 s) |
+| `ping` / `pong` | both, every 20 s | — | all (`lib/socket.js` pings every 10 s and replaces a socket that has received nothing, not even a `pong`, for 25 s) |
 
 Audio uses its own binary-only sockets:
 
@@ -134,11 +134,25 @@ Audio uses its own binary-only sockets:
 
 Set `inference_id` explicitly from `ES_INFERENCE_ID`. If inference isn't available, fall back to a plain `match` query.
 
+## Sign-in (before joining)
+
+`SIGNIN=on` (default) | `off`. While on, a phone signs in once before it gets the room:
+
+| Method | Path | Body | Returns |
+| --- | --- | --- | --- |
+| GET | `/r/:room` | — | the sign-in form (`public/join.html`) until this phone's `pulse_v` cookie has signed in, then the audience page. `Cache-Control: no-store`. |
+| POST | `/api/signin` | `{room, first, last, company, email}` | `{ok}` · `400 {error:'invalid', fields:{first?, last?, company?, email?}}` · `400 no_visitor` (no cookie: open the room link first) · `429` (10 tries / min) |
+| GET | `/api/rooms/:room/signins` (`TECH_KEY`) | — | `{room, count, enabled}`; `?format=csv` → `first_name, last_name, company_or_occupation, email, signed_in_at, source` (`source: demo` for the demo room's fictional crowd) |
+
+- Server checks: every field required, trimmed, control characters removed; names ≤ 60, company ≤ 100, email ≤ 254 and a basic `name@domain.tld` check. The phone never says it signed in: the server looks up its own record for the `pulse_v` cookie (httpOnly, 24 h).
+- Gated while signed out: the attendee WebSocket (closed with `4403`; `lib/socket.js` reports `signin` and `r.js` goes to `/r/:room`), `/ws/audio-out` (`4403`), `PUT /api/votes`, `POST /api/questions`, `POST /api/feedback` (`403 {error:'signin_required'}`). `viewer` sockets (transcript pages) are not gated.
+- Sign-ins are kept in memory only: never in Elasticsearch, logs, OpenTelemetry, URLs or any attendee page, never linked to `clientId`. `room_stats.signedIn` is a count only (`null` when `SIGNIN=off`).
+
 ## Environment variables
 
 Kubernetes Secret (entered in the Radar UI) or local `.env`. **Never committed.** See `.env.example`.
 
-`PORT` · `MOCK_ROOM=255` · `ROOM_CAPACITY=120` · `PUBLIC_BASE_URL` · `SPEAKER_KEY` · `TECH_KEY` · `ALERT_THRESHOLD=3` · `ALERT_WINDOW_SEC=60` · `CAPTIONS_DEFAULT=on` · `ELASTIC_URL` · `ELASTIC_API_KEY` · `ES_INFERENCE_ID` · `OTEL_SERVICE_NAME=pulse` · `OTEL_EXPORTER_OTLP_ENDPOINT` · `OTEL_EXPORTER_OTLP_HEADERS` · `DASH0_RUM_TOKEN` (public, ingest-only) · `DASH0_RUM_ENDPOINT=https://ingress.us-west-2.aws.dash0.com`
+`PORT` · `MOCK_ROOM=255` · `ROOM_CAPACITY=120` · `SIGNIN=on` · `PUBLIC_BASE_URL` · `SPEAKER_KEY` · `TECH_KEY` · `ALERT_THRESHOLD=3` · `ALERT_WINDOW_SEC=60` · `CAPTIONS_DEFAULT=on` · `ELASTIC_URL` · `ELASTIC_API_KEY` · `ES_INFERENCE_ID` · `OTEL_SERVICE_NAME=pulse` · `OTEL_EXPORTER_OTLP_ENDPOINT` · `OTEL_EXPORTER_OTLP_HEADERS` · `DASH0_RUM_TOKEN` (public, ingest-only) · `DASH0_RUM_ENDPOINT=https://ingress.us-west-2.aws.dash0.com`
 
 ## Booths (expo floor)
 

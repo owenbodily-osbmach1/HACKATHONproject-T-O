@@ -90,7 +90,12 @@ function addSender(ws, room) {
     relay(room, Buffer.isBuffer(data) ? data : Buffer.from(data));
   });
   ws.on('close', () => {
-    if (senders.get(room) === ws) senders.delete(room);
+    if (senders.get(room) !== ws) return;
+    senders.delete(room);
+    // No podium audio any more: don't keep showing the last level (a "can't hear" ticket would get
+    // the wrong cause, and the AV meter would look healthy).
+    dbByRoom.delete(room);
+    if (ctx) ctx.state.room(room).micDb = null;
   });
   ws.on('error', () => {});
 }
@@ -115,6 +120,10 @@ module.exports = {
 
     if (isIn && !ctx.auth.ok('SPEAKER_KEY', url.searchParams.get('key'))) {
       wss.handleUpgrade(req, socket, head, (ws) => closeQuietly(ws, 4401, 'unauthorized'));
+      return;
+    }
+    if (isOut && !require('./signin').allowSocket(req)) {
+      wss.handleUpgrade(req, socket, head, (ws) => closeQuietly(ws, 4403, 'signin_required'));
       return;
     }
     wss.handleUpgrade(req, socket, head, (ws) => {

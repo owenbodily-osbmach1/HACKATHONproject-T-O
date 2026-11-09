@@ -1,23 +1,25 @@
 // Reconnecting JSON WebSocket client shared by every page.
 // Backoff 1, 2, 4, 8 s, capped at 10 s (CONTRACT.md). Answers server pings.
-// Heartbeat: sends {t:'ping'} every 20 s; if nothing at all (not even the pong) has arrived for
-// 45 s the socket is treated as dead and replaced. A phone that slept or changed networks often
+// Heartbeat: sends {t:'ping'} every 10 s; if nothing at all (not even the pong) has arrived for
+// 25 s the socket is treated as dead and replaced. A phone that slept or changed networks often
 // keeps a socket that looks open but never delivers anything, and never fires onclose.
 
-export function connectRoom({ room, role, key, onMessage, onStatus }) {
+export function connectRoom({ room, role, key, clientId, onMessage, onStatus }) {
   const delays = [1000, 2000, 4000, 8000, 10000];
   let attempt = 0;
   let ws = null;
   let closedByUs = false;
   let retryTimer = null;
   let lastSeen = Date.now();
-  const PING_MS = 20000;
-  const DEAD_MS = 45000;
+  const PING_MS = 10000; // the server answers every ping, so 25 s of nothing means the socket is dead
+  const DEAD_MS = 25000;
+  let lastPing = 0;
 
   function url() {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const q = new URLSearchParams({ room, role });
     if (key) q.set('key', key);
+    if (clientId) q.set('clientId', clientId);
     return `${proto}//${location.host}/ws?${q}`;
   }
 
@@ -49,6 +51,7 @@ export function connectRoom({ room, role, key, onMessage, onStatus }) {
     sock.onclose = (ev) => {
       if (closedByUs || ws !== sock) return;
       if (ev.code === 4401) { onStatus?.('unauthorized'); return; }
+      if (ev.code === 4403) { onStatus?.('signin'); return; } // attendee hasn't signed in (server/signin.js)
       schedule();
     };
     sock.onerror = () => { /* onclose follows */ };
@@ -82,6 +85,7 @@ export function connectRoom({ room, role, key, onMessage, onStatus }) {
   }
 
   window.addEventListener('online', () => reopenNow());
+  window.addEventListener('offline', () => { if (!closedByUs) onStatus?.('reconnecting'); });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     // Woken up after a long sleep: the old socket is probably dead even if it says OPEN.
@@ -90,8 +94,8 @@ export function connectRoom({ room, role, key, onMessage, onStatus }) {
   const heartbeat = setInterval(() => {
     if (closedByUs || !ws || ws.readyState !== WebSocket.OPEN) return;
     if (Date.now() - lastSeen > DEAD_MS) { reopenNow(true); return; }
-    send({ t: 'ping' });
-  }, PING_MS);
+    if (Date.now() - lastPing >= PING_MS) { lastPing = Date.now(); send({ t: 'ping' }); }
+  }, 5000);
 
   open();
   return {

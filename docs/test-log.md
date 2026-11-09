@@ -2,6 +2,39 @@
 
 What has been tested, how, what broke and what is still open. Newest first. Add to it when you test something.
 
+## 2026-11-09 14:20–14:45: agent group test, then fixes + sign-in on `ui/live-state-rooms` (Claude)
+
+**Agent group test** (`poc/one-room` build, shared server, 14:19–14:33): a presenter agent (headless Go live with fake mic, screen share and speech), an audience agent (6 headless phones + 40–51 socket phones, offline / locked-screen / blocked-WebSocket phones), an AV agent (3 consoles, real clicks and keys), and a chaos agent on its own servers. Fixed on this branch from their findings:
+
+| Finding | Fix |
+| --- | --- |
+| Laptop swap / second Go live tab: overlapping `seq`, phones silently dropped new lines; duplicate lines in the transcript | The server owns `seq` per talk (`hub.js`): keeps the mic's number only while it moves forward, drops an exact repeat of the last line |
+| Captions accepted for an ended talk; a stale tab's old `talkId` could flip phones between talks | Captions go to the room's live talk only; none when no talk is live |
+| AV: End armed in one room ended another room with one tap | Armed per room + talk, disarmed on room switch, a double-click isn't two taps |
+| AV: Reply box wiped every 5 s; clicks lost / landing on another ticket while blocks rebuilt and re-sorted | No question rebuild under an open reply; blocks in stable order, no rebuild while the mouse is down, the 5 s poll only updates tabs + drawer |
+| Go live: a second click during start-up ended the talk; a denied mic still started a talk; pill said LIVE after End | End ignored for 5 s after going live; mic opens before the talk; pill shows the talk state + "Phones show: …" line |
+| Replies never reached real phones (no `clientId` on the socket) | `r.js` passes `clientId` |
+| Phones kept LIVE for ~65 s after losing signal | ping every 10 s, dead after 25 s of silence |
+| Vote after the end said "check your connection"; question after the end filed under the ended talk; "Better now?" stayed up | 409 → "votes are closed"; question parked for the next talk; card hidden on end |
+| AV: old talk's captions under the new title; tabs numbered differently per console; typo'd `/r/152` added a tab; reminder chime for ended talks; silent rooms invisible | captions filtered by talk; tabs sorted by room id; only rooms with a talk (or the demo room) are added; chime only for live talks; ⚠ "silent N min" / "mic quiet" / "CC off" on the tab |
+| `/mic` page kept captioning after the AV ended the talk; half-said line stayed on phones after the mic page closed | `/mic` stops like Go live; interim cleared when the last mic socket leaves |
+
+Not fixed yet (follow-ups): ticket `claimedBy` / "Better now?" results on the console, reopened-ticket age, report shows 0 signals without Elasticsearch (and returns `clientId`s), auto-ending a talk whose presenter walked off, `/go` layout on a phone, a friendlier 401 page.
+
+**Sign-in, scan counts, telemetry** (PR folder, `node server/index.js` on 8099, desktop app browser at 375×812 and headless Chrome at 390 / 320 / 1440):
+
+| Check | Result |
+| --- | --- |
+| `/r/151` on a new phone → form; submit with a missing name, missing company and `not-an-email` → an error under each field | ✅ |
+| Bad data sent straight to `POST /api/signin` (blank, 70-char name, `a@b`) → `400` with per-field errors; no cookie → `400 no_visitor` | ✅ |
+| Without signing in: attendee socket closed `4403`, `PUT /api/votes` → `403` | ✅ |
+| Valid submit → live room at once (Live, 4 captions, "1 here now · 1 scanned in · 1% full"); reload → room again, no form, counts unchanged; `/r/255` → no form | ✅ |
+| CSV export: `401` without the tech key; with it, the real row plus 143 `demo` rows for room 255; a `=HYPERLINK(...)` name is written as text | ✅ |
+| Names / emails in the server log | ✅ none |
+| AV console: Live status rows (Server, Microphone, Captions, Listen-in, Slides, Phones), room fill, Signed in + Export CSV, ⚠ "silent 1 min" on a quiet room's tab | ✅ |
+| `npm run smoke` and every `scripts/*-check.js` (run with `SIGNIN=off`) | ✅ |
+| Real phones | not checked |
+
 ## 2026-11-09 14:00–14:20: talk stopped/live on phones, reconnect, rooms + demo room (Claude)
 
 **Bug (Owen's run):** ending the talk on Go live left phones saying **Live**. Two causes: the attendee page never handled the server's `talk` message (its red "Live" pill only meant "socket connected"), and Go live / the mic page resumed the room's talk even after it had ended, so going live again never flipped back.

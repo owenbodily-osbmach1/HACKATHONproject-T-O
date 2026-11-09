@@ -444,6 +444,39 @@ body[data-talk="ended"] .interim { display: none; }
 .d-session-btns { margin-left: auto; display: flex; gap: 8px; }
 .d-links { display: flex; gap: 16px; margin: 0 0 12px; font-size: 14px; font-weight: 700; }
 .d-links a { color: var(--blue); }
+/* Audience: who's here and how full the room is. */
+.room-stats { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-top: 6px; font-size: 13px; color: var(--muted); }
+.room-stats b { color: var(--text); font-variant-numeric: tabular-nums; }
+.rs-fill { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+.rs-bar { display: inline-block; width: 72px; height: 6px; border-radius: 3px; background: var(--raised); overflow: hidden; vertical-align: middle; }
+.rs-bar span { display: block; height: 100%; width: 0; background: var(--blue); transition: width .6s ease; }
+[data-level="near"] .rs-bar span { background: var(--yellow); }
+[data-level="full"] .rs-bar span { background: var(--red); }
+.rs-fill[data-level="near"] { color: var(--yellow); }
+.rs-fill[data-level="full"] { color: var(--red); }
+
+/* AV: live status panel, same rows as the Go live page. */
+.tele { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
+.tele li { display: grid; grid-template-columns: 22px 104px 1fr; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--raised); font-size: 14px; }
+.tele li b { font-weight: 800; }
+.tele .v { color: var(--muted); font-variant-numeric: tabular-nums; }
+.tele .ck { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line-strong); }
+.tele li[data-state="ok"] .ck { background: var(--text); border-color: var(--text); box-shadow: inset 0 0 0 3px var(--raised); }
+.tele li[data-state="ok"] .v { color: var(--text); }
+.tele li[data-state="wait"] .ck { border-color: var(--yellow); background: var(--yellow); }
+.tele li[data-state="wait"] .v { color: var(--yellow); }
+.tele li[data-state="bad"] .ck { border-color: var(--red); background: var(--red); }
+.tele li[data-state="bad"] .v { color: var(--red); }
+.fill-row { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font-size: 14px; }
+.fill-row .k { color: var(--muted); }
+.fill-row .rs-bar { flex: 1; width: auto; height: 8px; }
+.fill-row b { font-variant-numeric: tabular-nums; }
+.signins { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font-size: 14px; }
+.signins .k { color: var(--muted); }
+.signins b { font-variant-numeric: tabular-nums; }
+.signins button { margin-left: auto; }
+.seats { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 14px; color: var(--muted); }
+.seats input { width: 90px; }
 .drawer { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
 .drawer-head { display: flex; justify-content: space-between; align-items: center; }
 .drawer h2 { margin: 0; font-family: var(--font-head); font-size: 26px; }
@@ -503,3 +536,31 @@ body[data-talk="ended"] .interim { display: none; }
 .relay-previews figcaption { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
 .relay-previews video, .relay-previews img { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: #000; border: 1px solid var(--line); border-radius: 10px; }
 @media (max-width: 640px) { .relay-previews { grid-template-columns: 1fr; } }
+
+/* AV console: a healthy connection is not an alarm (red means "problem" here). */
+.techpage .conn[data-status="live"] { color: var(--muted); border-color: var(--line-strong); }
+.techpage .conn[data-status="live"] .dot { background: var(--text); animation: none; }
+/* Fixed-height caption list, so the switches below don't jump on every caption. */
+.d-captions { height: 9.5em; overflow: hidden; }
+.d-captions li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-tab .rt-alert { white-space: nowrap; }
+
+/* ---------- Sign-in form (/r/:room before joining) ---------- */
+.joinpage { min-height: 100vh; }
+.join { max-width: 460px; margin: 0 auto; padding: max(18px, env(safe-area-inset-top)) 16px 28px; }
+.join-head .wordmark { font-size: 30px; }
+.join-room { margin: 10px 0 0; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.join-head h1 { margin: 14px 0 4px; font-family: var(--font-head); font-size: 28px; }
+.join-sub { margin: 0 0 18px; color: var(--muted); font-size: 15px; }
+.field-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+@media (max-width: 340px) { .field-pair { grid-template-columns: 1fr; } }
+.field { display: grid; gap: 6px; align-content: start; margin-bottom: 12px; min-width: 0; }
+.field label { font-size: 14px; font-weight: 700; }
+.field input { width: 100%; min-height: 50px; padding: 0 14px; font-size: 17px; color: var(--text); background: var(--surface); border: 2px solid var(--line-strong); border-radius: 12px; }
+.field input:focus { border-color: var(--blue); outline: none; }
+.field input[aria-invalid="true"] { border-color: var(--red); }
+.field-err { margin: 0; min-height: 0; color: var(--red); font-size: 13px; font-weight: 700; }
+.field-err:empty { display: none; }
+.join-why { margin: 4px 0 14px; color: var(--muted); font-size: 13px; }
+.join-btn { width: 100%; min-height: 56px; border: 0; border-radius: 14px; background: var(--yellow); color: var(--on-color); font-size: 18px; font-weight: 800; }
+.join-msg { margin: 10px 0 0; min-height: 1.2em; color: var(--muted); font-size: 14px; text-align: center; }

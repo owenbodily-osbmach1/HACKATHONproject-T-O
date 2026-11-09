@@ -26,3 +26,6 @@
 details.card summary { cursor: pointer; font-weight: 700; color: var(--muted); }
 details.card[open] summary { margin-bottom: 12px; }
 @media (max-width: 600px) { .checks li { grid-template-columns: 26px 1fr; } .go-join { grid-template-columns: 1fr; } }
+
+/* What the phones show right now (talk title / ended), under the big button. */
+.talk-line { margin: 10px 0 0; font-size: 15px; font-weight: 700; color: var(--text); }

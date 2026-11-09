@@ -54,6 +54,10 @@ function remove(rec) {
   const set = rooms.get(rec.room);
   if (!set) return;
   set.delete(rec);
+  // The last mic page left (closed, crashed, reloaded): don't leave a half-said line on every phone.
+  if (rec.role === 'mic' && ![...set].some((r) => r.role === 'mic')) {
+    send(rec.room, { t: 'caption_interim', text: '' }, ['attendee', 'viewer']);
+  }
   if (!set.size) rooms.delete(rec.room);
 }
 
@@ -79,10 +83,39 @@ function onCaption(rec, msg) {
   const text = typeof msg.text === 'string' ? msg.text : '';
   if (!text.trim()) return;
 
-  const talkId = typeof msg.talkId === 'string' && msg.talkId ? msg.talkId : room.talkId;
-  const last = room.captions[room.captions.length - 1];
+  // Captions belong to the room's LIVE talk, whatever talkId the mic page sent: a stale tab still
+  // sending an old talkId must not flip phones between talks, and nothing is added to an ended talk.
+  let talk = ctx.state.liveTalk(rec.room);
+  // Server restarted mid-talk (state is in memory): the mic page keeps sending its talkId, which the
+  // server no longer knows. Re-create that talk so phones and the AV console come back to Live.
+  // A talk the server knows has ended is never re-opened.
+  const sent = typeof msg.talkId === 'string' ? msg.talkId : '';
+  if (!talk && /^[a-z0-9-]{4,40}$/i.test(sent) && !ctx.state.talks.has(sent)) {
+    const clip = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+    talk = { talkId: sent, room: rec.room, title: clip(msg.title, 200), speaker: clip(msg.speaker, 120), start: Date.now(), end: null, resumed: true };
+    ctx.state.talks.set(sent, talk);
+    room.talkId = sent;
+    room.title = talk.title;
+    room.speaker = talk.speaker;
+    send(rec.room, ctx.state.talkMessage(rec.room));
+  }
+  if (!talk) return;
+  const talkId = talk.talkId;
+  // The server owns seq: two Go live tabs (laptop swap) or a resumed page can send overlapping
+  // numbers, and phones drop any seq they have already seen. Keep the mic's number only while it
+  // moves forward; otherwise take the next one. Drop a line already relayed in the last 15 s (two mics).
+  if (talk.lastSeq === undefined) {
+    const lines = ctx.state.transcripts.get(talkId) || [];
+    talk.lastSeq = lines.reduce((m, l) => Math.max(m, Number(l.seq) || 0), 0);
+  }
+  const now = Date.now();
+  talk.recent = (talk.recent || []).filter((r) => now - r.at < 15000);
+  if (talk.recent.some((r) => r.text === text)) return; // the same line from a second mic
+  talk.recent.push({ text, at: now });
+  if (talk.recent.length > 8) talk.recent.shift();
   let seq = Number(msg.seq);
-  if (!Number.isInteger(seq) || seq < 0) seq = last ? Number(last.seq) + 1 : 1;
+  if (!Number.isInteger(seq) || seq <= talk.lastSeq) seq = talk.lastSeq + 1;
+  talk.lastSeq = seq;
 
   let ts = Number(msg.ts);
   if (!Number.isFinite(ts)) {
@@ -249,6 +282,11 @@ module.exports = {
     }
     if (!authorized(role, key)) {
       wss.handleUpgrade(req, socket, head, (ws) => closeQuietly(ws, 4401, 'unauthorized'));
+      return;
+    }
+    // Attendees must have signed in (server/signin.js); the page then shows the form.
+    if (role === 'attendee' && !require('./signin').allowSocket(req)) {
+      wss.handleUpgrade(req, socket, head, (ws) => closeQuietly(ws, 4403, 'signin_required'));
       return;
     }
     wss.handleUpgrade(req, socket, head, (ws) => join(ws, room, role, clientId));

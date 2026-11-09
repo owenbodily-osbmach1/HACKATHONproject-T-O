@@ -9,11 +9,11 @@
 const crypto = require('crypto');
 const http = require('http');
 
-const ROOM = String(process.env.MOCK_ROOM || '255');
-const ENABLED = ROOM.toLowerCase() !== 'off' && ROOM !== '0';
+const ROOM = String(process.env.MOCK_ROOM || '255').trim();
+const ENABLED = !/^(off|false|no|0|)$/i.test(ROOM);
 const TITLE = 'Scaling Argo CD to 500 clusters';
 const SPEAKER = 'Priya Raman (demo room)';
-const LINE_MS = 5000; // one caption line every ~5 s while live
+const LINE_MS = 6500; // one caption line every ~6.5 s while live (about 4 min of new lines before it loops)
 
 const SCRIPT = [
   'Thanks everyone for coming, this one is about running Argo CD at a scale it was not really built for.',
@@ -49,6 +49,15 @@ const SCRIPT = [
   'Median sync time is under thirty seconds, and the controllers use less memory than before.',
   'If you remember one thing, shard early, render in CI, and roll out in waves.',
   'I will take questions now, and the slides are linked from the Pulse page on your phone.',
+  'First question: how do we pick canary clusters? We pick ones with real traffic but a small blast radius.',
+  'Usually that is one cluster per cloud and one edge site, never the busiest region.',
+  'Next question: why not one Argo CD per region? We tried that, and it made rollouts harder to see as one picture.',
+  'Sharding gives us one view with the isolation we need, so we kept a single control plane.',
+  'Someone asked about disaster recovery: the Argo CD state is all in Git, so we can rebuild a controller in minutes.',
+  'We practice that once a quarter by deleting a shard on purpose in staging.',
+  'Last question: what would we do differently? We would have added sync metrics on day one.',
+  'Most of our early outages were things we could have seen coming on a dashboard.',
+  'Thanks again everyone, the slides and the transcript are on the Pulse page.',
 ];
 
 const QUESTIONS = [
@@ -82,9 +91,14 @@ function emit(talkId, text, ts) {
   ctx.hub.send(ROOM, { t: 'caption', ...line }, ['attendee', 'viewer', 'tech']);
 }
 
+// Only the demo's own talk: if the room has a real talk (MOCK_ROOM set to a real room), stay out of it.
 function liveTalkId() {
   const t = ctx.state.liveTalk(ROOM);
-  return t ? t.talkId : null;
+  return t && t.simulated ? t.talkId : null;
+}
+function realTalkLive() {
+  const t = ctx.state.liveTalk(ROOM);
+  return !!(t && !t.simulated);
 }
 
 // A believable crowd for the demo room: ~140 scanned the code, ~115 still here, a few listening.
@@ -122,7 +136,7 @@ function local(method, path, body) {
     const data = JSON.stringify(body);
     const req = http.request({
       host: '127.0.0.1', port: ctx.config.PORT, method, path,
-      headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(data) },
+      headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(data), 'x-pulse-internal': require('./signin').INTERNAL },
     }, (res) => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
     req.on('error', () => resolve(0));
     req.end(data);
@@ -131,7 +145,9 @@ function local(method, path, body) {
 
 // Votes and questions through the public routes, so tickets and question groups are real.
 async function seedSignals(talkId) {
-  for (const text of QUESTIONS) {
+  // Questions once per room: a restart doesn't pile up copies of the same three.
+  const haveQuestions = require('./questions').groupList(ROOM).length > 0;
+  for (const text of haveQuestions ? [] : QUESTIONS) {
     await local('POST', '/api/questions', { room: ROOM, talkId, text, clientId: `demo-q-${crypto.randomBytes(3).toString('hex')}` });
   }
   // One ticket is enough: a restart doesn't pile more votes onto a ticket that is still open.
@@ -143,6 +159,7 @@ async function seedSignals(talkId) {
 
 // Start (or restart) the demo talk: a fresh talk that started ~14 min ago with lines already said.
 function startTalk({ signals = true } = {}) {
+  if (realTalkLive()) return null; // never end or overwrite a real talk
   const prev = liveTalkId();
   if (prev) ctx.state.talks.get(prev).end = Date.now();
   const talkId = newTalkId();
@@ -181,7 +198,9 @@ module.exports = {
     // Restart the demo talk (TECH_KEY). Only works on the simulated room.
     app.post('/api/rooms/:room/demo/restart', ctx.auth.api('TECH_KEY'), (req, res) => {
       if (String(req.params.room) !== ROOM) return res.status(404).json({ error: 'not a demo room' });
-      res.json({ talkId: startTalk() });
+      const talkId = startTalk();
+      if (!talkId) return res.status(409).json({ error: 'real_talk_live', message: 'A real talk is live in this room.' });
+      res.json({ talkId });
     });
     // After the server is listening, so the seeded votes and questions can use the HTTP routes.
     setTimeout(() => startTalk(), 1500).unref?.();

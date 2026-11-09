@@ -28,12 +28,14 @@ function cookie(req, name) {
 // Middleware for GET /r/:room: count this visitor once per room.
 function scan(req, res, next) {
   if (req.method !== 'GET') return next();
+  if (!/^[A-Za-z0-9_-]{1,32}$/.test(String(req.params.room))) return res.status(404).type('text').send('No such room');
   let vid = cookie(req, 'pulse_v');
   if (!/^[a-f0-9]{16}$/.test(vid)) {
     vid = crypto.randomBytes(8).toString('hex');
     const https = req.secure || req.get('x-forwarded-proto') === 'https';
     res.append('Set-Cookie', `pulse_v=${vid}; Path=/; Max-Age=86400; HttpOnly; SameSite=Lax${https ? '; Secure' : ''}`);
   }
+  res.locals.vid = vid; // server/signin.js gate
   const room = String(req.params.room);
   let set = visitors.get(room);
   if (!set) visitors.set(room, (set = new Set()));
@@ -53,7 +55,9 @@ function statsFor(id) {
   const joined = (visitors.get(id)?.size || 0) + (sim ? sim.joined || 0 : 0);
   const here = ctx.hub.listeners(id) + (sim ? sim.here || 0 : 0);
   const capacity = capacityOf(r);
-  return { room: id, joined: Math.max(joined, here), here, capacity, fill: capacity ? Math.min(1, here / capacity) : 0 };
+  const signin = require('./signin'); // lazy: signin requires stats
+  const signedIn = signin.enabled ? signin.countFor(id) : null;
+  return { room: id, joined: Math.max(joined, here), here, capacity, fill: capacity ? Math.min(1, here / capacity) : 0, signedIn };
 }
 
 function statsMessage(id) { return { t: 'room_stats', ...statsFor(id) }; }
@@ -114,8 +118,15 @@ function telemetry(id) {
   };
 }
 
+// The visitor id from a raw Cookie header (WebSocket upgrades and API calls).
+function visitorFromHeaders(headers) {
+  const vid = cookie({ headers: headers || {} }, 'pulse_v');
+  return /^[a-f0-9]{16}$/.test(vid) ? vid : '';
+}
+
 module.exports = {
   scan,
+  visitorFromHeaders,
   statsFor,
   statsMessage,
   onJoin,

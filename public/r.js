@@ -40,6 +40,15 @@ document.title = `Pulse · Room ${room}`;
 const CONN_WORDS = { connecting: 'Connecting…', reconnecting: 'Reconnecting…', unauthorized: 'Not allowed' };
 const TALK_WORDS = { live: 'Live', ended: 'Ended', waiting: 'Not started' };
 function setConn(status) {
+  // Not signed in (the server refused the socket): go to the room link, which serves the form.
+  if (status === 'signin') {
+    if (!sessionStorage.getItem('pulse.signinBounce')) {
+      sessionStorage.setItem('pulse.signinBounce', '1');
+      location.replace(`/r/${encodeURIComponent(room)}`);
+    }
+    return;
+  }
+  if (status === 'live') sessionStorage.removeItem('pulse.signinBounce');
   state.conn = status;
   renderPill();
   if (status === 'live') stopPolling(); else startPolling();
@@ -56,10 +65,26 @@ const fmtTime = (iso) => {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 };
 
+// ---------- who's here: scans + room fill (server counts; `room_stats` every change) ----------
+function renderStats(s) {
+  if (!s || typeof s.here !== 'number') return;
+  const cap = Number(s.capacity) || 0;
+  const pct = cap ? Math.min(100, Math.round((s.here / cap) * 100)) : 0;
+  $('rsHere').textContent = String(s.here);
+  $('rsJoined').textContent = String(s.joined ?? s.here);
+  $('rsBar').style.width = `${pct}%`;
+  $('rsFill').dataset.level = pct >= 100 ? 'full' : pct >= 85 ? 'near' : 'ok';
+  $('rsFillText').textContent = cap
+    ? (pct >= 100 ? `Full · ${s.here} / ${cap} seats` : `${pct}% full · ${cap} seats`)
+    : '';
+  $('roomStats').hidden = false;
+}
+
 // ---------- talk status: waiting · live · ended ----------
 // The server sends `talk` on join and on every change (CONTRACT.md). Ending the talk on Go live,
 // the mic page or the AV console flips every phone to "Ended" right away; a new talk flips it back.
 function onTalk(m) {
+  const prevTalkId = state.talkId;
   const status = m.status || (m.talkId ? 'live' : 'waiting');
   if (m.talkId) setTalk({ talkId: m.talkId, title: m.title, speaker: m.speaker });
   else if (status === 'waiting') {
@@ -80,7 +105,11 @@ function onTalk(m) {
       if (navigator.vibrate) navigator.vibrate(60);
     }
   }
-  if (status === 'live' && was && was !== 'live') showHint('The talk is live again.', null, null, 4000);
+  if (status === 'ended') { $('better').hidden = true; state.betterTicket = null; }
+  if (status === 'live' && was && was !== 'live') {
+    showHint(m.talkId && m.talkId !== prevTalkId ? `New talk: ${m.title || 'now live'}` : 'The talk is live again.', null, null, 5000);
+  }
+  $('capLabel').textContent = status === 'ended' ? 'Captions (ended)' : status === 'live' ? 'Live captions' : 'Captions';
 }
 
 function renderTalkState() {
@@ -149,11 +178,23 @@ async function loadRoomInfo() {
     const rooms = await res.json();
     const r = rooms.find((x) => String(x.room) === String(room));
     if (!r) return;
+    if (typeof r.here === 'number') renderStats(r);
     // While the socket is up its `talk` messages are the truth; use the HTTP status only when it's down.
     if (r.status && state.conn !== 'live') onTalk({ talkId: r.talkId, title: r.title, speaker: r.speaker, status: r.status });
     else setTalk({ talkId: r.talkId, title: r.title, speaker: r.speaker });
   } catch { /* offline: the socket will fill this in */ }
 }
+
+// ---------- a quiet speaker ----------
+// After 60 s without a new line during a live talk, say so instead of looking frozen.
+let lastLineAt = Date.now();
+setInterval(() => {
+  const el = $('interim');
+  if (state.talkStatus === 'live' && state.conn === 'live' && Date.now() - lastLineAt > 60000 && !el.textContent) {
+    el.textContent = 'Waiting for the speaker…';
+    el.dataset.idle = '1';
+  }
+}, 5000);
 
 // ---------- catching up after a dropped connection ----------
 // The join backlog is only the last 50 lines. If more were missed, fetch them from the transcript
@@ -181,9 +222,16 @@ function onBacklog(lines) {
   lines = Array.isArray(lines) ? lines : [];
   // The room keeps the last 50 lines across talks: show only the newest talk's lines.
   const talkId = lines.length ? lines[lines.length - 1].talkId : null;
+  const newTalk = !!talkId && !!state.talkId && talkId !== state.talkId;
   if (talkId) {
     setTalk({ talkId });
     lines = lines.filter((l) => l.talkId === talkId);
+  }
+  // Came back after a new talk had already said more than the backlog holds: fetch it from line 1.
+  if (newTalk && lines.length && lines[0].seq > 1) {
+    state.held.push(...lines);
+    fetchMissed();
+    return;
   }
   // A gap between what this phone has and the backlog: fetch the missing lines first.
   if (state.lastSeq > 0 && lines.length && lines[0].seq > state.lastSeq + 1) {
@@ -270,6 +318,8 @@ function addCaption(line) {
   if (seq) state.lastSeq = seq;
   $('captionEmpty')?.remove();
   capEl.querySelector('.end-mark')?.remove(); // lines still arriving: the talk isn't over
+  lastLineAt = Date.now();
+  if ($('interim').dataset.idle) { $('interim').textContent = ''; delete $('interim').dataset.idle; }
   // A Web Speech final can be a long sentence. Short lines keep the Both crawl box
   // from ever clipping the newest line, and read better as live captions anyway.
   for (const chunk of captionChunks(text)) {
@@ -471,12 +521,14 @@ async function toggleVote(type) {
   try {
     const r = await sendVote(type, on);
     if (typeof r?.count === 'number') setVoteCount(type, r.count);
-  } catch {
+  } catch (err) {
     // Undo so the button never lies about what the server has.
     state.votes[type] = prev ?? false;
     saveVotes();
     renderVotes();
-    showHint("Couldn't send that. Check your connection and tap again.");
+    showHint(String(err?.message).includes('409')
+      ? 'The talk has ended, so votes are closed.'
+      : "Couldn't send that. Check your connection and tap again.");
   }
 }
 document.querySelectorAll('.vote').forEach((b) => { b.onclick = () => toggleVote(b.dataset.type); });
@@ -562,7 +614,7 @@ $('askForm').onsubmit = async (e) => {
     const res = await fetch('/api/questions', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ room, talkId: state.talkId, text, clientId }),
+      body: JSON.stringify({ room, talkId: state.talkStatus === 'live' ? state.talkId : null, text, clientId }),
     });
     if (res.status === 429) {
       $('askMsg').textContent = 'One question every 20 seconds. Try again in a moment.';
@@ -621,6 +673,7 @@ function applySettings(s) {
 connectRoom({
   room,
   role: 'attendee',
+  clientId,
   onStatus: (s) => {
     setConn(s);
     if (s === 'live') loadRoomInfo();
@@ -635,6 +688,7 @@ connectRoom({
       case 'vote_count': setVoteCount(m.type, m.count); break;
       case 'ticket_status': onTicketStatus(m); break;
       case 'room_settings': applySettings(m); break;
+      case 'room_stats': renderStats(m); break;
       case 'broadcast': showBanner(m.text); break;
       case 'question_reply': onQuestionReply(m); break;
       default: break;

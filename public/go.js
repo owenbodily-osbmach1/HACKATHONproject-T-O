@@ -77,16 +77,36 @@ const api = (path, opts = {}) => fetch(path, { ...opts, headers: { 'content-type
 })();
 
 // ---------- control socket ----------
+// Declared before the socket: connectRoom reports 'connecting' synchronously.
+let connState = 'connecting';
+let roomTalk = null; // last `talk` message: what the phones are showing right now
+function renderPill() {
+  const status = connState !== 'live' ? connState : (roomTalk?.status || 'waiting');
+  $('conn').dataset.status = status;
+  $('conn').querySelector('.conn-word').textContent = {
+    live: 'Live', ended: 'Ended', waiting: 'Not started', connecting: 'Connecting…', reconnecting: 'Reconnecting…', unauthorized: 'Wrong key',
+  }[status] || status;
+  const line = $('talkLine');
+  if (!line) return;
+  if (connState === 'live' && roomTalk?.talkId) {
+    const at = roomTalk.startedAt ? new Date(roomTalk.startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+    line.textContent = roomTalk.status === 'live'
+      ? `Phones show: "${roomTalk.title || 'Untitled talk'}"${at ? ` · live since ${at}` : ''}${st.running ? '' : ' · captions are OFF until you press Go live'}`
+      : `Last talk "${roomTalk.title || 'Untitled talk'}" has ended. Go live starts a new one.`;
+    line.hidden = false;
+  } else line.hidden = true;
+}
 const sock = connectRoom({
   room, role: 'mic', key,
   onStatus: (s) => {
-    $('conn').dataset.status = s;
-    $('conn').querySelector('.conn-word').textContent = { live: 'Live', connecting: 'Connecting…', reconnecting: 'Reconnecting…', unauthorized: 'Wrong key' }[s] || s;
+    if (s === 'live') setTimeout(() => { while (unsent.length && sock.send(unsent[0])) unsent.shift(); }, 0);
+    connState = s;
+    renderPill();
     check('ckServer', s === 'live' ? 'ok' : s === 'unauthorized' ? 'bad' : 'wait', s === 'live' ? 'Connected' : s === 'unauthorized' ? 'Wrong speaker key' : 'Reconnecting…');
   },
   onMessage: (m) => {
     // Only a live talk is resumed; an ended one stays ended and Go live starts a new talk.
-    if (m.t === 'talk') { talkKnown = true; liveTalkId = m.status === 'live' ? m.talkId : null; }
+    if (m.t === 'talk') { talkKnown = true; liveTalkId = m.status === 'live' ? m.talkId : null; roomTalk = m; renderPill(); }
     // The AV tech ended this talk from the console: stop here too, so no captions go to an ended talk.
     if (m.t === 'talk' && st.running && st.talkId && m.talkId === st.talkId && m.status === 'ended') endedElsewhere(m);
     if (m.t === 'room_status' && typeof m.listeners === 'number') check('ckPhones', m.listeners > 0 ? 'ok' : '', `${m.listeners} connected`);
@@ -117,11 +137,15 @@ async function serverLastSeq(talkId) {
 // ---------- captions ----------
 let lastInterim = 0;
 let interimTimer = null;
+// Lines said while the socket is down are queued and sent when it's back (phones de-duplicate),
+// and every line carries the title so a restarted server can re-create the talk (server/hub.js).
+const unsent = [];
 function sendFinal(text) {
   if (!st.talkId) return;
   st.seq += 1;
   store.set(`pulse.mic.seq.${st.talkId}`, st.seq);
-  sock.send({ t: 'caption', talkId: st.talkId, seq: st.seq, text, ts: Date.now() });
+  const msg = { t: 'caption', talkId: st.talkId, seq: st.seq, text, ts: Date.now(), title: $('title').value.trim() || 'Pulse demo', speaker: $('speaker').value.trim() };
+  if (!sock.send(msg)) { unsent.push(msg); if (unsent.length > 200) unsent.shift(); }
   st.words += text.split(/\s+/).filter(Boolean).length;
   check('ckCaptions', 'ok', `${st.words} words · "${text.slice(-60)}"`);
 }
@@ -225,11 +249,15 @@ async function goLive() {
   // 1. Slides first: Chrome only shows the share picker straight after a click.
   if (!st.display) await startSlides();
 
-  // 2. Talk + mic + captions + listen-in.
+  // 2. Mic first: if it's denied, no talk is started (phones would show Live with no captions).
+  //    Then talk + captions + listen-in.
+  $('doneLine').hidden = true;
+  st.words = 0;
+  st.slidesSent = st.display ? st.slidesSent : 0;
   try {
+    st.micStream = await openMic($('micSelect').value);
     st.talkId = await findOrCreateTalk();
     st.seq = Math.max(store.get(`pulse.mic.seq.${st.talkId}`, 0), await serverLastSeq(st.talkId));
-    st.micStream = await openMic($('micSelect').value);
     refreshMics();
     check('ckMic', 'ok', st.micStream.getAudioTracks()[0]?.label || 'On');
     st.streamer = await startStreaming({
@@ -243,7 +271,7 @@ async function goLive() {
       onFinal: sendFinal,
       onInterim: sendInterim,
       onState: (s) => {
-        if (s === 'listening' && !st.words) check('ckCaptions', 'ok', `Listening${st.captioner?.onDevice ? ' (on-device)' : ''} · start talking`);
+        if (s === 'listening') check('ckCaptions', 'ok', st.words ? `Listening · ${st.words} words` : `Listening${st.captioner?.onDevice ? ' (on-device)' : ''} · start talking`);
         if (s === 'blocked') check('ckCaptions', 'bad', 'Microphone blocked: allow it in the address bar');
         if (s === 'restarting' || s === 'watchdog') check('ckCaptions', 'wait', 'Restarting recognition…');
       },
@@ -251,6 +279,8 @@ async function goLive() {
     });
     await st.captioner.start();
     st.running = true;
+    st.liveAt = Date.now();
+    renderPill();
     $('goBtn').hidden = true;
     $('endBtn').hidden = false;
     $('doneLine').hidden = true;
@@ -274,13 +304,20 @@ function stopMic() {
 
 // Two taps to end, so a stray click doesn't end the talk (no browser dialogs).
 let endArmed = 0;
+let endLabelTimer = null;
 async function endTalk() {
-  if (Date.now() - endArmed > 3000) {
+  if (st.liveAt && Date.now() - st.liveAt < 5000) return;
+  const since = Date.now() - endArmed;
+  if (since > 3000 || since < 400) {
+    if (since < 400) return;
     endArmed = Date.now();
     $('endBtn').innerHTML = '■ Tap again to end the talk';
-    setTimeout(() => { $('endBtn').innerHTML = '■ End talk <small>(saves the transcript)</small>'; }, 3000);
+    clearTimeout(endLabelTimer);
+    endLabelTimer = setTimeout(() => { $('endBtn').innerHTML = '■ End talk <small>(saves the transcript)</small>'; }, 3000);
     return;
   }
+  endArmed = 0;
+  clearTimeout(endLabelTimer);
   stopMic();
   stopSlides();
   st.running = false;
@@ -320,6 +357,8 @@ function endedElsewhere(m) {
 }
 
 function showGoBtn() {
+  st.liveAt = 0;
+  setTimeout(renderPill, 0);
   $('endBtn').hidden = true;
   $('goBtn').hidden = false;
   $('goBtn').disabled = false;

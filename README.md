@@ -5,7 +5,7 @@ One QR code per conference room. Attendee phones get live captions, listen-in au
 ## What it does
 
 **Attendees**
-- Scan the room QR code. No app, no sign-up.
+- Scan the room QR code. No app. A one-time sign-in (name, company / occupation, email) opens the room; a phone is remembered after that.
 - Read live captions from the podium microphone.
 - Listen to the podium audio through their own earbuds.
 - Follow the slides on their phone as the speaker changes them.
@@ -87,8 +87,8 @@ Details, message flows, failure modes and security: [`docs/ARCHITECTURE.md`](doc
 
 ## Privacy
 
-- No personal data is collected. `clientId` is an anonymous random id created by the phone.
-- No sign-up, no email, no name.
+- Sign-in (`SIGNIN=on`, the default): before joining, a phone gives first and last name, company / occupation and email. These stay in the server's memory only (gone on restart), are never written to Elasticsearch, logs or telemetry, never shown to other attendees, and never linked to `clientId`. The AV console (tech key) sees a count and can export a CSV for the event team. `SIGNIN=off` turns the form off.
+- Votes and questions stay anonymous: `clientId` is a random id created by the phone, and sponsor data never contains a name or email.
 - Sponsor reports hide any bucket with fewer than 3 devices (k>=3).
 - Microphone access is limited to the podium page by `Permissions-Policy`; attendee pages never call `getUserMedia`.
 - Keys live in `.env` locally and in the Kubernetes Secret in the cluster; never in git.

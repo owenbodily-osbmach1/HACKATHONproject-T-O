@@ -89,6 +89,7 @@ const sock = connectRoom({
   role: 'mic',
   key,
   onStatus: (s) => {
+    if (s === 'live') setTimeout(() => { while (unsent.length && sock.send(unsent[0])) { unsent.shift(); state.linesSent += 1; } }, 0);
     $('conn').dataset.status = s;
     $('conn').querySelector('.conn-word').textContent = CONN[s] || s;
     if (s === 'unauthorized') warn('The server rejected the speaker key. Check ?key= in the URL.');
@@ -96,6 +97,22 @@ const sock = connectRoom({
   },
   onMessage: (m) => {
     if (m.t === 'room_status' && typeof m.listeners === 'number') $('statListeners').textContent = String(m.listeners);
+    // The AV tech ended this talk from the console: stop captioning so nothing goes to an ended talk.
+    if (m.t === 'talk' && state.running && state.talkId && m.talkId === state.talkId && m.status === 'ended') {
+      stopDevices();
+      state.running = false;
+      $('stopBtn').hidden = true;
+      $('startBtn').hidden = false;
+      updateSaving();
+      releaseAwake();
+      $('doneLine').replaceChildren('The AV tech ended the talk. Transcript saved: ');
+      const a = Object.assign(document.createElement('a'), { href: m.reportUrl || `/t/${state.talkId}`, target: '_blank' });
+      a.textContent = a.href;
+      $('doneLine').append(a);
+      $('doneLine').hidden = false;
+      state.talkId = null;
+      renderSlidePos();
+    }
   },
 });
 
@@ -109,12 +126,17 @@ function updateSaving() {
 let lastInterimSent = 0;
 let pendingInterim = null;
 
+// Lines said while the socket is down are queued and sent when it's back (phones de-duplicate),
+// and every line carries the title so a restarted server can re-create the talk (server/hub.js).
+const unsent = [];
 function sendFinal(text) {
   if (!state.talkId) return;
   state.seq += 1;
   store.set(`pulse.mic.seq.${state.talkId}`, state.seq);
-  const ok = sock.send({ t: 'caption', talkId: state.talkId, seq: state.seq, text, ts: Date.now() });
+  const msg = { t: 'caption', talkId: state.talkId, seq: state.seq, text, ts: Date.now(), title: $('title').value.trim(), speaker: $('speaker').value.trim() };
+  const ok = sock.send(msg);
   if (ok) state.linesSent += 1;
+  else { unsent.push(msg); if (unsent.length > 200) unsent.shift(); }
   state.words += text.split(/\s+/).filter(Boolean).length;
   $('statWords').textContent = String(state.words);
   $('lastLine').textContent = text;
