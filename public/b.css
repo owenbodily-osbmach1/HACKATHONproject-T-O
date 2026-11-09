@@ -1,0 +1,85 @@
+/* Attendee booth page. Mobile-first, works at 320 px. Shared tokens live in styles.css. */
+.booth-attendee #app {
+  padding: env(safe-area-inset-top) 14px calc(18px + env(safe-area-inset-bottom));
+  gap: 12px;
+}
+.booth-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 2px 2px;
+}
+.booth-badge { font-weight: 800; letter-spacing: .02em; color: var(--muted); overflow-wrap: anywhere; }
+.booth-attendee .conn[data-status="ready"] .dot { background: var(--green); }
+.booth-attendee .conn[data-status="offline"] .dot { background: var(--red); }
+
+.booth-main { display: flex; flex-direction: column; gap: 12px; padding-bottom: 6px; }
+
+.booth-service {
+  margin: 0; padding: 14px; line-height: 1.4; font-weight: 600;
+  background: #3a1513; border: 1px solid var(--red); border-radius: var(--radius);
+}
+
+.booth-hero .eyebrow { margin: 0; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
+.booth-hero h1 {
+  margin: 4px 0 6px; font-size: clamp(30px, 9vw, 44px); line-height: 1.05;
+  letter-spacing: -.02em; overflow-wrap: anywhere;
+}
+.booth-table { margin: 0 0 8px; color: var(--accent); font-weight: 700; font-size: 16px; }
+.booth-pitch { margin: 0 0 12px; font-size: clamp(17px, 4.6vw, 20px); line-height: 1.35; }
+.booth-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.booth-link {
+  display: inline-flex; align-items: center; min-height: 48px; padding: 0 14px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2);
+  color: var(--text); text-decoration: none; font-weight: 700;
+}
+
+.passport-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.passport-head h2 { margin: 0; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.passport-count { margin: 0; font-size: 20px; font-weight: 800; }
+.stamps {
+  list-style: none; margin: 12px 0 8px; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(46px, 1fr)); gap: 6px;
+}
+.stamp {
+  display: grid; place-items: center; min-height: 48px;
+  border: 2px dashed var(--line); border-radius: 10px; background: var(--bg);
+  color: var(--muted); font-weight: 800;
+}
+.stamp.on { border-style: solid; border-color: var(--green); background: #10291b; color: var(--text); }
+.passport-suspect {
+  margin: 6px 0 0; padding: 8px 10px; border-left: 3px solid var(--amber);
+  border-radius: 8px; background: var(--panel-2); font-size: 14px; line-height: 1.4;
+}
+.passport-privacy { margin: 12px 0 0; color: var(--muted); font-size: 14px; line-height: 1.4; }
+
+.next-card { border: 2px solid var(--accent); }
+.next-card .eyebrow { margin: 0 0 8px; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
+.next-link {
+  display: block; min-height: 64px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2);
+  color: var(--text); text-decoration: none;
+}
+.next-sponsor { display: block; font-size: 22px; font-weight: 900; line-height: 1.2; overflow-wrap: anywhere; }
+.next-table { display: block; margin-top: 2px; color: var(--muted); font-size: 15px; }
+.next-because { margin: 10px 0 0; font-size: 16px; line-height: 1.4; }
+.next-done { margin: 0; color: var(--muted); }
+
+.requests { display: flex; flex-direction: column; gap: 4px; }
+.req-btn {
+  display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  width: 100%; min-height: 72px; padding: 12px 16px;
+  border: 2px solid var(--line); border-radius: var(--radius);
+  background: var(--panel-2); text-align: left;
+}
+.req-btn:hover:not(:disabled) { border-color: var(--accent); }
+.req-btn:active { transform: scale(.99); }
+.req-title { font-size: 18px; font-weight: 900; }
+.req-sub { font-size: 14px; font-weight: 500; color: var(--muted); }
+.req-status { min-height: 1.3em; margin: 0 0 8px; padding: 0 4px; font-size: 15px; color: var(--muted); }
+.req-status:not(:empty) { color: var(--text); font-weight: 700; }
+
+@media (max-width: 360px) {
+  .booth-attendee #app { padding-left: 10px; padding-right: 10px; }
+  .booth-hero h1 { font-size: 30px; }
+  .stamps { grid-template-columns: repeat(auto-fit, minmax(40px, 1fr)); }
+  .req-btn { padding: 10px 12px; }
+}
