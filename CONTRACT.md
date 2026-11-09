@@ -99,7 +99,7 @@ All messages are JSON with a `t` field. `role=mic` and `role=present` must also 
 | `ticket_status` | server → | `ticketId, type, status` | attendee |
 | `room_status` (every 2 s) | server → | `room, listeners, micDb, captionGapSec, openTickets` | tech, org, mic |
 | `room_settings` | server → | `captions, listen, slides` | all |
-| `question_groups` | server → | `groups[{groupId, qid, text, count, answered}]` (`qid` = first question in the group; tech actions use it) | tech |
+| `question_groups` | server → | `groups[{groupId, qid, text, count, answered}]` (`qid` = first question in the group; tech actions use it). Current talk only, at most the 50 most recently active groups | tech |
 | `question_update` | server → | `qid, pinned, hidden, answered` | tech |
 | `question_reply` | server → | `qid, text` | the askers only |
 | `broadcast` | server → | `text` | attendee |
