@@ -64,9 +64,11 @@ function findGroup(room, talkId, w) {
 }
 
 function groupList(room) {
+  // Current (or last ended) talk only: room.talkId stays set after a talk ends.
+  const talkId = (state.rooms.get(room) || {}).talkId || '';
   const out = [];
   for (const g of groups.values()) {
-    if (g.room === room) out.push({ groupId: g.groupId, qid: g.qid, text: g.text, count: g.count, answered: g.answered });
+    if (g.room === room && g.talkId === talkId) out.push({ groupId: g.groupId, qid: g.qid, text: g.text, count: g.count, answered: g.answered });
   }
   return out;
 }
