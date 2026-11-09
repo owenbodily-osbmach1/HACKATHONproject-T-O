@@ -188,7 +188,8 @@ async function start() {
       speakerKey: key,
       onLevel: showLevel,
       onSocket: (s) => {
-        $('audioState').textContent = { live: 'Listen-in streaming', reconnecting: 'Listen-in reconnecting…', unauthorized: 'Listen-in: wrong key' }[s] || s;
+        $('audioState').textContent = { live: 'Listen-in streaming', reconnecting: 'Listen-in reconnecting…', unauthorized: 'Listen-in: wrong key', replaced: 'Listen-in: another source took over' }[s] || s;
+        $('takeOverBtn').hidden = s !== 'replaced';
       },
     });
 
@@ -270,6 +271,7 @@ function confirmStop() {
 }
 
 $('startBtn').onclick = start;
+$('takeOverBtn').onclick = () => { state.streamer?.takeOver(); $('takeOverBtn').hidden = true; };
 $('stopBtn').onclick = stopAndSave;
 
 // ---------- mic picker + meter ----------
