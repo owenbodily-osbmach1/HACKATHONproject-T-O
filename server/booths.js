@@ -269,7 +269,10 @@ function openRequestCount(boothId) {
 
 function indexCheckin(ctx, doc) {
   try {
-    const p = ctx.es.index('pulse-checkins', doc);
+    // The device id is stored only as a per-booth salted hash (device-id.js): visits per booth stay
+    // countable, but one phone can't be followed from booth to booth in Elasticsearch.
+    const stored = { ...doc, clientId: require('./device-id').hashDevice(`booth:${doc.booth}`, doc.clientId) };
+    const p = ctx.es.index('pulse-checkins', stored);
     if (p && typeof p.catch === 'function') p.catch(() => {});
   } catch {}
 }

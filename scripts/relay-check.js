@@ -157,9 +157,11 @@ async function run() {
   res = await request('GET', upload.url);
   assert.equal(res.status, 200, 'the frame url serves the upload');
   assert.deepEqual(res.body, JPEG, 'the frame bytes come back unchanged');
-  assert.match(String(res.headers['cache-control']), /public/, 'Cache-Control is public');
-  assert.match(String(res.headers['cache-control']), /max-age=31536000/, 'frame is cached for a year');
-  assert.match(String(res.headers['cache-control']), /immutable/, 'frame cache is immutable');
+  assert.match(String(res.headers['cache-control']), /private/, 'Cache-Control is private');
+  assert.match(String(res.headers['cache-control']), /no-store/, 'frames are never stored by caches');
+  assert.match(upload.url, /\/1-[a-f0-9]{16}\.jpg$/, 'frame urls carry a random token');
+  res = await request('GET', upload.url.replace(/\/1-[a-f0-9]{16}\.jpg$/, '/1.jpg'));
+  assert.equal(res.status, 404, 'a guessed frame url (no token) is 404');
 
   const { ws, messages } = await connect(`ws://127.0.0.1:${port}/ws?room=${ROOM}&role=attendee`);
   const waiting = await messages.wait((m) => m.t === 'talk');

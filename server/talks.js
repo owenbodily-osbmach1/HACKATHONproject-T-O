@@ -130,12 +130,14 @@ module.exports = {
         let list = state.frames.get(bucket);
         if (!list) state.frames.set(bucket, (list = []));
         const n = list.length ? list[list.length - 1].n + 1 : 1;
-        list.push({ n, buf, ts: now, type });
+        // Random per frame: the URL can't be guessed from the talk id and a frame number.
+        const token = crypto.randomBytes(8).toString('hex');
+        list.push({ n, token, room: roomId, buf, ts: now, type });
         if (list.length > state.MAX_FRAMES) list.splice(0, list.length - state.MAX_FRAMES);
         list.touched = now;
         evictFrames(state, bucket);
 
-        const url = `/slides/live/${encodeURIComponent(bucket)}/${n}.jpg`;
+        const url = `/slides/live/${encodeURIComponent(bucket)}/${n}-${token}.jpg`;
         const slide = { talkId, n, total: 0, url };
         state.room(roomId).slide = slide;
         state.room(roomId).slideAt = now;
@@ -152,12 +154,18 @@ module.exports = {
       }
     );
 
-    app.get('/slides/live/:talkId/:n.jpg', (req, res) => {
-      const list = state.frames.get(String(req.params.talkId));
-      const n = Number(req.params.n);
-      const frame = list && list.find((f) => f.n === n);
+    // A captured screen can show anything that was on it, so it gets the same access as its room:
+    // a phone signed in to that room (or any phone while SIGNIN=off), or a speaker / tech key.
+    // Never cached by browsers or proxies.
+    app.get('/slides/live/:bucket/:file', (req, res) => {
+      res.setHeader('Cache-Control', 'private, no-store');
+      const m = /^(\d+)-([a-f0-9]{16})\.jpg$/.exec(String(req.params.file));
+      const list = state.frames.get(String(req.params.bucket));
+      const frame = m && list && list.find((f) => f.n === Number(m[1]) && f.token === m[2]);
       if (!frame) return res.status(404).end();
-      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      const key = req.get('x-pulse-key') || req.query.key;
+      const keyed = ctx.auth.ok('SPEAKER_KEY', key) || ctx.auth.ok('TECH_KEY', key);
+      if (!keyed && !require('./signin').inRoom(req, frame.room)) return res.status(403).end();
       res.type(frame.type || 'image/jpeg').send(frame.buf);
     });
 

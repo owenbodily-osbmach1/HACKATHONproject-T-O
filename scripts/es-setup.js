@@ -109,6 +109,14 @@ async function main() {
     process.exitCode = 1;
     return;
   }
+  // `--retention`: delete device-id documents older than RETENTION_DAYS (default 30) now. The server
+  // also runs this on its own (server/es-retention.js); Serverless has no classic ILM for plain indices.
+  if (process.argv.includes('--retention')) {
+    const retention = require('../server/es-retention');
+    const { deleted } = await retention.runRetention(es);
+    console.log(`retention: ${retention.INDICES.join(', ')} older than ${retention.DAYS} days, deleted ${deleted}`);
+    return;
+  }
   for (const [name, properties] of Object.entries(mappings)) {
     try {
       await es.raw('HEAD', `/${name}`);

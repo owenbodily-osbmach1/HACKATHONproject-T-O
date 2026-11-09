@@ -21,6 +21,7 @@ const schedule = require('./schedule');
 const mockroom = require('./mockroom');
 const stats = require('./stats');
 const signin = require('./signin');
+const retention = require('./es-retention');
 const privacy = require('./privacy');
 const metrics = require('./metrics');
 
@@ -98,7 +99,7 @@ app.use(express.static(pub, { extensions: ['html'], index: false }));
 
 const ctx = { config, state, auth, es, hub, otel };
 // signin first: its guards on votes/questions/feedback must run before those routes.
-for (const m of [signin, tickets, talks, questions, booths, qr, schedule, privacy, metrics, mockroom, stats]) m.register(app, ctx);
+for (const m of [signin, tickets, talks, questions, booths, qr, schedule, privacy, metrics, mockroom, stats, retention]) m.register(app, ctx);
 
 const server = http.createServer(app);
 hub.attach(server, ctx);

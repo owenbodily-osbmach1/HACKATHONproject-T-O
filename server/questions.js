@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const state = require('./state');
 const es = require('./es');
+const { hashDevice } = require('./device-id');
 const log = require('./log');
 const otel = require('./otel');
 const { dedupeByText } = require('./text');
@@ -268,7 +269,8 @@ function register(app, ctx) {
     if (clientId) group.askers.add(clientId);
 
     es.index('pulse-questions', {
-      qid, groupId: group.groupId, talkId, room, text, clientId, ts, answered: false, hidden: false,
+      // clientId stored only as a per-talk salted hash (device-id.js); replies use the in-memory askers.
+      qid, groupId: group.groupId, talkId, room, text, clientId: hashDevice(`talk:${talkId}`, clientId), ts, answered: false, hidden: false,
     }, qid);
     sendTech(room, { t: 'question_groups', groups: groupList(room) });
     res.json({ qid, groupId: group.groupId });

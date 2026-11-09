@@ -80,6 +80,14 @@ function clientAddress(req) {
 }
 const IDLE_MS = 30 * 60 * 1000;
 
+// Signed in AND joined this room (opened /r/:room after signing in). Used for captured slides.
+function inRoom(req, room) {
+  if (!ENABLED) return true;
+  const vid = stats.visitorFromHeaders(req.headers);
+  const p = vid && people.get(vid);
+  return !!p && p.rooms.has(String(room));
+}
+
 // For WebSocket upgrades (no Express req): read the visitor cookie from the raw request.
 function allowSocket(req) {
   if (!ENABLED) return true;
@@ -132,6 +140,7 @@ module.exports = {
   enabled: ENABLED,
   INTERNAL,
   allowSocket,
+  inRoom,
   countFor,
 
   // GET /r/:room, after stats.scan: the form until this visitor has signed in.
