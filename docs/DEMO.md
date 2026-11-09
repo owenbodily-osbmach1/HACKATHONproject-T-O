@@ -22,6 +22,7 @@ Planned end 2:24; the 21 s buffer is for slow taps. Never skip the ticket loop o
 
 ## Questions we expect
 
+- **Audio latency, mic to earbud?** Measured over the public URL at 2:45 PM: the relay adds a median 56 ms (p95 100 ms, 100 of 100 frames) on top of the 100 ms frame, so well under a quarter second before the phone's own playback buffer.
 - **One replica is a single point of failure.** Deliberate: live rooms are in memory, history is in Elastic, phones reconnect, a restart takes seconds. Recorded in Radar as an accepted risk. Next step: cross-pod fan-out over NATS.
 - **Trolls tapping the button.** A vote counts once per device per signal, expires in 10 minutes, and it takes 3 distinct devices to page anyone. The crew confirms with Fixed.
 - **Privacy.** No accounts, no names, no emails. The device id is random. The Gitar rule `no-pii` blocks personal fields in Elastic.
