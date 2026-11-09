@@ -10,7 +10,7 @@ const { WebSocketServer } = require('ws');
 const otel = require('./otel');
 const log = require('./log');
 
-const ROLES = new Set(['attendee', 'viewer', 'mic', 'present', 'tech', 'org']);
+const ROLES = new Set(['attendee', 'viewer', 'mic', 'present', 'tech', 'org', 'booth']);
 const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 }); // JSON messages are small (security audit)
 const rooms = new Map(); // room -> Set<{ws, role, clientId, alive}>
 const handlers = new Map(); // t -> Set<fn>
@@ -27,6 +27,7 @@ function closeQuietly(ws, code, reason) {
 function authorized(role, key) {
   if (role === 'mic' || role === 'present') return ctx.auth.ok('SPEAKER_KEY', key);
   if (role === 'tech') return ctx.auth.ok('TECH_KEY', key);
+  if (role === 'booth') return ctx.auth.ok('BOOTH_KEY', key); // booth staff screen: booth requests only
   return true;
 }
 

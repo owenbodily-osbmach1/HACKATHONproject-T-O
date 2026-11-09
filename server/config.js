@@ -5,6 +5,7 @@ module.exports = {
   PUBLIC_BASE_URL: e.PUBLIC_BASE_URL || '',
   SPEAKER_KEY: e.SPEAKER_KEY || '',
   TECH_KEY: e.TECH_KEY || '',
+  BOOTH_KEY: e.BOOTH_KEY || '', // booth staff only: the booth queue, never sign-ins or AV actions
   ALERT_THRESHOLD: Number(e.ALERT_THRESHOLD || 3),
   ALERT_WINDOW_SEC: Number(e.ALERT_WINDOW_SEC || 60),
   CAPTIONS_DEFAULT: (e.CAPTIONS_DEFAULT || 'on') === 'on',

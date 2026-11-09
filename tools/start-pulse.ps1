@@ -63,6 +63,7 @@ if (-not $cf) {
 $chars = 'abcdefghjkmnpqrstuvwxyz23456789'.ToCharArray()
 $speakerKey = -join (1..10 | ForEach-Object { $chars | Get-Random })
 $techKey = -join (1..10 | ForEach-Object { $chars | Get-Random })
+$boothKey = -join (1..10 | ForEach-Object { $chars | Get-Random }) # booth staff: booth queue only, never sign-ins
 
 # 1) Tunnel first, so we know the public URL.
 $log = Join-Path $env:TEMP "pulse-tunnel.log"
@@ -77,7 +78,7 @@ for ($i = 0; $i -lt 60 -and -not $url; $i++) {
 if (-not $url) { Write-Host "The tunnel didn't give a URL. Log: $log" -ForegroundColor Red; Read-Host "Press Enter to close"; exit 1 }
 
 # 2) Server.
-$env:PORT = "$port"; $env:SPEAKER_KEY = $speakerKey; $env:TECH_KEY = $techKey; $env:PUBLIC_BASE_URL = $url; $env:ALERT_THRESHOLD = '1'
+$env:PORT = "$port"; $env:SPEAKER_KEY = $speakerKey; $env:TECH_KEY = $techKey; $env:BOOTH_KEY = $boothKey; $env:PUBLIC_BASE_URL = $url; $env:ALERT_THRESHOLD = '1'
 # .env (git-ignored) holds the Elastic and Dash0 keys; without it search and telemetry stay local only.
 $nodeArgs = if (Test-Path '.env') { '--env-file=.env server/index.js' } else { 'server/index.js' }
 if (-not (Test-Path '.env')) { Write-Host "No .env file: Elasticsearch and Dash0 are off for this run." -ForegroundColor Yellow }
@@ -94,6 +95,7 @@ Start-Sleep -Seconds 4
 
 $mic = "$url/mic/$room`?key=$speakerKey&base=$url"
 $tech = "$url/tech?key=$techKey&rooms=$room"
+$booth = "$url/booth/gitar?key=$boothKey"
 $relay = "$url/relay/$room`?key=$speakerKey"
 $go = "$url/go/$room`?key=$speakerKey"
 $phone = "$url/r/$room"
@@ -107,8 +109,9 @@ Pulse is running.
   Phone page (QR code):  $phone
   Podium mic page:       $mic
   Tech screen:           $tech
+  Booth staff (example): $booth   (booth key: queue only, no sign-in export)
   Slide relay:           $relay   (open on the computer showing the slides)
-  Speaker key: $speakerKey    Tech key: $techKey
+  Speaker key: $speakerKey    Tech key: $techKey    Booth key: $boothKey
 Alert limit is 1 vote for this test.
 "@ | Tee-Object -FilePath (Join-Path $env:TEMP 'pulse-test-urls.txt') | Write-Host -ForegroundColor Green
 

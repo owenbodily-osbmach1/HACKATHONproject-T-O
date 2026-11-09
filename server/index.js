@@ -79,7 +79,7 @@ app.get('/room/:room', page('t.html'));
 app.get('/org', page('org.html'));
 app.get('/tech', auth.page('TECH_KEY'), page('tech.html'));
 app.get('/b/:booth', page('b.html'));
-app.get('/booth/:booth', auth.page('TECH_KEY'), page('booth.html'));
+app.get('/booth/:booth', auth.page('BOOTH_KEY'), page('booth.html')); // booth staff: their own key, no sign-ins
 app.get('/find', page('find.html'));
 app.get('/privacy', page('privacy.html'));
 app.get('/cards', page('cards.html'));

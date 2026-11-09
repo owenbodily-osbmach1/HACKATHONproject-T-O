@@ -27,7 +27,12 @@ function warnOnce(slot) {
 function warn(slot, err, index) {
   if (!warnOnce(slot)) return; // at most one line per minute per path
   const event = slot === 'write' ? 'es.write_failed' : 'es.search_failed';
-  log.warn(event, { index: index || null, error: err && err.message ? err.message : String(err) });
+  // Only the status and the Elasticsearch error type: the response body can echo document content
+  // (captions, questions) into stdout and the OTel logs.
+  const msg = err && err.message ? String(err.message) : String(err);
+  const type = (msg.match(/"type"\s*:\s*"([a-z_]+)"/) || [])[1];
+  const short = err && err.status ? `HTTP ${err.status}${type ? ` ${type}` : ''}` : (err && err.name === 'TimeoutError' ? 'timeout' : msg.split(' -> ')[0].slice(0, 80));
+  log.warn(event, { index: index || null, error: short });
 }
 
 // Raw request: throws on any HTTP or network failure. Only es-setup and the search

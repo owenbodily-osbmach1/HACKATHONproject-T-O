@@ -43,10 +43,14 @@ function start() {
       })
     );
 
+    const { scrubbingExporter } = require('./telemetry-scrub');
     const sdk = new NodeSDK({
       serviceName: SERVICE_NAME,
       resource,
-      traceExporter: new OTLPTraceExporter(),
+      // No host / process / OS detectors: they would send the machine name, OS user and command line.
+      autoDetectResources: false,
+      // Every span is scrubbed before export: no client IP, user agent or query string (telemetry-scrub.js).
+      traceExporter: scrubbingExporter(new OTLPTraceExporter()),
       // NodeSDK registers this provider with the global logs API, so log.js
       // emits through the same resource and batch pipeline as traces/metrics.
       logRecordProcessors: [new BatchLogRecordProcessor({ exporter: new OTLPLogExporter() })],

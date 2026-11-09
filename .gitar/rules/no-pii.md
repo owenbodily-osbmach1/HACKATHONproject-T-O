@@ -7,9 +7,11 @@ type: check
 ---
 Pulse tells sponsors how many people could not hear or see a talk, never who they were. Elasticsearch documents are the data that dashboards, the org report and the sponsor export read, so any personal data written there escapes the privacy promise even if the UI never shows it.
 
+With sign-in on (the default), a phone gives first and last name, company or occupation, and email before joining. That data lives only in `server/signin.js` memory (gone on restart) and leaves only through the tech-key CSV export. It must never reach an index, a log line, a span or a metric, and must never be joined to a `clientId`. Speaker names in `pulse-talks` are public talk metadata from the schedule, not attendee data.
+
 Personal data means anything that identifies a person or a device: name, email, phone number, IP address, user agent, postal address, company or employer. That includes fields that only hold a hash or a masked value of those things - a hash of an email is still that person's email. Do not add such fields to an index mapping and do not pass them in an `_doc` body.
 
-`clientId` is the one identifier allowed. It is a random id created in the browser, never linked to a name or an account, so it can count distinct voters without identifying anyone. Do not add anything that links a `clientId` back to a person.
+`clientId` is the one identifier allowed. It is a random id created in the browser, never linked to a name or an account (or to a sign-in), so it can count distinct voters without identifying anyone. Do not add anything that links a `clientId` back to a person.
 
 Flag only fields a PR adds or changes. Existing fields listed in CONTRACT.md are not re-flagged unless the PR touches them.
 
