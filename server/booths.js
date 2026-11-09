@@ -75,9 +75,11 @@ function isSuspect(previous, booth, now) {
   return Boolean(previous && previous.booth !== booth && now - previous.ts < SUSPECT_MS);
 }
 
-function latestStamp(clientId) {
+// Latest stamp at any OTHER booth: a reload of this booth must not reset the 30 s rule.
+function latestStamp(clientId, exceptBooth) {
   let latest = null;
   for (const [booth, map] of stamps) {
+    if (booth === exceptBooth) continue;
     const stamp = map.get(clientId);
     if (stamp && (!latest || stamp.ts > latest.ts)) latest = { booth, ts: stamp.ts };
   }
@@ -258,7 +260,7 @@ function register(app, ctx) {
     const now = Date.now();
     const fromTalks = talksBy(ctx, clientId);
     const heard = heardBy(ctx, clientId);
-    const suspect = isSuspect(latestStamp(clientId), booth.id, now);
+    const suspect = isSuspect(latestStamp(clientId, booth.id), booth.id, now);
 
     let map = stamps.get(booth.id);
     if (!map) stamps.set(booth.id, (map = new Map()));
