@@ -14,7 +14,7 @@ const state = {
   index: 0,
   talkId: null,
   imgToken: 0,
-  synced: false,  // this connection already delivered the server's stored slide
+  synced: false,  // this tab settled its slide for the current connection
   pendingN: 0,    // stored slide number that arrived before the deck loaded
 };
 
@@ -157,6 +157,7 @@ async function loadDeck() {
 
 // ---------- slide relay ----------
 let syncTimer = null;
+let firstJoin = true; // only the first page-load join adopts the stored slide
 
 // The server sends the stored slide immediately after the socket joins. Hold
 // the first announce briefly so a reload adopts that slide instead of slide 1.
@@ -178,7 +179,9 @@ function announce() {
     url: slide.url,
   };
   if (state.talkId) msg.talkId = state.talkId;
-  socket.send(msg);
+  if (!socket.send(msg)) return;
+  state.synced = true; // this tab owns the slide now; ignore its own echo
+  clearTimeout(syncTimer);
 }
 
 function go(delta) {
@@ -579,13 +582,20 @@ socket = connectRoom({
     }
     if (status === 'live') {
       refreshRoom();
-      scheduleAnnounce(); // resync after a reconnect or a server restart
+      if (firstJoin) {
+        firstJoin = false;
+        scheduleAnnounce(); // first page load: adopt the stored slide if any
+      } else {
+        // Reconnect: this tab keeps its slide and pushes it, instead of
+        // adopting the server's stale one.
+        announce();
+      }
     }
   },
   onMessage: (msg) => {
     if (msg.t === 'slide') {
-      // Only the join-time stored slide moves this tab: relayed changes are
-      // our own echoes, and re-adopting them fights fast key presses.
+      // Only the first page-load join adopts the stored slide: every relaying
+      // tab ignores relayed changes, including the echo of its own announce.
       if (state.synced) return;
       if (msg.talkId && state.talkId && msg.talkId !== state.talkId) return;
       const n = Number(msg.n);
