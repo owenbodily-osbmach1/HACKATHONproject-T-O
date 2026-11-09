@@ -43,13 +43,18 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: docker/build-push-action@v6
+        env:
+          # No build-record artifact or job summary: they embed the push event (commit author emails).
+          DOCKER_BUILD_RECORD_UPLOAD: false
+          DOCKER_BUILD_SUMMARY: false
         with:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
           # Supply chain: SBOM + SLSA provenance attestations attached to the image in GHCR.
+          # mode=min: max mode embeds the GitHub event payload, which carries commit author emails.
           sbom: true
-          provenance: mode=max
+          provenance: mode=min
           build-args: APP_VERSION=${{ steps.meta.outputs.tag }}
           tags: |
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
