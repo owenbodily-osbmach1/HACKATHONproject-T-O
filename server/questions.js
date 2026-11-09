@@ -198,6 +198,7 @@ function register(app, ctx) {
     const q = questions.get(qid);
     if (!q) return res.status(404).json({ error: 'unknown question' });
     Object.assign(q, patch);
+    es.updateByQuery('pulse-questions', { term: { qid: q.qid } }, { hidden: q.hidden });
     const g = groups.get(q.groupId);
     if (g && patch.answered) g.answered = true;
     sendTech(q.room, { t: 'question_update', qid: q.qid, pinned: q.pinned, hidden: q.hidden, answered: q.answered });
@@ -240,8 +241,8 @@ function register(app, ctx) {
     if (clientId) group.askers.add(clientId);
 
     es.index('pulse-questions', {
-      qid, groupId: group.groupId, talkId, room, text, clientId, ts, answered: false,
-    });
+      qid, groupId: group.groupId, talkId, room, text, clientId, ts, answered: false, hidden: false,
+    }, qid);
     sendTech(room, { t: 'question_groups', groups: groupList(room) });
     res.json({ qid, groupId: group.groupId });
   });
@@ -353,8 +354,8 @@ function register(app, ctx) {
       otel.span('pulse.report.questions', esAttrs(talkId), async (active) => {
         const rows = await es.search('pulse-questions', {
           size: 1000, sort: [{ ts: 'asc' }],
-          _source: { excludes: ['clientId'] }, // the public report never names a device (security audit)
-          query: { term: { talkId } },
+          _source: { excludes: ['clientId', 'hidden'] }, // reports never expose device ids or moderation state
+          query: { bool: { filter: [{ term: { talkId } }], must_not: [{ term: { hidden: true } }] } },
         });
         countHits(active, rows.length);
         return rows;

@@ -23,7 +23,7 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 | --- | --- | --- | --- |
 | POST | `/api/talks` | `{room, title, speaker}` | `{talkId}` |
 | POST | `/api/talks/:talkId/end` | — | `{reportUrl}` |
-| GET | `/api/rooms` | — | `[{room, talkId, title, speaker?, listeners, openTickets, simulated}]` |
+| GET | `/api/rooms` | — | `[{room, talkId, title, speaker?, listeners, openTickets, simulated}]` (`talkId: null`, `title: ''` when no talk is live) |
 | PUT | `/api/votes` | `{room, talkId, type, clientId, on}` | `{count, ticketStatus}` |
 | POST | `/api/questions` | `{room, talkId, text, clientId}` | `{qid, groupId}` |
 | POST | `/api/feedback` | `{ticketId, clientId, better}` | `{better, stillBad}` |
@@ -39,7 +39,8 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 | GET | `/rum-config.js` | — | `window.PULSE_RUM = {serviceName, endpoint, token}` for browser RUM, or `null` when `DASH0_RUM_TOKEN` is unset (`Cache-Control: no-store`) |
 
 - Slide relay uploads are kept in memory (last 150 frames per talk or per room while no talk is live); a second upload less than 1 s after the previous one for the same room returns `429`.
-- Vote `type`: `cant_hear` | `cant_see` (`room_full` is a stretch goal). With no live talk in the room, `PUT /api/votes` returns `409 {error:'no_live_talk'}`.
+- Vote `type`: `cant_hear` | `cant_see` (`room_full` is a stretch goal). With no live talk in the room, `PUT /api/votes` returns `409 {error:'no_live_talk'}`; a `talkId` other than the room's live talk returns `409 {error:'stale_talk', talkId: <live talkId>}`.
+- Public room ids match `[A-Za-z0-9_-]{1,32}`; `clientId` is limited to 64 characters. Invalid room ids or overlong client ids are rejected with `400`.
 - Questions sent before a talk starts are kept under the room and attached to the next talk when it starts.
 - Ticket `status`: `open` | `claimed` | `fixed` | `reopened` | `dismissed`.
 - One vote per `clientId` per type per talk. `on: false` takes the vote back. Votes expire after 10 min and clear when a ticket is marked fixed.
@@ -118,7 +119,7 @@ Audio uses its own binary-only sockets:
 | --- | --- |
 | `pulse-captions` | `talkId` keyword · `room` keyword · `seq` integer · `text` text (copied to `text_sem`) · `text_sem` semantic_text · `ts` date · `minute` integer |
 | `pulse-signals` | `talkId` · `room` · `type` keyword · `clientId` keyword · `on` boolean · `ts` date · `minute` integer |
-| `pulse-questions` | `qid` · `talkId` · `room` · `text` (copied to `text_sem`) · `text_sem` semantic_text · `clientId` · `ts` · `groupId` keyword · `answered` boolean · `answeredSeq` integer |
+| `pulse-questions` | `qid` · `talkId` · `room` · `text` (copied to `text_sem`) · `text_sem` semantic_text · `clientId` · `ts` · `groupId` keyword · `answered` boolean · `answeredSeq` integer · `hidden` boolean |
 | `pulse-tickets` | `id` · `room` · `talkId` · `type` · `status` · `people` · `openedAt` · `ackAt` · `fixedAt` · `better` · `stillBad` |
 | `pulse-talks` | `talkId` · `title` (copied to `title_sem`) · `abstract` · `track` keyword · `room` keyword · `start` date · `end` date · `speakers` |
 | `pulse-actions` | `room` · `talkId` · `actor` · `action` keyword · `detail` · `ts` |
