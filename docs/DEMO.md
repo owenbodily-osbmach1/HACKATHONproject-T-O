@@ -1,22 +1,28 @@
-# Pulse demo: 3 minutes
+# Pulse demo: 3 minutes (planned 2:24)
 
 **Setup before we start:** Everything runs in room `demo`; press **Start captions** on the mic page before showing the QR (votes open only while a talk is live). Tyler's laptop runs the mic page (`/mic/demo?key=...`) with the slides deck (`/present/demo?key=...`) on the projector; the QR code is on the title slide. Owen's laptop has `/tech?key=...&rooms=demo` and `/org` open. One browser tab each on Radar Cloud (Checks + the investigation), Dash0 (Services + the `pulse` metrics) and GitHub (the PR list). Fallback: `node scripts/simulate.js` against the same room if live speech recognition fails.
 
-| Time | Who | What happens on screen | What we say |
+**Before you start (mandatory):**
+- **Pre-join two attendee tabs you control** (Tyler's phone and Owen's browser) before the demo starts. One judge tap then completes the 3-device quorum, so the ticket cannot fail because a judge was still reading the projector.
+- **Brief three judges in one sentence before you start**: "When I say tap, tap the red CAN'T HEAR button once." The 60 s window (`server/tickets.js:44`) means all three taps must be inside half a minute — do not talk for 20 s between the ask and the taps.
+
+| Time | Who | Screen | Say (words → seconds @150 wpm) |
 | --- | --- | --- | --- |
-| 0:00 | Tyler | Title slide with the QR code | "Every conference room fails the same way: the mic dies or the slides wash out, and the back of the room quietly leaves. Pulse runs each room like a production service. Scan the code." |
-| 0:15 | Tyler | Judges' phones: live captions of this sentence; tap Listen | "No app, no sign-up. Captions come from the podium laptop, audio is a 100 ms WebSocket relay from the same mic." |
-| 0:35 | Owen | Judges tap **Can't hear**. `/tech` turns red: "Can't hear, 3 people, likely cause: room level too low, steps" | "One tap is noise. Three different phones in a minute is an incident. The crew gets one ticket with a likely cause, not twenty taps." |
-| 0:55 | Owen | Claim, then Fixed. Judges' phones ask "Better now?" | "The people who complained are the ones asked to confirm the fix. Still bad reopens it." |
-| 1:10 | Owen | Dash0: the `pulse` service, `pulse.ticket.time_to_fix`, the ticket span | "Dash0: every ticket is a span and a time-to-fix metric, so we can put an SLO on the AV crew like any on-call team." |
-| 1:30 | Tyler | `/t/<talk>`: transcript, signal timeline with the spike, grouped questions; search "what happens when the network goes down" | "Elastic: the speaker's report. Hybrid search, keyword plus ELSER semantic with RRF, finds 'when the uplink drops' even though no word matches." |
-| 1:50 | Tyler | A phone on `/b/elastic`: passport stamp, "Next booth because you heard: '…'" | "On the expo floor the next booth is picked from what you actually heard. Sponsors see counts, never who: anything under 3 devices is hidden." |
-| 2:10 | Owen | Radar: Checks before/after, the AI investigation, and the open tunnel-probe and right-sizing PRs | "Radar: we ran it all day. Its investigation found a startup probe race and an Elastic timeout we didn't know about; both are merged fixes. It also showed we reserved twice the CPU we use. The 500-phone load test proposed right-sizing, and the tunnel readiness probe and resource changes are still open PRs." |
-| 2:30 | Owen | GitHub PR list with Gitar comments | "Gitar reviewed every PR: 53 findings, including a request that could crash the pod and a way to open the speaker page without a key. Median 13 minutes to merge." |
-| 2:45 | Tyler | `/org` overview | "One QR code per room and a public schedule. A conference could run this tomorrow." |
+| 0:00 | Tyler | Title slide, QR visible | "Every room fails silently: the mic dies, the back row leaves, nobody tells the AV crew. Scan the code." (20 w → 8 s) |
+| 0:10 | Tyler | Judges' phones: captions; tap Listen | "No app, no account. Live captions of what I'm saying — for deaf and hard-of-hearing attendees, and anyone reading in a second language. Tap Listen for the mic audio, or watch my slides as I change them." (36 w → 14 s) + phone load |
+| 0:26 | Owen | `/tech` turns red with cause | "One tap is noise. Three different phones inside a minute is an incident: one ticket, a likely cause, and the fix steps." (24 w → 10 s) + tap time |
+| 0:46 | Owen | Claim, Fixed; phones ask "Better now?" | "We fixed it. The phones that complained get asked 'Better now?' — and 'Still bad' reopens it." (16 w → 6 s) + 8 s wait |
+| 1:00 | Owen | Dash0: service, time-to-fix, ticket trace | "Dash0: the whole ticket is one trace, open to fixed, and time-to-fix is the metric an AV service level would run on." (22 w → 9 s) + nav |
+| 1:16 | Tyler | `/t/<talk>`: timeline, questions, search | "Elasticsearch: the talk report. I ask 'what happens when the network goes down' — it finds 'when the uplink drops'. Meaning, not keywords, fused with keyword search. The same index picks your next booth from what you actually heard." (38 w → 15 s) + typing |
+| 1:38 | Owen | Radar: Checks delta, investigation | "Radar watched our cluster all day. Its investigation found a startup race and an Elastic timeout we'd missed — both fixed. Security scans: one High and ten Medium before, zero after." (31 w → 12 s) + nav |
+| 2:02 | Tyler | GitHub PR list with Gitar comments | "Gitar reviewed every pull request, about 40 of them. It caught a socket request that crashed our only pod, and three ways to open the speaker page without a key." (26 w → 10 s) + nav |
+| 2:18 | Tyler | Room page / title slide | "Captions, audio, slides, and a crew that hears the room. One QR code per room." (14 w → 6 s) |
+
+Planned end 2:24; the 21 s buffer is for slow taps. Never skip the ticket loop or Elasticsearch.
 
 ## Questions we expect
 
+- **Audio latency, mic to earbud?** Measured over the public URL at 2:45 PM: the relay adds a median 56 ms (p95 100 ms, 100 of 100 frames) on top of the 100 ms frame, so well under a quarter second before the phone's own playback buffer.
 - **One replica is a single point of failure.** Deliberate: live rooms are in memory, history is in Elastic, phones reconnect, a restart takes seconds. Recorded in Radar as an accepted risk. Next step: cross-pod fan-out over NATS.
 - **Trolls tapping the button.** A vote counts once per device per signal, expires in 10 minutes, and it takes 3 distinct devices to page anyone. The crew confirms with Fixed.
 - **Privacy.** No accounts, no names, no emails. The device id is random. The Gitar rule `no-pii` blocks personal fields in Elastic.

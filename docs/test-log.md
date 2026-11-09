@@ -12,6 +12,14 @@ What has been tested, how, what broke and what is still open. Newest first. Add 
 | Local live-server smoke: the open tech socket sees the old talk's group, receives an empty group list after the next talk starts, and a late-joining tech socket gets an empty snapshot | passed |
 
 This was automated local-server QA; browser and real-device QA were not rerun.
+## 2026-11-09: tracked dependency symlink cleanup, automated (Gitar)
+
+**Setup:** Removed the committed `node_modules` symlink to a sibling checkout, changed the ignore pattern to cover both directories and symlinks, then ran `mise x node@22.23.4 -- npm ci` and `mise x node@22.23.4 -- npm run check`.
+
+| Check | Result |
+| --- | --- |
+| Repository syntax and focused checks | passed |
+| `node_modules` is ignored and the sibling-checkout symlink is no longer tracked | passed |
 
 ## 2026-11-09: answeredSeq persistence, automated (Gitar)
 
@@ -222,3 +230,7 @@ All passed:
 - `/present/wscheck` opened on `127.0.0.1`: warning visible and QR URL `http://127.0.0.1:8181/r/wscheck`; with `?base=https://pulse.example.test` the warning was hidden and the URL used the base.
 - `/tech?key=tk` without `rooms`: discovered `demo2` and `wscheck`; `&rooms=151` stayed on 151 only. The drawer showed "Discovery talk · Grace" from the `talk` message.
 - `npm run check` passes.
+
+## 2:45 PM: listen-in relay latency (public URL)
+
+100 frames of 3200 bytes (100 ms of 16 kHz PCM) sent on `/ws/audio-in` in room `lat1`, received on `/ws/audio-out` through the Cloudflare tunnel: 100/100 delivered, median 56 ms, p95 100 ms, max 338 ms. This is relay time only; add the 100 ms frame and the phone's playback buffer for mic-to-ear.
