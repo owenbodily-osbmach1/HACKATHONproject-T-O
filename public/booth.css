@@ -1,0 +1,48 @@
+/* Booth staff screen. Builds on styles.css (.tech-top, .tech-main, .card, .ctr). */
+.booth-head { min-width: 0; }
+.booth-head .eyebrow { margin: 0; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
+.booth-head h1 { margin: 2px 0 0; font-size: 28px; line-height: 1.15; overflow-wrap: anywhere; }
+
+.booth-main { padding-top: 18px; }
+.booth-queue-wrap { min-width: 0; }
+.queue-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.queue-head h2 { margin: 0; font-size: 24px; }
+.queue-count { color: var(--muted); font-size: 16px; }
+.queue { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+
+.request {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 14px; background: var(--panel);
+  border: 2px solid var(--accent); border-radius: var(--radius);
+}
+.req-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 10px; }
+.req-kind { font-size: 22px; font-weight: 900; line-height: 1.15; }
+.req-pos { color: var(--accent); font-size: 17px; font-weight: 800; white-space: nowrap; }
+.req-wait { margin: 0; color: var(--muted); font-size: 16px; }
+.request .act.done {
+  margin-top: 2px; min-height: 64px; border: 0; border-radius: 12px;
+  background: var(--green); color: #00210f; font-size: 20px; font-weight: 900;
+}
+.booth-empty {
+  grid-column: 1 / -1; margin: 0; padding: 28px; text-align: center;
+  font-size: 20px; font-weight: 700; color: var(--green);
+  background: var(--panel); border: 1px dashed var(--line); border-radius: var(--radius);
+}
+
+.booth-side { display: grid; gap: 16px; align-content: start; }
+.ranked { list-style: none; margin: 0; padding: 0; }
+.ranked li { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.ranked li:first-child { border-top: 0; padding-top: 0; }
+.rank-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.rank-count { color: var(--muted); font-size: 14px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ranked .muted { color: var(--muted); }
+
+.booth-foot { padding: 6px 18px calc(24px + env(safe-area-inset-bottom)); text-align: center; color: var(--muted); font-size: 14px; }
+
+@media (min-width: 980px) {
+  .booth-side { position: sticky; top: 90px; max-height: calc(100dvh - 110px); overflow-y: auto; }
+}
+@media (max-width: 600px) {
+  .booth-head h1 { font-size: 22px; }
+  .queue { grid-template-columns: 1fr; }
+}

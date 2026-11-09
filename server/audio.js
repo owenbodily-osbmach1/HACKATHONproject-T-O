@@ -28,7 +28,19 @@ function dbfs(frame) {
   return Math.max(-100, Math.min(0, 20 * Math.log10(rms)));
 }
 
+// Dead phones on audio-out (screen lock, network change) are found by ping and dropped.
+const live = new WeakMap();
+setInterval(() => {
+  for (const set of outs.values()) for (const ws of set) {
+    if (live.get(ws) === false) { try { ws.terminate(); } catch {} continue; }
+    live.set(ws, false);
+    try { ws.ping(); } catch {}
+  }
+}, 20000).unref();
+
 function addOut(room, ws) {
+  live.set(ws, true);
+  ws.on('pong', () => live.set(ws, true));
   let set = outs.get(room);
   if (!set) outs.set(room, (set = new Set()));
   set.add(ws);

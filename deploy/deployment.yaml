@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  labels:
+    app: app
+spec:
+  # Must stay 1: rooms, sockets and vote windows live in memory (CONTRACT.md).
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      # Pulse never calls the Kubernetes API, so it gets no service account token (Radar check).
+      automountServiceAccountToken: false
+      containers:
+        - name: app
+          image: app
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: TEAM_NAME
+              value: "pulse"
+            - name: PUBLIC_BASE_URL
+              value: "https://pulse.cnh.radarhq.io"
+          # Keys live only in this Secret (created in Radar Cloud or by kubectl), never in git.
+          envFrom:
+            - secretRef:
+                name: app-credentials
+                optional: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          # Radar AI investigation (12:12 PM): the only Warning event was a readiness failure in the
+          # first second, before the server logged it was listening. The startup probe gives boot a grace window.
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 1
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop: ["ALL"]
