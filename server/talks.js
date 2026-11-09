@@ -156,8 +156,9 @@ module.exports = {
         .sort((a, b) => a.room.localeCompare(b.room))
         .map((room) => ({
           room: room.room,
-          talkId: room.talkId,
-          title: room.title,
+          // Only a live talk: an ended talk must not be resumed by the mic page (demo audit: votes 409).
+          talkId: (state.liveTalk(room.room) || {}).talkId || null,
+          title: state.liveTalk(room.room) ? room.title : '',
           listeners: hub.listeners(room.room),
           openTickets: tickets.openTickets(room.room),
           simulated: room.simulated,
