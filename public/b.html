@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d10">
+  <title>Pulse · Booth</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/b.css">
+</head>
+<body class="attendee booth-attendee">
+  <div id="app">
+    <header class="booth-top">
+      <span class="booth-badge" id="boothBadge">Booth</span>
+      <span class="conn" id="conn" data-status="connecting" role="status"><span class="dot"></span><span class="conn-word">Loading…</span></span>
+    </header>
+
+    <main class="booth-main">
+      <p class="booth-service" id="serviceMsg" role="alert" hidden></p>
+
+      <section class="card booth-hero" id="boothCard" aria-labelledby="sponsor" hidden>
+        <p class="eyebrow">Expo booth</p>
+        <h1 id="sponsor">—</h1>
+        <p class="booth-table" id="tableLine"></p>
+        <p class="booth-pitch" id="pitch"></p>
+        <div class="booth-links">
+          <a class="booth-link" id="resources" rel="noopener" hidden>Resources</a>
+          <a class="booth-link" id="demo">Live demo captions</a>
+        </div>
+      </section>
+
+      <section class="card passport" id="passport" aria-labelledby="passportTitle" hidden>
+        <div class="passport-head">
+          <h2 id="passportTitle">Passport</h2>
+          <p class="passport-count" id="passportCount" role="status">—</p>
+        </div>
+        <ol class="stamps" id="stamps" aria-label="Booth stamps"></ol>
+        <p class="passport-suspect" id="suspect" hidden>Stamps more than 30 s apart count.</p>
+        <p class="passport-privacy">No sign-up. The sponsor sees counts, never who you are.</p>
+      </section>
+
+      <section class="card next-card" id="nextCard" aria-labelledby="nextTitle" hidden>
+        <p class="eyebrow" id="nextTitle">Next booth</p>
+        <a class="next-link" id="nextLink">
+          <span class="next-sponsor" id="nextSponsor"></span>
+          <span class="next-table" id="nextTable"></span>
+        </a>
+        <p class="next-because" id="nextBecause" hidden></p>
+      </section>
+      <p class="next-done" id="nextNone" hidden>You have stamped every booth. Nice passport.</p>
+
+      <section class="requests" id="requests" aria-label="Ask this booth" hidden>
+        <button type="button" class="req-btn" id="reqEngineer">
+          <span class="req-title">Talk to an engineer</span>
+          <span class="req-sub">Someone at the booth comes to you</span>
+        </button>
+        <p class="req-status" id="reqEngineerStatus" role="status"></p>
+        <button type="button" class="req-btn" id="reqResources">
+          <span class="req-title">Send me resources</span>
+          <span class="req-sub">Links and docs, no sign-up</span>
+        </button>
+        <p class="req-status" id="reqResourcesStatus" role="status"></p>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="/b.js"></script>
+</body>
+</html>
