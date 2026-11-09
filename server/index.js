@@ -39,7 +39,10 @@ app.get('/org', page('org.html'));
 app.get('/tech', auth.page('TECH_KEY'), page('tech.html'));
 app.get('/mic/:room', auth.page('SPEAKER_KEY'), page('mic.html'));
 app.get('/present/:room', auth.page('SPEAKER_KEY'), page('present.html'));
-app.use(express.static(pub, { extensions: ['html'] }));
+// Keyed pages are reachable only through their routes above, never as static files.
+const keyedFiles = /^\/(tech|mic|present)(\.html)?$/i;
+app.use((req, res, next) => (keyedFiles.test(req.path) ? res.status(404).end() : next()));
+app.use(express.static(pub, { extensions: ['html'], index: false }));
 
 const ctx = { config, state, auth, es, hub, otel };
 for (const m of [tickets, talks, questions]) m.register(app, ctx);
@@ -50,7 +53,8 @@ audio.attach(server, ctx);
 
 // Route WebSocket upgrades by path; anything unknown is refused.
 server.on('upgrade', (req, socket, head) => {
-  const { pathname } = new URL(req.url, 'http://x');
+  let pathname;
+  try { ({ pathname } = new URL(req.url, 'http://x')); } catch { return socket.destroy(); }
   const target = pathname === '/ws' ? hub : pathname.startsWith('/ws/audio-') ? audio : null;
   if (!target) return socket.destroy();
   target.handleUpgrade(req, socket, head);
