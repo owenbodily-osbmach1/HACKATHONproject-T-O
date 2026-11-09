@@ -1,6 +1,7 @@
 // Binary audio relay: /ws/audio-in?room=&key=SPEAKER_KEY -> /ws/audio-out?room= (CONTRACT.md "Audio").
 // Interface: attach(server, ctx), handleUpgrade(req, socket, head), micDb(room) -> latest dBFS or null.
 const { WebSocketServer } = require('ws');
+const otel = require('./otel');
 
 const wss = new WebSocketServer({ noServer: true });
 const senders = new Map(); // room -> sender ws (one active)
@@ -8,6 +9,8 @@ const outs = new Map(); // room -> Set<ws>
 const dbByRoom = new Map(); // room -> latest RMS dBFS
 
 let ctx = null;
+let frames = null;
+let droppedFrames = null;
 
 function closeQuietly(ws, code, reason) {
   try { ws.close(code, reason); } catch {}
@@ -53,6 +56,7 @@ function addOut(room, ws) {
 }
 
 function relay(room, frame) {
+  if (frames) frames.add(1, { 'pulse.room': room });
   const db = dbfs(frame);
   if (db !== null) {
     dbByRoom.set(room, db);
@@ -62,7 +66,10 @@ function relay(room, frame) {
   if (!set) return;
   for (const ws of set) {
     if (ws.readyState !== ws.OPEN) continue;
-    if (ws.bufferedAmount > 64 * 1024) continue; // slow phone: drop instead of queueing
+    if (ws.bufferedAmount > 64 * 1024) { // slow phone: drop instead of queueing
+      if (droppedFrames) droppedFrames.add(1, { 'pulse.room': room });
+      continue;
+    }
     try { ws.send(frame, { binary: true }); } catch {}
   }
 }
@@ -84,6 +91,8 @@ function addSender(ws, room) {
 module.exports = {
   attach(server, c) {
     ctx = c;
+    frames = otel.counter('pulse.audio.frames', 'Audio frames relayed', '{frame}');
+    droppedFrames = otel.counter('pulse.audio.dropped_frames', 'Audio frames dropped for slow phones', '{frame}');
     wss.on('error', () => {});
   },
 

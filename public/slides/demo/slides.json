@@ -1,0 +1,32 @@
+[
+  {
+    "n": 1,
+    "url": "/slides/demo/1-title.svg",
+    "alt": "Title slide: Pulse — every seat hears the talk. Live captions, listen-in audio and a direct line to the room crew from any phone."
+  },
+  {
+    "n": 2,
+    "url": "/slides/demo/2-problem.svg",
+    "alt": "The problem: the back row is guessing. Can't hear, can't see, and no signal reaches the crew while the talk is happening."
+  },
+  {
+    "n": 3,
+    "url": "/slides/demo/3-how.svg",
+    "alt": "How it works in four steps: scan the QR code, follow captions and listen-in audio, signal with Speak up or Can't see the slides, and the crew gets one ticket per issue."
+  },
+  {
+    "n": 4,
+    "url": "/slides/demo/4-demo.svg",
+    "alt": "Live demo: scan the title slide, speak into the mic, and tap Can't hear. The technician console opens a ticket for three people."
+  },
+  {
+    "n": 5,
+    "url": "/slides/demo/5-stack.svg",
+    "alt": "Tech stack: Kubernetes with Radar for deployment, Elastic for indexed captions and questions, Dash0 for traces and metrics, and Gitar for automated code review."
+  },
+  {
+    "n": 6,
+    "url": "/slides/demo/6-thanks.svg",
+    "alt": "Thank you. Questions are welcome; scan the title slide to try Pulse live."
+  }
+]

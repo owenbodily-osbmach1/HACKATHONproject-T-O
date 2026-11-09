@@ -5,6 +5,9 @@ import { connectRoom } from '/lib/socket.js';
 import { store } from '/lib/store.js';
 import { createPlayer } from '/lib/player.js';
 
+// Preview mode for design work: /tech.html?mock=1&rooms=151,255 fakes the server (see public/dev/README.md).
+if (new URLSearchParams(location.search).has('mock')) await import('/dev/mock.js');
+
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const key = params.get('key') || '';
@@ -29,7 +32,7 @@ $('techName').addEventListener('change', () => store.set('pulse.techName', $('te
 const techName = () => $('techName').value.trim() || 'Tech';
 
 function warn(text) { $('warn').textContent = text; $('warn').hidden = !text; }
-if (!key) warn('No key in the URL. Open /tech?key=YOUR_TECH_KEY&rooms=151');
+if (!key && !params.has('mock')) warn('No key in the URL. Open /tech?key=YOUR_TECH_KEY&rooms=151');
 
 async function api(path, body, method = 'POST') {
   const res = await fetch(path, {
@@ -50,7 +53,7 @@ $('soundBtn').onclick = () => {
   if (soundOn && !audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   audioCtx?.resume?.();
   $('soundBtn').setAttribute('aria-pressed', String(soundOn));
-  $('soundBtn').textContent = soundOn ? '🔔 Sound on' : '🔕 Turn on sound';
+  $('soundBtn').textContent = soundOn ? 'Sound on' : 'Sound off · turn on';
   if (soundOn) chime();
 };
 function chime() {
@@ -368,7 +371,7 @@ $('listenPodium').onclick = () => {
   player = createPlayer({
     room: selected,
     onLevel: (rms) => { $('dLevel').style.width = `${Math.min(100, Math.round(Math.sqrt(rms) * 160))}%`; },
-    onState: (s) => { $('listenPodium').textContent = s === 'playing' ? '🎧 Listening · stop' : s === 'stopped' ? '🎧 Listen to podium' : '🎧 Connecting…'; },
+    onState: (s) => { $('listenPodium').textContent = s === 'playing' ? 'Listening · stop' : s === 'stopped' ? 'Listen to podium' : 'Connecting…'; },
   });
   player.start();
   $('listenPodium').setAttribute('aria-pressed', 'true');

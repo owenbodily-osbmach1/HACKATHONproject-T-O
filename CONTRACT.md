@@ -30,12 +30,14 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 | POST | `/api/tickets/:id/claim` · `/fixed` · `/dismiss` | `{by}` | `{status}` |
 | GET | `/api/report/:talkId` | — | `{transcript[], signalsByMinute[], questions[]}` |
 | GET / POST | `/api/config` | `{alertThreshold}` | `{alertThreshold, nudgeThreshold, publicBaseUrl}` (`publicBaseUrl` = `PUBLIC_BASE_URL`; the mic page builds the QR code from it) |
-| POST | `/api/rooms/:room/slide-frame` | raw `image/jpeg` (≤ 1.5 MB), `SPEAKER_KEY` | `{n, url}` (slide relay; server then sends `slide` with `total: 0`) |
-| GET | `/slides/live/:talkId/:n.jpg` | — | the captured slide image |
-| GET | `/qr/:room.gif` | — | QR code image for `<public base>/r/:room` (for inserting the join code into a deck by URL) |
+| POST | `/api/rooms/:room/slide-frame` | raw `image/jpeg`, `image/png` or `image/webp` (≤ 1.5 MB), `SPEAKER_KEY` | `{n, url}` (slide relay; server then sends `slide` with `total: 0`) |
+| GET | `/slides/live/:talkId/:n.jpg` | — | the captured slide image (JPEG, PNG or WebP; response `Content-Type` matches the image format; `Cache-Control: public, max-age=31536000, immutable`) |
+| GET | `/qr/:room.gif` | — | QR code image for `<public base>/r/:room` (insert the join code into a deck by URL) |
 | GET | `/healthz` | — | `ok` |
 
+- Slide relay uploads are kept in memory (last 150 frames per talk or per room while no talk is live); a second upload less than 1 s after the previous one for the same room returns `429`.
 - Vote `type`: `cant_hear` | `cant_see` (`room_full` is a stretch goal). With no live talk in the room, `PUT /api/votes` returns `409 {error:'no_live_talk'}`.
+- Questions sent before a talk starts are kept under the room and attached to the next talk when it starts.
 - Ticket `status`: `open` | `claimed` | `fixed` | `reopened` | `dismissed`.
 - One vote per `clientId` per type per talk. `on: false` takes the vote back. Votes expire after 10 min and clear when a ticket is marked fixed.
 - "Still bad": the phone sends `POST /api/feedback` with `better: false` **and then** `PUT /api/votes` with `on: true`. The feedback route only records the answer; it does not re-add the vote itself.
@@ -93,8 +95,7 @@ All messages are JSON with a `t` field. `role=mic` and `role=present` must also 
 Audio uses its own binary-only sockets:
 
 - `/ws/audio-in?room=151&key=SPEAKER_KEY` — Int16 little-endian, mono, 16 kHz, 1,600 samples per frame (100 ms, 3,200 bytes).
-- `/ws/audio-out?room=151` — the same frames out.
-- One sender per room: a new `/ws/audio-in` sender replaces the old one, which is closed with `4409`. A sender closed with `4409` must **not** reconnect by itself (pre-show AV feed vs podium mic hand-over; see `docs/design-relay-preshow-questions.md`). Send-only: the server ignores anything a phone sends.
+- `/ws/audio-out?room=151` — the same frames out. Send-only: the server ignores anything a phone sends.
 - A binary frame on any other socket closes that connection.
 
 ## Mic lock (security)
@@ -106,6 +107,7 @@ Audio uses its own binary-only sockets:
 
 - `GET /present/:room?key=SPEAKER_KEY` (connects as `role=present`), static images in `public/slides/<deck>/` plus `slides.json` = `[{n, url, alt}]`.
 - Slide changes are saved in `pulse-actions` with `action: 'slide'`.
+- Slide relay: `GET /relay/:room?key=SPEAKER_KEY` captures the slideshow screen and posts changed frames to `POST /api/rooms/:room/slide-frame`; the server stores the last 150 frames per talk (or under a room `preshow` bucket while no talk is live), serves them at `/slides/live/:talkId/:n.jpg`, and sends the normal `slide` message with `total: 0`. A frame upload less than 1 s after the previous one for the room returns `429`.
 
 ## Elasticsearch indices
 
@@ -125,3 +127,28 @@ Set `inference_id` explicitly from `ES_INFERENCE_ID`. If inference isn't availab
 Kubernetes Secret (entered in the Radar UI) or local `.env`. **Never committed.** See `.env.example`.
 
 `PORT` · `PUBLIC_BASE_URL` · `SPEAKER_KEY` · `TECH_KEY` · `ALERT_THRESHOLD=3` · `ALERT_WINDOW_SEC=60` · `CAPTIONS_DEFAULT=on` · `ELASTIC_URL` · `ELASTIC_API_KEY` · `ES_INFERENCE_ID` · `OTEL_SERVICE_NAME=pulse` · `OTEL_EXPORTER_OTLP_ENDPOINT` · `OTEL_EXPORTER_OTLP_HEADERS`
+
+## Booths (expo floor)
+
+A booth is a place like a room, keyed by a short id (`gitar`, `dash0`, …). Booth demos are just talks in a room whose id is the booth id, so captions, questions and reports work unchanged. Booth config lives in `server/booths.json`: `[{id, sponsor, table, pitch, about, resourcesUrl}]` (`about` is 2–4 sentences used for matching).
+
+### Pages
+| Page | Key | What |
+| --- | --- | --- |
+| `/b/:booth` | none | Attendee booth page (QR on the table): sponsor, pitch, passport progress, next-booth card, "Talk to an engineer" / "Send me resources" |
+| `/booth/:booth?key=TECH_KEY` | `TECH_KEY` | Booth staff screen: live request queue, visits, "talks that sent people here" |
+
+### HTTP
+| Method | Path | Body | Returns |
+| --- | --- | --- | --- |
+| GET | `/api/booths` | — | `[{id, sponsor, table, pitch, resourcesUrl}]` |
+| POST | `/api/booths/:booth/checkin` | `{clientId}` | `{booth, stamps, total, suspect, next: {id, sponsor, table, because} \| null}` |
+| POST | `/api/booths/:booth/requests` | `{clientId, kind}` (`talk_to_engineer` \| `send_resources`) | `{requestId, position}` |
+| POST | `/api/booths/:booth/requests/:id/done` (TECH_KEY) | `{by}` | `{status}` |
+| GET | `/api/booths/:booth/report` (TECH_KEY) | — | `{visits, uniqueDevices, open: [requests], fromTalks: [{talkId, title, devices}], topics: [{text, devices}]}` |
+
+- **Passport:** one stamp per `clientId` per booth. `suspect: true` if the same device stamped another booth less than 30 s earlier (not counted toward `stamps`).
+- **Next booth:** from the captions this device actually received in rooms it joined as `attendee` (last 20 lines across rooms). Elastic semantic search of those lines against booth `about` (`pulse-booths.about_sem`, RRF with a match query); fallback is word overlap in memory. Never suggest a booth already stamped. `because` is the caption line (≤ 120 chars) that matched best.
+- **Privacy:** the report never names a device. Any `fromTalks` or `topics` bucket with fewer than 3 devices is dropped (k ≥ 3). No identity is collected.
+- WebSocket: booth staff connect `/ws?room=<booth>&role=tech&key=TECH_KEY` and get `{t:'booth_request', requestId, kind, position, ts}` and `{t:'booth_request_done', requestId}`.
+- Elastic: `pulse-booths` (`id`, `sponsor`, `about` → `about_sem` semantic_text), `pulse-checkins` (`booth`, `clientId`, `ts`, `suspect`, `fromTalks` keyword[]).

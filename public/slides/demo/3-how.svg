@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-labelledby="slideTitle">
+  <title id="slideTitle">How it works: scan, follow, signal, fix</title>
+  <rect width="1600" height="900" fill="#0b0d10"/>
+  <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+    <circle cx="108" cy="88" r="9" fill="#4cc2ff"/>
+    <text x="132" y="96" font-size="22" font-weight="800" letter-spacing="7" fill="#f4f6f8">PULSE</text>
+
+    <text x="100" y="222" font-size="22" font-weight="800" letter-spacing="5" fill="#4cc2ff">HOW IT WORKS</text>
+    <text x="100" y="316" font-size="72" font-weight="800" letter-spacing="-1" fill="#f4f6f8">One QR code. Four steps.</text>
+
+    <line x1="150" y1="432" x2="1450" y2="432" stroke="#2a313c" stroke-width="2" stroke-dasharray="10 12"/>
+
+    <g>
+      <circle cx="205" cy="432" r="44" fill="#151920" stroke="#4cc2ff" stroke-width="3"/>
+      <text x="205" y="445" text-anchor="middle" font-size="30" font-weight="800" fill="#4cc2ff">1</text>
+      <text x="205" y="540" text-anchor="middle" font-size="32" font-weight="800" fill="#f4f6f8">Scan</text>
+      <text x="205" y="588" text-anchor="middle" font-size="22" fill="#a7b0bc">Point a phone camera</text>
+      <text x="205" y="620" text-anchor="middle" font-size="22" fill="#a7b0bc">at the title slide.</text>
+    </g>
+
+    <g>
+      <circle cx="600" cy="432" r="44" fill="#151920" stroke="#4cc2ff" stroke-width="3"/>
+      <text x="600" y="445" text-anchor="middle" font-size="30" font-weight="800" fill="#4cc2ff">2</text>
+      <text x="600" y="540" text-anchor="middle" font-size="32" font-weight="800" fill="#f4f6f8">Follow</text>
+      <text x="600" y="588" text-anchor="middle" font-size="22" fill="#a7b0bc">Live captions and</text>
+      <text x="600" y="620" text-anchor="middle" font-size="22" fill="#a7b0bc">listen-in audio appear.</text>
+    </g>
+
+    <g>
+      <circle cx="995" cy="432" r="44" fill="#151920" stroke="#4cc2ff" stroke-width="3"/>
+      <text x="995" y="445" text-anchor="middle" font-size="30" font-weight="800" fill="#4cc2ff">3</text>
+      <text x="995" y="540" text-anchor="middle" font-size="32" font-weight="800" fill="#f4f6f8">Signal</text>
+      <text x="995" y="588" text-anchor="middle" font-size="22" fill="#a7b0bc">Tap “Speak up” or</text>
+      <text x="995" y="620" text-anchor="middle" font-size="22" fill="#a7b0bc">“Can't see the slides”.</text>
+    </g>
+
+    <g>
+      <circle cx="1390" cy="432" r="44" fill="#151920" stroke="#3ddc84" stroke-width="3"/>
+      <text x="1390" y="445" text-anchor="middle" font-size="30" font-weight="800" fill="#3ddc84">4</text>
+      <text x="1390" y="540" text-anchor="middle" font-size="32" font-weight="800" fill="#f4f6f8">Fix</text>
+      <text x="1390" y="588" text-anchor="middle" font-size="22" fill="#a7b0bc">The crew gets one ticket</text>
+      <text x="1390" y="620" text-anchor="middle" font-size="22" fill="#a7b0bc">per issue, instantly.</text>
+    </g>
+
+    <rect x="100" y="742" width="1400" height="96" rx="18" fill="#151920" stroke="#2a313c" stroke-width="2"/>
+    <text x="140" y="800" font-size="24" fill="#a7b0bc">No app install. No account. Votes are anonymous and expire after ten minutes.</text>
+
+    <text x="1500" y="866" text-anchor="end" font-size="20" fill="#6f7a88">03 / 06</text>
+  </g>
+</svg>

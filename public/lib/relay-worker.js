@@ -150,6 +150,7 @@ async function tick() {
       headers: { 'content-type': 'image/jpeg', 'x-pulse-key': cfg.key },
       body: blob,
     });
+    if (res.status === 429) return; // server's per-room rate limit: the next sample retries quietly
     if (!res.ok) {
       post({ type: 'error', status: res.status, message: res.status === 401 ? 'Wrong speaker key' : `Upload failed (${res.status})` });
       if (res.status === 401) { stopped = true; clearInterval(timer); }

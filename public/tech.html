@@ -4,17 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pulse · AV tech</title>
+  <meta name="theme-color" content="#000000">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23FF4D4D'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body class="techpage">
   <header class="tech-top">
+    <div class="tech-brand"><span class="wordmark">PULSE</span><span class="role">AV tech</span></div>
     <div class="counters" role="status" aria-live="polite">
       <span class="ctr red"><b id="cRed">0</b> need fixing</span>
       <span class="ctr amber"><b id="cAmber">0</b> claimed</span>
       <span class="ctr green"><b id="cGreen">0</b> OK</span>
     </div>
     <div class="tech-tools">
-      <button type="button" class="sound-btn" id="soundBtn" aria-pressed="false">🔕 Turn on sound</button>
+      <button type="button" class="sound-btn" id="soundBtn" aria-pressed="false">Sound off · turn on</button>
       <label class="limit">Alert at
         <select id="limitSel"><option value="1">1 vote</option><option value="2">2 votes</option><option value="3" selected>3 votes</option><option value="5">5 votes</option></select>
       </label>
@@ -45,11 +48,11 @@
       <div class="meter" aria-hidden="true"><span id="dMeter"></span><i class="meter-mark"></i></div>
 
       <div class="d-row">
-        <button type="button" class="ghost" id="listenPodium" aria-pressed="false">🎧 Listen to podium</button>
+        <button type="button" class="ghost" id="listenPodium" aria-pressed="false">Listen to podium</button>
         <span class="level"><span id="dLevel"></span></span>
       </div>
 
-      <h3>Last captions</h3>
+      <h3 class="h-blue">Last captions</h3>
       <ol class="d-captions" id="dCaptions"><li class="muted">Nothing yet.</li></ol>
 
       <h3>Room switches</h3>
@@ -59,7 +62,7 @@
         <label><input type="checkbox" id="swSlides" checked> Slides on phones</label>
       </div>
 
-      <h3>Message every phone in the room</h3>
+      <h3 class="h-yellow">Message every phone</h3>
       <form class="bcast" id="bcastForm">
         <input id="bcastText" maxlength="140" placeholder="Audio fixed. Tell us if it's better" aria-label="Broadcast message">
         <button type="submit">Send</button>
@@ -69,7 +72,7 @@
         <button type="button" class="chip">Overflow seats in Room 255</button>
       </div>
 
-      <h3>Questions <span class="muted" id="qCount"></span></h3>
+      <h3 class="h-blue">Questions <span class="muted" id="qCount"></span></h3>
       <ul class="questions" id="questions"><li class="muted">No questions yet.</li></ul>
     </aside>
   </main>
