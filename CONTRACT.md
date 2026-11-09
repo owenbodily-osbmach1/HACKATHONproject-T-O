@@ -37,18 +37,30 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 - One vote per `clientId` per type per talk. `on: false` takes the vote back. Votes expire after 10 min and clear when a ticket is marked fixed.
 - Room switches: `POST /api/rooms/:room/settings` `{captions, listen, slides}` (tech only). Server sends `room_settings` to every role in the room.
 
-Transcript and admin routes (admin routes need `TECH_KEY`):
+Transcript and admin routes:
 
-- `GET /api/talks/:talkId/transcript?from=<seq>&format=json|txt`
-- `GET /api/rooms/:room/talks`
+- `GET /api/talks/:talkId/transcript?from=<seq>&format=json|txt` (public)
+- `GET /api/rooms/:room/talks` (public, feeds the room archive `/room/:room`)
 - `POST /api/questions/:qid/queue` · `/hide` · `/answered`
 - `POST /api/questions/:qid/reply` `{text}`
 - `POST /api/rooms/:room/broadcast` `{text}`
 - `POST /api/clients/:clientId/mute` `{minutes}`
 
-## WebSocket: `/ws?room=151&role=attendee|mic|tech|org`
+## Auth (keys)
 
-All messages are JSON with a `t` field. `role=mic` must also pass `&key=SPEAKER_KEY`; `role=tech` must pass `&key=TECH_KEY`.
+One mechanism everywhere. Keyed **pages** are opened with `?key=...` in the URL (e.g. `/tech?key=...`); the page reads it from `location.search` and sends it on every API call in the **`x-pulse-key`** header and on its WebSocket as `&key=`. Wrong or missing key: HTTP `401`, WebSocket closed with code `4401`.
+
+| Key | HTTP routes and pages that require it |
+| --- | --- |
+| `TECH_KEY` | `POST /api/tickets/:id/claim` · `/fixed` · `/dismiss` · `POST /api/config` · `POST /api/rooms/:room/settings` · `POST /api/questions/:qid/*` · `POST /api/rooms/:room/broadcast` · `POST /api/clients/:clientId/mute` · page `/tech` |
+| `SPEAKER_KEY` | `POST /api/talks` · `POST /api/talks/:talkId/end` · pages `/mic/:room` and `/present/:room` |
+| none | `GET /api/rooms`, `PUT /api/votes`, `POST /api/questions`, `POST /api/feedback`, `GET /api/report/:talkId`, `GET /api/config`, transcript routes, `/healthz`, pages `/r/:room`, `/t/:talkId`, `/room/:room`, `/org` |
+
+## WebSocket: `/ws?room=151&role=attendee|mic|present|tech|org`
+
+All messages are JSON with a `t` field. `role=mic` and `role=present` must also pass `&key=SPEAKER_KEY`; `role=tech` must pass `&key=TECH_KEY`.
+
+**Sender check:** the server relays `caption` and `caption_interim` only from a keyed `mic` socket, and `slide` only from a keyed `mic` or `present` socket. The same messages from any other role are dropped (not relayed, not stored).
 
 | `t` | Direction | Fields | Who gets it |
 | --- | --- | --- | --- |
@@ -81,7 +93,7 @@ Audio uses its own binary-only sockets:
 
 ## Slides
 
-- `GET /present/:room` (needs `SPEAKER_KEY`), static images in `public/slides/<deck>/` plus `slides.json` = `[{n, url, alt}]`.
+- `GET /present/:room?key=SPEAKER_KEY` (connects as `role=present`), static images in `public/slides/<deck>/` plus `slides.json` = `[{n, url, alt}]`.
 - Slide changes are saved in `pulse-actions` with `action: 'slide'`.
 
 ## Elasticsearch indices
