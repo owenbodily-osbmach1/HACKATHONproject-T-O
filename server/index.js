@@ -16,6 +16,7 @@ const talks = require('./talks');
 const questions = require('./questions');
 const qr = require('./qr');
 const booths = require('./booths');
+const schedule = require('./schedule');
 
 otel.start();
 
@@ -41,6 +42,7 @@ app.get('/org', page('org.html'));
 app.get('/tech', auth.page('TECH_KEY'), page('tech.html'));
 app.get('/b/:booth', page('b.html'));
 app.get('/booth/:booth', auth.page('TECH_KEY'), page('booth.html'));
+app.get('/find', page('find.html'));
 app.get('/mic/:room', auth.page('SPEAKER_KEY'), page('mic.html'));
 app.get('/present/:room', auth.page('SPEAKER_KEY'), page('present.html'));
 app.get('/relay/:room', auth.page('SPEAKER_KEY'), page('relay.html'));
@@ -54,7 +56,7 @@ app.use((req, res, next) => {
 app.use(express.static(pub, { extensions: ['html'], index: false }));
 
 const ctx = { config, state, auth, es, hub, otel };
-for (const m of [tickets, talks, questions, booths, qr]) m.register(app, ctx);
+for (const m of [tickets, talks, questions, booths, qr, schedule]) m.register(app, ctx);
 
 const server = http.createServer(app);
 hub.attach(server, ctx);

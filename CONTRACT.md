@@ -29,6 +29,8 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 | POST | `/api/feedback` | `{ticketId, clientId, better}` | `{better, stillBad}` |
 | POST | `/api/tickets/:id/claim` · `/fixed` · `/dismiss` | `{by}` | `{status}` |
 | GET | `/api/report/:talkId` | — | `{transcript[], signalsByMinute[], questions[]}` |
+| GET | `/api/find?q=&from=&limit=` | — | `{sessions:[{id, title, start, location, why}], said:[{talkId, title, seq, text, ts}]}` |
+| GET | `/api/find/next?clientId=&limit=` | — | `[{id, title, start, location, because}]` |
 | GET / POST | `/api/config` | `{alertThreshold}` | `{alertThreshold, nudgeThreshold, publicBaseUrl}` (`publicBaseUrl` = `PUBLIC_BASE_URL`; the mic page builds the QR code from it) |
 | POST | `/api/rooms/:room/slide-frame` | raw `image/jpeg`, `image/png` or `image/webp` (≤ 1.5 MB), `SPEAKER_KEY` | `{n, url}` (slide relay; server then sends `slide` with `total: 0`) |
 | GET | `/slides/live/:talkId/:n.jpg` | — | the captured slide image (JPEG, PNG or WebP; response `Content-Type` matches the image format; `Cache-Control: public, max-age=31536000, immutable`) |
@@ -62,7 +64,7 @@ One mechanism everywhere. Keyed **pages** are opened with `?key=...` in the URL 
 | --- | --- |
 | `TECH_KEY` | `POST /api/tickets/:id/claim` · `/fixed` · `/dismiss` · `POST /api/config` · `POST /api/rooms/:room/settings` · `POST /api/questions/:qid/*` · `POST /api/rooms/:room/broadcast` · `POST /api/clients/:clientId/mute` · page `/tech` |
 | `SPEAKER_KEY` | `POST /api/talks` · `POST /api/talks/:talkId/end` · `POST /api/rooms/:room/slide-frame` · pages `/mic/:room`, `/present/:room` and `/relay/:room` |
-| none | `GET /api/rooms`, `PUT /api/votes`, `POST /api/questions`, `POST /api/feedback`, `GET /api/report/:talkId`, `GET /api/config`, transcript routes, `/healthz`, pages `/r/:room`, `/t/:talkId`, `/room/:room`, `/org` |
+| none | `GET /api/rooms`, `PUT /api/votes`, `POST /api/questions`, `POST /api/feedback`, `GET /api/report/:talkId`, `GET /api/config`, transcript routes, `/healthz`, pages `/r/:room`, `/t/:talkId`, `/room/:room`, `/org`, `/find` |
 
 ## WebSocket: `/ws?room=151&role=attendee|viewer|mic|present|tech|org`
 
@@ -119,6 +121,7 @@ Audio uses its own binary-only sockets:
 | `pulse-tickets` | `id` · `room` · `talkId` · `type` · `status` · `people` · `openedAt` · `ackAt` · `fixedAt` · `better` · `stillBad` |
 | `pulse-talks` | `talkId` · `title` (copied to `title_sem`) · `abstract` · `track` keyword · `room` keyword · `start` date · `end` date · `speakers` |
 | `pulse-actions` | `room` · `talkId` · `actor` · `action` keyword · `detail` · `ts` |
+| `pulse-schedule` | `id` keyword · `title` text (copied to `title_sem`) · `abstract` text (copied to `abstract_sem`) · `title_sem` semantic_text · `abstract_sem` semantic_text · `track` keyword · `location` keyword · `start` date · `end` date · `sponsor` keyword |
 
 Set `inference_id` explicitly from `ES_INFERENCE_ID`. If inference isn't available, fall back to a plain `match` query.
 
@@ -152,3 +155,17 @@ A booth is a place like a room, keyed by a short id (`gitar`, `dash0`, …). Boo
 - **Privacy:** the report never names a device. Any `fromTalks` or `topics` bucket with fewer than 3 devices is dropped (k ≥ 3). No identity is collected.
 - WebSocket: booth staff connect `/ws?room=<booth>&role=tech&key=TECH_KEY` and get `{t:'booth_request', requestId, kind, position, ts}` and `{t:'booth_request_done', requestId}`.
 - Elastic: `pulse-booths` (`id`, `sponsor`, `about` → `about_sem` semantic_text), `pulse-checkins` (`booth`, `clientId`, `ts`, `suspect`, `fromTalks` keyword[]).
+
+## Find the right talk
+
+Public page `/find` (no key, `public/find.html` + `find.js` + `find.css`): "What do you want to learn about?" searches the conference schedule and the captions already relayed in rooms. Results are two lists, "Upcoming sessions" and "Already said in a talk"; a caption hit links to `/t/<talkId>#seq-<seq>`. On load the page also asks for "Next talks for you" using the browser's `clientId` from `public/lib/store.js`.
+
+`server/schedule.json` is the schedule source: 38 Demo Theater sessions and 14 in-booth demos from the public KubeCon NA 2026 listing. Each entry is `{id, title, abstract, track, start, end, location, sponsor?}`. `id` is a slug of the title, `track` is `Demo Theater` or `In-Booth Demo`, `location` is the booth number or `Demo Theater`, and `sponsor` is present only for in-booth demos.
+
+- `GET /api/find?q=&from=&limit=` returns `{sessions:[{id, title, start, location, why}], said:[{talkId, title, seq, text, ts}]}`.
+  - `sessions`: RRF over a `multi_match` on `title^3` + `abstract` and a `semantic` query on `abstract_sem` in `pulse-schedule`. `start >= from`; `from` defaults to now and `from=all` removes the filter. `why` is a short matched snippet. With an empty `q` the list is the next sessions by start and `why` is `''`.
+  - `said`: the same RRF shape over `text` and `text_sem` in `pulse-captions`, grouped by `talkId` (at most 2 lines per talk) and capped by `limit`.
+  - `limit` defaults to 10, caps at 50.
+- `GET /api/find/next?clientId=&limit=` returns `[{id, title, start, location, because}]`. It searches the schedule with the last 20 caption lines this device received (rooms it joined as `attendee`, the same `state.heardRooms` as the booth next-card), `from=now`. `because` is the best-matching caption line (≤ 120 chars). No heard lines: the next sessions by start, each with `because: null`. `limit` defaults to 3.
+- Fallback when Elasticsearch is disabled or errors: in-memory word overlap over `schedule.json` and `state.transcripts`. Neither route throws.
+- Indexing: when Elasticsearch is enabled, server start PUTs every entry to `/pulse-schedule/_doc/<id>` fire-and-forget (15 s write timeout). Mapping is in `scripts/es-setup.js`.
