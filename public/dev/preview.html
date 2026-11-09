@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pulse · screen preview</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23FFFFFF'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    body { background: #1a1a1a; }
+    .pv-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 20px; background: #000; border-bottom: 1px solid #333; position: sticky; top: 0; z-index: 2; }
+    .pv-top .wordmark { font-size: 20px; margin-right: 6px; }
+    .pv-group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-left: 10px; border-left: 1px solid #333; }
+    .pv-group > span { color: #b8b8b8; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; margin-right: 2px; }
+    .pv-top button { min-height: 38px; padding: 0 12px; border-radius: 9px; border: 1px solid #5c5c5c; background: #000; color: #fff; font-weight: 700; }
+    .pv-top button.yellow { background: #ffd400; color: #000; border: 0; }
+    .pv-top button.blue { background: #4d9aff; color: #000; border: 0; }
+    .pv-top button[aria-pressed="true"] { background: #fff; color: #000; border-color: #fff; }
+    .pv-note { margin: 14px 20px 0; color: #b8b8b8; font-size: 14px; }
+    .pv-main { display: flex; flex-wrap: wrap; gap: 28px; padding: 20px; align-items: flex-start; justify-content: center; }
+    figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    figcaption { color: #b8b8b8; font-size: 13px; font-weight: 700; }
+    .device { background: #000; overflow: hidden; box-shadow: 0 0 0 2px #444; }
+    .device.phone { border: 10px solid #000; border-radius: 40px; }
+    .device.screen { border: 8px solid #000; border-radius: 12px; }
+    .device iframe { display: block; border: 0; transform-origin: 0 0; }
+  </style>
+</head>
+<body>
+  <header class="pv-top">
+    <span class="wordmark">PULSE</span>
+    <div class="pv-group" role="group" aria-label="View"><span>View</span>
+      <button type="button" data-view="phones">Phones</button>
+      <button type="button" data-view="computer">Computer</button>
+      <button type="button" data-view="tech">Tech console</button>
+      <button type="button" data-view="room">Phone + tech</button>
+    </div>
+    <div class="pv-group"><span>Data</span>
+      <button type="button" id="modeBtn">Using fake data</button>
+    </div>
+    <div class="pv-group"><span>Act as tech</span>
+      <button type="button" class="yellow" data-cmd="fixed_hear">Mark sound fixed</button>
+      <button type="button" class="yellow" data-cmd="fixed_see">Mark slides fixed</button>
+      <button type="button" class="blue" data-cmd="reply">Reply to questions</button>
+      <button type="button" data-cmd="broadcast">Broadcast</button>
+    </div>
+    <div class="pv-group"><span>Room</span>
+      <button type="button" data-cmd="prev_slide">‹ Slide</button>
+      <button type="button" data-cmd="next_slide">Slide ›</button>
+      <button type="button" data-cmd="captions_off">Captions off</button>
+      <button type="button" data-cmd="captions_on">Captions on</button>
+      <button type="button" data-cmd="drop">Drop connection</button>
+    </div>
+  </header>
+  <p class="pv-note" id="note"></p>
+  <main class="pv-main" id="stage"></main>
+
+  <script>
+    // Every frame below is a real page in an iframe at a real device size.
+    // Big screens are drawn at their true width and scaled down to fit, so the
+    // layout you see is the layout that size really gets.
+    // With fake data, all frames share one fake room: vote on a phone and the
+    // block appears on the tech console.
+    const VIEWS = {
+      phones: {
+        note: 'Phone view. Tap inside a frame like a phone. Smallest phone first: if it works at 320 wide, it works everywhere.',
+        frames: [
+          { name: 'Small phone (iPhone SE)', w: 320, h: 568, kind: 'phone', page: 'r' },
+          { name: 'iPhone 15', w: 393, h: 852, kind: 'phone', page: 'r' },
+          { name: 'Large Android (Pixel)', w: 412, h: 915, kind: 'phone', page: 'r' },
+          { name: 'Phone landscape', w: 852, h: 393, kind: 'phone', page: 'r' },
+        ],
+      },
+      computer: {
+        note: 'Computer view of the attendee page (900 px and wider): WATCH on the left, controls on the right. Frames are true size, scaled to fit.',
+        frames: [
+          { name: 'iPad portrait', w: 820, h: 1180, kind: 'screen', page: 'r', fit: 420 },
+          { name: 'Laptop', w: 1366, h: 768, kind: 'screen', page: 'r', fit: 900 },
+          { name: 'Desktop / projector 1080p', w: 1920, h: 1080, kind: 'screen', page: 'r', fit: 900 },
+        ],
+      },
+      tech: {
+        note: 'AV tech console. Rooms 151 (the demo talk) and 255 (a second room) are faked. Laptop is the main view; the phone is a tech walking the halls.',
+        frames: [
+          { name: 'Laptop', w: 1366, h: 768, kind: 'screen', page: 'tech', fit: 1000 },
+          { name: 'Tablet', w: 820, h: 1180, kind: 'screen', page: 'tech', fit: 420 },
+          { name: 'Tech on a phone', w: 393, h: 852, kind: 'phone', page: 'tech' },
+        ],
+      },
+      room: {
+        note: 'The whole loop. Tap "Speak up" on the phone and the red block shows on the tech laptop. Claim it, then Mark fixed, and the phone asks "Better now?".',
+        frames: [
+          { name: 'Attendee phone', w: 393, h: 852, kind: 'phone', page: 'r' },
+          { name: 'AV tech laptop', w: 1366, h: 852, kind: 'screen', page: 'tech', fit: 980 },
+        ],
+      },
+    };
+
+    const params = new URLSearchParams(location.search);
+    const room = params.get('room') || '151';
+    let live = params.has('live');
+    let view = VIEWS[params.get('view')] ? params.get('view') : 'phones';
+
+    function src(page) {
+      if (page === 'tech') return live ? `/tech?rooms=${room}` : `/tech.html?mock=1&rooms=${room},255`;
+      return live ? `/r/${encodeURIComponent(room)}` : `/r.html?mock=1&room=${encodeURIComponent(room)}`;
+    }
+
+    function render() {
+      const stage = document.getElementById('stage');
+      stage.replaceChildren();
+      const v = VIEWS[view];
+      document.getElementById('note').textContent = v.note + (live ? ' Using the live server: the tech console needs ?key= in the real URL.' : '');
+      for (const d of v.frames) {
+        const scale = d.fit ? Math.min(1, d.fit / d.w) : 1;
+        const fig = document.createElement('figure');
+        const box = document.createElement('div');
+        box.className = `device ${d.kind}`;
+        box.style.width = `${Math.round(d.w * scale)}px`;
+        box.style.height = `${Math.round(d.h * scale)}px`;
+        box.style.boxSizing = 'content-box';
+        const frame = document.createElement('iframe');
+        frame.width = d.w;
+        frame.height = d.h;
+        frame.style.transform = `scale(${scale})`;
+        frame.title = `${d.name}, ${d.w} by ${d.h}`;
+        frame.src = src(d.page);
+        box.appendChild(frame);
+        const cap = document.createElement('figcaption');
+        cap.textContent = `${d.name} · ${d.w}×${d.h}${scale < 1 ? ` · shown at ${Math.round(scale * 100)}%` : ''}`;
+        fig.append(box, cap);
+        stage.appendChild(fig);
+      }
+      for (const b of document.querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === view));
+      document.getElementById('modeBtn').textContent = live ? 'Using the live server' : 'Using fake data';
+      for (const b of document.querySelectorAll('[data-cmd]')) b.disabled = live;
+      const u = new URL(location.href);
+      u.searchParams.set('view', view);
+      history.replaceState(null, '', u);
+    }
+
+    document.querySelector('.pv-top').addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.id === 'modeBtn') { live = !live; render(); return; }
+      if (b.dataset.view) { view = b.dataset.view; render(); return; }
+      const cmd = b.dataset.cmd;
+      if (!cmd) return;
+      // The first frame "leads" (applies the change to the shared fake room); the others follow.
+      [...document.querySelectorAll('iframe')].forEach((f, i) => f.contentWindow.postMessage({ pulseMock: cmd, lead: i === 0 }, location.origin));
+    });
+
+    render();
+  </script>
+</body>
+</html>
