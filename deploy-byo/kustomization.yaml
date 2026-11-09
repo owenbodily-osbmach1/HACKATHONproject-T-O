@@ -1,6 +1,7 @@
 # Our own cluster (Radar starter's bring-your-own path). Same app as deploy/, plus:
 # - an in-cluster Cloudflare tunnel for public HTTPS instead of the hackathon gateway HTTPRoute
 # - no PUBLIC_BASE_URL: a quick-tunnel host changes on restart, so pages use their own origin
+# - SIGNIN=off: no form between the QR code and the captions
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: team-pulse
@@ -29,3 +30,6 @@ patches:
                 env:
                   - name: PUBLIC_BASE_URL
                     $patch: delete
+                  # Live judging: phones go straight to the room. The sign-in form stays an organizer option.
+                  - name: SIGNIN
+                    value: "off"
