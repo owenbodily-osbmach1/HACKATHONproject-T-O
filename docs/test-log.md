@@ -383,3 +383,11 @@ All passed:
 - PromQL checked against the live dataset: listeners, rooms alerting, p90 ack/fix and p95 fan-out return series; availability evaluates to 99.95%. Votes has no series in the last hour.
 - `pulse.ticket.time_to_ack`/`time_to_fix` now pass explicit seconds buckets `[5,15,30,45,60,120,300,600]` so the 60 s SLO bucket exists.
 - `npm run check`: passed.
+
+## 2026-11-09 4:35 PM: slide relay sent nothing on a scaled laptop screen (Owen's PC, live demo)
+
+- **Symptom:** Go live stayed on "Waiting for Slideshow"; the server got zero slide frames for room 151 while captions flowed.
+- **Cause:** the relay only counted a frame as the slideshow when it was exactly the screen's size in device pixels (±2). On a 2560×1600 screen at 150% scaling the capture arrives at 1920×1200 (the page asks for ~1920 wide), so it never matched.
+- **Fix:** `public/lib/relay-worker.js` also accepts a frame that is the screen shrunk evenly (same shape within 0.6%, not larger than the screen). Checked against frame sizes: 2560×1600, 1920×1200, 1920×1199 and 1280×800 pass; a normal tab (1920×1035), a maximized window (2560×1528) and a 16:9 frame (1920×1080) do not. `scripts/relay-check.js` passes.
+- **Also:** the deck's three QR codes and the join link text still pointed at the previous tunnel after a restart; replaced with this start's link.
+- **Not verified:** a real screen share after the fix (rule tested against sizes only). Audience path checked headless on the live server in a scratch room: sign in, `slide` on join, image `200` with the visitor cookie, `403` without.
