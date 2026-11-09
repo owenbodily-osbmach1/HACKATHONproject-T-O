@@ -2,6 +2,18 @@
 
 What has been tested, how, what broke and what is still open. Newest first. Add to it when you test something.
 
+## 2026-11-09: venue-local schedule times and past-event find check, automated (Gitar)
+
+**Setup:** `mise x node@22.23.4 -- npm ci`, then `mise x node@22.23.4 -- npm run check`.
+
+| Check | Result |
+| --- | --- |
+| Offset-less Salt Lake schedule time parses as venue wall-clock time; explicit offsets are preserved | passed |
+| `find-check`: searches all schedule entries and accepts no upcoming suggestions when the schedule is past | passed |
+| Repository syntax checks and `booths-check`, `find-check`, `relay-check`, `tickets-check` | passed |
+
+Elasticsearch schedule indexing was not integration-tested.
+
 ## 2026-11-09: attendee relay restoration and image-format contract, automated (Gitar)
 
 **Setup:** `mise x node@20 -- npm ci`, then `mise x node@20 -- npm run check`.
@@ -12,6 +24,26 @@ What has been tested, how, what broke and what is still open. Newest first. Add 
 | Existing relay check: authenticated JPEG upload, retrieval/cache headers and upload throttle | ✅ |
 
 Builds tested: `poc/one-room` @ `4593204` = `ty/backend` @ `19c5573` (#7) + `ui/tech-console` (#8). Not tested yet: Ty's later backend commits (`4af33f5` demo simulator, `b5910df` question grouping), and the B&W redesign (#10) on real phones (headless checks are below).
+
+## 2026-11-09: `/find` + schedule search, automated (`scripts/find-check.js`)
+
+**Setup:** `node scripts/find-check.js` starts `server/index.js` as a child on a free port with `SPEAKER_KEY=sk TECH_KEY=tk` and every `ELASTIC_*` / `OTEL_EXPORTER_OTLP_*` variable deleted, so only the in-memory fallback runs.
+
+All passed:
+- `GET /find` → 200, rendered search box.
+- `POST /api/talks` (`room 1`) then three `caption` messages from a keyed mic socket → attendee received them.
+- `GET /api/find?q=kubernetes` → 200, `sessions[]` non-empty with `id`, `title`, `start`, `location`; `said[]` contains the relaying talk's "Kubernetes agents" line.
+- `GET /api/find/next?clientId=c1` → 200, non-empty, every row has a `because` line ≤ 120 chars.
+- Not covered: the Elasticsearch path (RRF over `pulse-schedule` / `pulse-captions`, schedule indexing on start). Needs a run against the Radar cluster.
+
+## 2026-11-09: Agent0 fixes — child spans, 401 page, favicon, one Node version
+
+**Setup:** `node --check` on the changed server files, `node scripts/smoke.js`, `node scripts/tickets-check.js`, then `PORT=18099 node server/index.js` with no Elasticsearch and no Dash0 exporter.
+
+- `/tech` without a key → 401 `text/html; charset=utf-8`, title "Key needed", no key echoed.
+- `/favicon.ico` → 301 with `Location: /favicon.svg`; `/favicon.svg` → 200 `image/svg+xml`.
+- Smoke and tickets-check passed. With Elasticsearch disabled the memory paths still answer; with telemetry disabled the new spans are a no-op.
+- Node pinned to 22.23.4: Docker base `node:22.23.4-alpine`, `engines.node` `>=22.23 <23`, `.nvmrc` `22.23.4`.
 
 ## 2026-11-09 12:10–12:40: design pass across screen sizes, fake data (Claude)
 

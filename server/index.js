@@ -5,6 +5,7 @@ const path = require('path');
 const express = require('express');
 
 const config = require('./config');
+const log = require('./log');
 const state = require('./state');
 const auth = require('./auth');
 const otel = require('./otel');
@@ -16,6 +17,7 @@ const talks = require('./talks');
 const questions = require('./questions');
 const qr = require('./qr');
 const booths = require('./booths');
+const schedule = require('./schedule');
 
 otel.start();
 
@@ -31,6 +33,21 @@ app.use((req, res, next) => {
 });
 
 app.get('/healthz', (req, res) => res.type('text').send('ok'));
+// Browsers still probe /favicon.ico; point them at the SVG instead of 404ing.
+app.get('/favicon.ico', (req, res) => res.redirect(301, '/favicon.svg'));
+
+// Public browser config: ingest-only Dash0 token, never the OTLP auth secret.
+app.get('/rum-config.js', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.type('application/javascript');
+  if (!config.DASH0_RUM_TOKEN) return res.send('window.PULSE_RUM = null;');
+  const body = JSON.stringify({
+    serviceName: 'pulse-web',
+    endpoint: config.DASH0_RUM_ENDPOINT,
+    token: config.DASH0_RUM_TOKEN,
+  }).replace(/</g, '\\u003c');
+  return res.send(`window.PULSE_RUM = ${body};`);
+});
 
 const pub = path.join(__dirname, '..', 'public');
 const page = (file) => (req, res) => res.sendFile(path.join(pub, file));
@@ -41,6 +58,7 @@ app.get('/org', page('org.html'));
 app.get('/tech', auth.page('TECH_KEY'), page('tech.html'));
 app.get('/b/:booth', page('b.html'));
 app.get('/booth/:booth', auth.page('TECH_KEY'), page('booth.html'));
+app.get('/find', page('find.html'));
 app.get('/mic/:room', auth.page('SPEAKER_KEY'), page('mic.html'));
 app.get('/present/:room', auth.page('SPEAKER_KEY'), page('present.html'));
 app.get('/relay/:room', auth.page('SPEAKER_KEY'), page('relay.html'));
@@ -54,7 +72,7 @@ app.use((req, res, next) => {
 app.use(express.static(pub, { extensions: ['html'], index: false }));
 
 const ctx = { config, state, auth, es, hub, otel };
-for (const m of [tickets, talks, questions, booths, qr]) m.register(app, ctx);
+for (const m of [tickets, talks, questions, booths, qr, schedule]) m.register(app, ctx);
 
 const server = http.createServer(app);
 hub.attach(server, ctx);
@@ -69,5 +87,5 @@ server.on('upgrade', (req, socket, head) => {
   target.handleUpgrade(req, socket, head);
 });
 
-server.listen(config.PORT, () => console.log(`pulse listening on :${config.PORT}`));
+server.listen(config.PORT, () => log.info('server.listening', { port: config.PORT }));
 module.exports = { app, server };

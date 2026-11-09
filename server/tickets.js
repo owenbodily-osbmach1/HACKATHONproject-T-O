@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const audio = require('./audio');
 const otel = require('./otel');
+const log = require('./log');
 
 const VOTE_TTL_MS = 10 * 60 * 1000;
 const REOPEN_MS = 2 * 60 * 1000;
@@ -223,6 +224,9 @@ function createTicket(room, talkId, type, people, now) {
   };
   tickets.set(ticket.id, ticket);
   if (mOpened) mOpened.add(1, { 'pulse.room': ticket.room, 'pulse.signal.type': ticket.type });
+  log.info('ticket.opened', {
+    room: ticket.room, talkId: ticket.talkId, ticketId: ticket.id, type: ticket.type, people: ticket.people,
+  });
   return ticket;
 }
 
@@ -251,6 +255,9 @@ function refreshTicket(room, talkId, type, allowCreate) {
     prior.people = people;
     prior.cause = details.cause;
     prior.steps = details.steps;
+    log.info('ticket.reopened', {
+      room: prior.room, talkId: prior.talkId, ticketId: prior.id, type: prior.type, people: prior.people,
+    });
     lifecycle('reopen', prior, () => ticketChanged(prior));
     return prior;
   }
@@ -357,12 +364,18 @@ function register(app, context) {
       ticket.ackAt = now;
       const sec = secondsSince(ticket.reopenedAt || ticket.openedAt, nowMs); // same base as time_to_fix
       if (mTimeToAck && sec !== null) mTimeToAck.record(sec, attrs);
+      log.info('ticket.claimed', {
+        room: ticket.room, talkId: ticket.talkId, ticketId: ticket.id, type: ticket.type, people: ticket.people,
+      });
     }
     if (status === 'fixed') {
       ticket.fixedAt = now;
       const sec = secondsSince(ticket.reopenedAt || ticket.openedAt, nowMs);
       if (mTimeToFix && sec !== null) mTimeToFix.record(sec, attrs);
       clearVotes(ticket.room, ticket.type);
+      log.info('ticket.fixed', {
+        room: ticket.room, talkId: ticket.talkId, ticketId: ticket.id, type: ticket.type, people: ticket.people,
+      });
     }
     lifecycle(LIFECYCLE[status] || status, ticket, () => ticketChanged(ticket));
     res.json({ status: ticket.status });

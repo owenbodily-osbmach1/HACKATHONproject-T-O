@@ -3,8 +3,22 @@
 const crypto = require('crypto');
 const state = require('./state');
 const es = require('./es');
+const log = require('./log');
+const otel = require('./otel');
 
 const MAX_TEXT = 280;
+
+// Span attributes: the talk (when the request names one) and, for Elasticsearch
+// calls, the backend. Hit counts are set after the rows are known.
+const talkAttrs = (talkId) => (talkId ? { 'pulse.talk.id': talkId } : {});
+const esAttrs = (talkId) => Object.assign(talkAttrs(talkId), { 'db.system.name': 'elasticsearch' });
+const countHits = (active, n) => {
+  try {
+    if (active && typeof active.setAttribute === 'function' && Number.isFinite(n)) {
+      active.setAttribute('pulse.hits', n);
+    }
+  } catch (_) {} // telemetry never affects the request
+};
 
 const groups = new Map(); // groupId -> {groupId, room, talkId, text, words, count, answered, askers:Set}
 const questions = new Map(); // qid -> {qid, groupId, room, talkId, text, clientId, ts, pinned, hidden, answered}
@@ -123,7 +137,13 @@ function memorySearch(q, talkId) {
 const SOURCE = ['talkId', 'seq', 'text', 'ts'];
 
 async function searchCaptions(q, talkId) {
-  if (!es.enabled) return memorySearch(q, talkId);
+  if (!es.enabled) {
+    return otel.span('pulse.search.memory', talkAttrs(talkId), (active) => {
+      const rows = memorySearch(q, talkId);
+      countHits(active, rows.length);
+      return rows;
+    });
+  }
   const filter = talkId ? [{ term: { talkId } }] : [];
   const hybrid = {
     size: 20,
@@ -139,23 +159,32 @@ async function searchCaptions(q, talkId) {
       },
     },
   };
-  try {
-    const out = await es.raw('POST', '/pulse-captions/_search', hybrid);
-    return ((out && out.hits && out.hits.hits) || []).map((h) => h._source).filter(Boolean);
-  } catch {
-    // No inference endpoint or an older cluster: plain text match.
-    return es.search('pulse-captions', {
-      size: 20,
-      _source: SOURCE,
-      query: { bool: { must: [{ match: { text: q } }], filter } },
-    });
-  }
+  return otel.span('pulse.search.es', esAttrs(talkId), async (active) => {
+    let res;
+    try {
+      res = await es.raw('POST', '/pulse-captions/_search', hybrid);
+    } catch {
+      // No inference endpoint or an older cluster: plain text match.
+      return otel.span('pulse.search.es', esAttrs(talkId), async (inner) => {
+        const rows = await es.search('pulse-captions', {
+          size: 20,
+          _source: SOURCE,
+          query: { bool: { must: [{ match: { text: q } }], filter } },
+        });
+        countHits(inner, rows.length);
+        return rows;
+      });
+    }
+    const hits = (res && res.hits && Array.isArray(res.hits.hits)) ? res.hits.hits.length : 0;
+    countHits(active, hits);
+    return ((res && res.hits && res.hits.hits) || []).map((h) => h._source).filter(Boolean);
+  });
 }
 
 function register(app, ctx) {
   const wrap = (fn) => (req, res) => {
     Promise.resolve(fn(req, res)).catch((err) => {
-      console.error('[questions]', err.message || err);
+      log.error('questions.request_failed', { error: err.message || String(err) });
       res.status(500).json({ error: 'internal' });
     });
   };
@@ -255,15 +284,24 @@ function register(app, ctx) {
     const from = Number.isFinite(parsed) ? parsed : null;
 
     let rows;
-    const buffered = memoryCaptions(talkId, from); // full transcript held in memory; ES covers talks from before a restart
+    // full transcript held in memory; ES covers talks from before a restart
+    const buffered = otel.span('pulse.transcript.captions', talkAttrs(talkId), (active) => {
+      const out = memoryCaptions(talkId, from);
+      countHits(active, out ? out.length : 0);
+      return out;
+    });
     if (buffered) {
       rows = buffered;
     } else {
-      rows = await es.search('pulse-captions', {
-        size: 5000,
-        sort: [{ seq: 'asc' }],
-        _source: SOURCE,
-        query: { bool: { filter: [{ term: { talkId } }], must: from == null ? [] : [{ range: { seq: { gte: from } } }] } },
+      rows = await otel.span('pulse.transcript.es', esAttrs(talkId), async (active) => {
+        const out = await es.search('pulse-captions', {
+          size: 5000,
+          sort: [{ seq: 'asc' }],
+          _source: SOURCE,
+          query: { bool: { filter: [{ term: { talkId } }], must: from == null ? [] : [{ range: { seq: { gte: from } } }] } },
+        });
+        countHits(active, out.length);
+        return out;
       });
     }
     if (req.query.format === 'txt') {
@@ -275,35 +313,58 @@ function register(app, ctx) {
   app.get('/api/report/:talkId', wrap(async (req, res) => {
     const talkId = String(req.params.talkId);
     if (!es.enabled) {
-      const buffered = memoryCaptions(talkId);
+      const buffered = otel.span('pulse.report.captions', talkAttrs(talkId), (active) => {
+        const out = memoryCaptions(talkId);
+        countHits(active, out ? out.length : 0);
+        return out;
+      });
+      const asked = otel.span('pulse.report.questions', talkAttrs(talkId), (active) => {
+        const out = memoryQuestions(talkId);
+        countHits(active, out.length);
+        return out;
+      });
       return res.json({
         transcript: buffered || [],
         signalsByMinute: [],
-        questions: memoryQuestions(talkId),
+        questions: asked,
       });
     }
     const [transcript, signals, asked] = await Promise.all([
-      es.search('pulse-captions', {
-        size: 5000, sort: [{ seq: 'asc' }], _source: SOURCE,
-        query: { term: { talkId } },
+      otel.span('pulse.report.captions', esAttrs(talkId), async (active) => {
+        const rows = await es.search('pulse-captions', {
+          size: 5000, sort: [{ seq: 'asc' }], _source: SOURCE,
+          query: { term: { talkId } },
+        });
+        countHits(active, rows.length);
+        return rows;
       }),
-      es.search('pulse-signals', {
-        size: 5000,
-        _source: ['minute', 'type', 'clientId', 'on', 'ts'],
-        query: { term: { talkId } },
+      otel.span('pulse.report.signals', esAttrs(talkId), async (active) => {
+        const rows = await es.search('pulse-signals', {
+          size: 5000,
+          _source: ['minute', 'type', 'clientId', 'on', 'ts'],
+          query: { term: { talkId } },
+        });
+        countHits(active, rows.length);
+        return rows;
       }),
-      es.search('pulse-questions', {
-        size: 1000, sort: [{ ts: 'asc' }],
-        query: { term: { talkId } },
+      otel.span('pulse.report.questions', esAttrs(talkId), async (active) => {
+        const rows = await es.search('pulse-questions', {
+          size: 1000, sort: [{ ts: 'asc' }],
+          query: { term: { talkId } },
+        });
+        countHits(active, rows.length);
+        return rows;
       }),
     ]);
+    const signalsByMinute = otel.span('pulse.report.signals_by_minute', talkAttrs(talkId), () => countSignals(signals));
+    const merged = otel.span('pulse.report.questions_merge', talkAttrs(talkId), () => asked.map((q) => {
+      const mem = questions.get(q.qid);
+      return mem ? Object.assign({}, q, { answered: mem.answered, answeredSeq: mem.answeredSeq }) : q;
+    }));
     res.json({
       transcript,
-      signalsByMinute: countSignals(signals),
-      questions: asked.map((q) => {
-        const mem = questions.get(q.qid);
-        return mem ? Object.assign({}, q, { answered: mem.answered, answeredSeq: mem.answeredSeq }) : q;
-      }),
+      signalsByMinute,
+      questions: merged,
     });
   }));
 
