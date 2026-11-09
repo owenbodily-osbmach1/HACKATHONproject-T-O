@@ -37,6 +37,10 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 | GET | `/qr/:room.gif` | — | QR code image for `<public base>/r/:room` (insert the join code into a deck by URL) |
 | GET | `/healthz` | — | `ok` |
 | GET | `/rum-config.js` | — | `window.PULSE_RUM = {serviceName, endpoint, token}` for browser RUM, or `null` when `DASH0_RUM_TOKEN` is unset (`Cache-Control: no-store`) |
+| GET | `/privacy` | — | privacy page (public): what is stored and every index field |
+| GET | `/api/privacy` | — | `{source, elasticsearch, indices:[{index, fields:[{field, type}]}], privacy}` (see "Privacy") |
+| GET | `/cards` | — | printable QR cards page (public): one card per room and booth, 2 per page |
+| GET | `/metrics` | — | Prometheus text format (see "Metrics") |
 
 - Slide relay uploads are kept in memory (last 150 frames per talk or per room while no talk is live); a second upload less than 1 s after the previous one for the same room returns `429`.
 - Vote `type`: `cant_hear` | `cant_see` (`room_full` is a stretch goal). With no live talk in the room, `PUT /api/votes` returns `409 {error:'no_live_talk'}`; a `talkId` other than the room's live talk returns `409 {error:'stale_talk', talkId: <live talkId>}`.
@@ -66,7 +70,7 @@ One mechanism everywhere. Keyed **pages** are opened with `?key=...` in the URL 
 | --- | --- |
 | `TECH_KEY` | `POST /api/tickets/:id/claim` · `/fixed` · `/dismiss` · `POST /api/config` · `POST /api/rooms/:room/settings` · `POST /api/questions/:qid/*` · `POST /api/rooms/:room/broadcast` · `POST /api/clients/:clientId/mute` · page `/tech` |
 | `SPEAKER_KEY` | `POST /api/talks` · `POST /api/talks/:talkId/end` · `POST /api/rooms/:room/slide-frame` · pages `/mic/:room`, `/present/:room`, `/relay/:room` and `/go/:room` |
-| none | `GET /api/rooms`, `PUT /api/votes`, `POST /api/questions`, `POST /api/feedback`, `GET /api/report/:talkId`, `GET /api/config`, transcript routes, `/healthz`, pages `/r/:room`, `/t/:talkId`, `/room/:room`, `/org`, `/find` |
+| none | `GET /api/rooms`, `PUT /api/votes`, `POST /api/questions`, `POST /api/feedback`, `GET /api/report/:talkId`, `GET /api/config`, transcript routes, `/healthz`, `/privacy`, `/api/privacy`, `/cards`, `/metrics`, pages `/r/:room`, `/t/:talkId`, `/room/:room`, `/org`, `/find` |
 
 ## WebSocket: `/ws?room=151&role=attendee|viewer|mic|present|tech|org`
 
@@ -128,6 +132,50 @@ Audio uses its own binary-only sockets:
 
 Set `inference_id` explicitly from `ES_INFERENCE_ID`. If inference isn't available, fall back to a plain `match` query.
 
+## Privacy
+
+Public page `/privacy` (`public/privacy.html`, no key) and `GET /api/privacy`. The page states plainly: no names, email addresses, phone numbers, IP addresses or accounts are stored; `clientId` is a random id generated on the phone; booth reports hide any group under 3 devices; the technician and speaker keys are never logged or traced.
+
+`GET /api/privacy` returns:
+
+```json
+{
+  "source": "elasticsearch | mixed | static",
+  "elasticsearch": true,
+  "indices": [{ "index": "pulse-captions", "fields": [{ "field": "talkId", "type": "keyword" }] }],
+  "privacy": {
+    "personalData": false,
+    "identifier": "clientId",
+    "clientIdRandom": true,
+    "clientIdGeneratedOnDevice": true,
+    "boothMinDevices": 3,
+    "keysLogged": false,
+    "keysTraced": false
+  }
+}
+```
+
+- Every index Pulse writes is listed. Fields are read live from `GET /<index>/_mapping` when Elasticsearch is enabled. When it is disabled, or a mapping cannot be read, fields come from `scripts/es-setup.js` (`mappings`), so the list cannot drift.
+- `source`: `elasticsearch` when every mapping was read live, `mixed` when only some were, `static` when none were (including Elasticsearch disabled).
+- The response must not contain a field named `name`, `email`, `phone` or `ip`; `scripts/extras-check.js` asserts this.
+
+## Metrics
+
+`GET /metrics` (no key) returns Prometheus text format, hand-written with no extra dependency:
+
+| Metric | Type | Labels |
+| --- | --- | --- |
+| `pulse_up` | gauge, always `1` | — |
+| `pulse_listeners` | gauge | `room` |
+| `pulse_rooms_alerting` | gauge | — |
+| `pulse_open_tickets` | gauge | `room` |
+| `pulse_booth_open_requests` | gauge | `booth` |
+| `process_resident_memory_bytes` | gauge | — |
+
+The deployment template carries `prometheus.io/scrape: "true"`, `prometheus.io/port: "8080"` and `prometheus.io/path: "/metrics"`.
+
+OTLP (Dash0): marking a booth request done records histogram `pulse.booth.request_ack` (seconds, attribute `pulse.booth`); creating a request counts `pulse.booth.requests` (attribute `pulse.kind`). Both are fire-and-forget and never delay the request response.
+
 ## Environment variables
 
 Kubernetes Secret (entered in the Radar UI) or local `.env`. **Never committed.** See `.env.example`.
@@ -151,11 +199,12 @@ A booth is a place like a room, keyed by a short id (`gitar`, `dash0`, …). Boo
 | POST | `/api/booths/:booth/checkin` | `{clientId}` | `{booth, stamps, total, suspect, next: {id, sponsor, table, because} \| null}` |
 | POST | `/api/booths/:booth/requests` | `{clientId, kind}` (`talk_to_engineer` \| `send_resources`) | `{requestId, position}` |
 | POST | `/api/booths/:booth/requests/:id/done` (TECH_KEY) | `{by}` | `{status}` |
-| GET | `/api/booths/:booth/report` (TECH_KEY) | — | `{visits, uniqueDevices, open: [requests], fromTalks: [{talkId, title, devices}], topics: [{text, devices}]}` |
+| GET | `/api/booths/:booth/report` (TECH_KEY) | — | `{visits, uniqueDevices, dwell: {medianMin, p90Min, n} \| null, open: [requests], fromTalks: [{talkId, title, devices}], topics: [{text, devices}]}` |
 
 - **Passport:** one stamp per `clientId` per booth. `suspect: true` if the same device stamped another booth less than 30 s earlier (not counted toward `stamps`).
 - **Next booth:** from the captions this device actually received in rooms it joined as `attendee` (last 20 lines across rooms). Elastic semantic search of those lines against booth `about` (`pulse-booths.about_sem`, RRF with a match query); fallback is word overlap in memory. Never suggest a booth already stamped. `because` is the caption line (≤ 120 chars) that matched best.
-- **Privacy:** the report never names a device. Any `fromTalks` or `topics` bucket with fewer than 3 devices is dropped (k ≥ 3). No identity is collected.
+- **Privacy:** the report never names a device. Any `fromTalks`, `topics` or dwell group with fewer than 3 devices is dropped or null (k ≥ 3). No identity is collected.
+- **Dwell:** for each device's consecutive stamps (booth A at t1, next booth at t2), `dwell_upper(A) = min(t2 - t1, 15 min)`. The report field `dwell` is `{medianMin, p90Min, n}` computed from those upper bounds, only when n ≥ 3, else `null`: time to next stop, an upper bound; shown as a range with n. Consecutive stamps include rejected (suspect) stamps — they still mark a stop — and a device's last stop has no next stamp, so it contributes no sample.
 - WebSocket: booth staff connect `/ws?room=<booth>&role=tech&key=TECH_KEY` and get `{t:'booth_request', requestId, kind, position, ts}` and `{t:'booth_request_done', requestId}`.
 - Elastic: `pulse-booths` (`id`, `sponsor`, `about` → `about_sem` semantic_text), `pulse-checkins` (`booth`, `clientId`, `ts`, `suspect`, `fromTalks` keyword[]).
 
