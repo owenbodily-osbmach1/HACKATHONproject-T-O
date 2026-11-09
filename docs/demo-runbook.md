@@ -2,6 +2,23 @@
 
 For the live demo with the deck in Google Slides. Each person does only their section. Times are rough.
 
+## Quick start: one computer, one button
+
+1. Double-click **`start-pulse.bat`** in your `pulse` folder. Wait for **`Pulse is running.`** and leave that window open.
+2. Chrome opens **Pulse · Go live** and **Pulse · AV tech**. Tell Claude: **"update the QR codes in the deck"**, because the link is new on each start.
+3. Open the deck in Google Slides, in another tab.
+4. On **Go live**, click **▶ Go live**:
+   1. In Chrome's pop-up, pick **Chrome tab** → **pulse-demo – Google Slides** → **Share**.
+   2. Click **Allow** for the microphone.
+5. In Google Slides, click **Slideshow**. Every line on Go live turns green: Server, Microphone, Captions, Listen-in, Slides, Phones.
+6. On the **AV tech** tab, click **🔕 Turn on sound**.
+7. Audiences scan the QR code on the first slide.
+8. To finish, click **■ End talk** twice on Go live, then press **Enter** in the start-pulse window.
+
+The sections below are the long version, for when the podium mic or the AV tech is on another laptop.
+
+---
+
 | Who | Device | Section |
 | --- | --- | --- |
 | **Host** (Owen) | Windows PC with the `pulse` folder | A: start Pulse |
