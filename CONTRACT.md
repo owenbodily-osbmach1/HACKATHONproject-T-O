@@ -32,6 +32,7 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 | GET / POST | `/api/config` | `{alertThreshold}` | `{alertThreshold, nudgeThreshold, publicBaseUrl}` (`publicBaseUrl` = `PUBLIC_BASE_URL`; the mic page builds the QR code from it) |
 | POST | `/api/rooms/:room/slide-frame` | raw `image/jpeg` (≤ 1.5 MB), `SPEAKER_KEY` | `{n, url}` (slide relay; server then sends `slide` with `total: 0`) |
 | GET | `/slides/live/:talkId/:n.jpg` | — | the captured slide JPEG (`Cache-Control: public, max-age=31536000, immutable`) |
+| GET | `/qr/:room.gif` | — | QR code image for `<public base>/r/:room` (insert the join code into a deck by URL) |
 | GET | `/healthz` | — | `ok` |
 
 - Slide relay uploads are kept in memory (last 150 frames per talk or per room while no talk is live); a second upload less than 1 s after the previous one for the same room returns `429`.

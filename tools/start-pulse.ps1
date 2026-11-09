@@ -27,7 +27,14 @@ if (Have git) {
   & git pull --ff-only
   if ($LASTEXITCODE -ne 0) { Write-Host "(git pull skipped, using the files already here)" -ForegroundColor Yellow }
 }
-if (-not (Test-Path node_modules)) { & npm ci }
+# Reinstall packages when package-lock.json changed since the last install (new branch or pull).
+$lockHash = (Get-FileHash package-lock.json).Hash
+$marker = Join-Path 'node_modules' '.pulse-lock-hash'
+if (-not (Test-Path node_modules) -or -not (Test-Path $marker) -or (Get-Content $marker -ErrorAction SilentlyContinue) -ne $lockHash) {
+  Write-Host "Installing packages..."
+  & npm ci --no-audit --no-fund
+  if ($LASTEXITCODE -eq 0) { Set-Content -Path $marker -Value $lockHash }
+}
 
 # cloudflared gives a free public https URL (no account) so phones on mobile data can open the page.
 $cf = (Get-Command cloudflared -ErrorAction SilentlyContinue).Source
@@ -74,16 +81,18 @@ Start-Sleep -Seconds 4
 
 $mic = "$url/mic/$room`?key=$speakerKey&base=$url"
 $tech = "$url/tech?key=$techKey&rooms=$room"
+$relay = "$url/relay/$room`?key=$speakerKey"
 $phone = "$url/r/$room"
 
 $chrome = @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe", "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
-if ($chrome) { Start-Process $chrome -ArgumentList "--new-window `"$mic`" `"$tech`"" } else { Start-Process $mic; Start-Process $tech }
+if ($chrome) { Start-Process $chrome -ArgumentList "--new-window `"$mic`" `"$tech`" `"$relay`"" } else { Start-Process $mic; Start-Process $tech; Start-Process $relay }
 
 @"
 Pulse is running.
   Phone page (QR code):  $phone
   Podium mic page:       $mic
   Tech screen:           $tech
+  Slide relay:           $relay   (open on the computer showing the slides)
   Speaker key: $speakerKey    Tech key: $techKey
 Alert limit is 1 vote for this test.
 "@ | Tee-Object -FilePath (Join-Path $env:TEMP 'pulse-test-urls.txt') | Write-Host -ForegroundColor Green

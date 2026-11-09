@@ -24,6 +24,14 @@ function startOf(talk) {
   return Number.isFinite(n) ? n : 0;
 }
 
+// Only accept real images (JPEG, PNG or WebP magic bytes); serve each with its own type (from Owen's #19).
+function imageType(buf) {
+  if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
+  if (buf.length > 8 && buf.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
+  if (buf.length > 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
+  return null;
+}
+
 // Frames live in pod memory: cap the total so a long day of full-screen captures can't OOM the pod.
 const BOOT_ID = Date.now().toString(36);
 const MAX_FRAME_BYTES = 128 * 1024 * 1024;
@@ -88,13 +96,15 @@ module.exports = {
     app.post(
       '/api/rooms/:room/slide-frame',
       ctx.auth.api('SPEAKER_KEY'),
-      express.raw({ type: 'image/*', limit: '1.5mb' }),
+      express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '1.5mb' }),
       (req, res) => {
         const roomId = String(req.params.room);
         const buf = req.body;
         if (!Buffer.isBuffer(buf) || !buf.length) {
           return res.status(400).json({ error: 'image body required' });
         }
+        const type = imageType(buf);
+        if (!type) return res.status(415).json({ error: 'not a JPEG, PNG or WebP image' });
 
         const now = Date.now();
         const last = state.frameUploadAt.get(roomId) || 0;
@@ -108,7 +118,7 @@ module.exports = {
         let list = state.frames.get(bucket);
         if (!list) state.frames.set(bucket, (list = []));
         const n = list.length ? list[list.length - 1].n + 1 : 1;
-        list.push({ n, buf, ts: now });
+        list.push({ n, buf, ts: now, type });
         if (list.length > state.MAX_FRAMES) list.splice(0, list.length - state.MAX_FRAMES);
         list.touched = now;
         evictFrames(state, bucket);
@@ -135,7 +145,7 @@ module.exports = {
       const frame = list && list.find((f) => f.n === n);
       if (!frame) return res.status(404).end();
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-      res.type('image/jpeg').send(frame.buf);
+      res.type(frame.type || 'image/jpeg').send(frame.buf);
     });
 
     app.get('/api/rooms', (req, res) => {

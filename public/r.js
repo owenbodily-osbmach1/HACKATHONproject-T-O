@@ -3,10 +3,6 @@ import { connectRoom } from '/lib/socket.js';
 import { store, getClientId } from '/lib/store.js';
 import { createPlayer } from '/lib/player.js';
 
-// Preview mode for design work: /r.html?mock=1 fakes the server (see public/dev/README.md).
-// Must load before anything below opens a socket or calls fetch.
-if (new URLSearchParams(location.search).has('mock')) await import('/dev/mock.js');
-
 const $ = (id) => document.getElementById(id);
 const room = (location.pathname.match(/^\/r\/([^/?#]+)/)?.[1]) || new URLSearchParams(location.search).get('room') || '151';
 const clientId = getClientId();
@@ -143,11 +139,12 @@ function showSlide(n) {
   const img = $('slideImg');
   if (!s) return;
   if (img.getAttribute('src') !== s.url) img.src = s.url;
-  img.alt = s.alt || `Slide ${s.n} of ${s.total}`;
+  img.alt = s.alt || (s.total ? `Slide ${s.n} of ${s.total}` : `Slide ${s.n}`);
   img.hidden = false;
   $('slideEmpty').hidden = true;
   const live = n === state.liveN;
-  $('slideLabel').textContent = `Slide ${s.n} / ${s.total}` + (live ? ' · Following live' : '');
+  // Captured decks (slide relay) don't know the total: show "Slide 7" instead of "7 / 0".
+  $('slideLabel').textContent = `Slide ${s.n}${s.total ? ` / ${s.total}` : ''}` + (live ? ' · Following live' : '');
   $('slideLive').hidden = live;
   $('slidePrev').disabled = !state.slides[n - 2];
   $('slideNext').disabled = !state.slides[n] || n >= state.liveN;
@@ -193,7 +190,7 @@ function openZoom() {
   const s = state.slides[state.viewN - 1];
   if (!s) return;
   $('zoomImg').src = s.url;
-  $('zoomImg').alt = s.alt || `Slide ${s.n} of ${s.total}`;
+  $('zoomImg').alt = s.alt || (s.total ? `Slide ${s.n} of ${s.total}` : `Slide ${s.n}`);
   $('zoom').hidden = false;
 }
 $('slideImg').onclick = openZoom;
@@ -257,9 +254,8 @@ function setVoteCount(type, count) {
   lastCount[type] = count;
   const b = document.querySelector(`.vote[data-type="${type}"]`);
   if (!b) return;
-  const base = type === 'cant_hear' ? "I can't hear" : 'the slides';
-  const voted = count > 1 ? `Voted · ${count} people · tap to undo` : 'Voted · tap to undo';
-  b.querySelector('.vote-sub').textContent = isOn(type) ? voted : base;
+  const base = type === 'cant_hear' ? "Can't hear" : 'the slides';
+  b.querySelector('.vote-sub').textContent = isOn(type) ? (count > 1 ? `Counted · ${count} people` : 'Counted') : base;
 }
 
 async function sendVote(type, on) {
