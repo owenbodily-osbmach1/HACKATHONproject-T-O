@@ -339,11 +339,13 @@ function register(app, context) {
     if (!ticket) return res.status(404).json({ error: 'not found' });
     const nowMs = Date.now();
     const now = new Date(nowMs).toISOString();
+    // A repeated claim/fixed (double-click, retry) changes nothing and records no second latency sample.
+    if (ticket.status === status) return res.json({ status: ticket.status });
     ticket.status = status;
     const attrs = { 'pulse.room': ticket.room, 'pulse.signal.type': ticket.type };
     if (status === 'claimed') {
       ticket.ackAt = now;
-      const sec = secondsSince(ticket.openedAt, nowMs);
+      const sec = secondsSince(ticket.reopenedAt || ticket.openedAt, nowMs); // same base as time_to_fix
       if (mTimeToAck && sec !== null) mTimeToAck.record(sec, attrs);
     }
     if (status === 'fixed') {
