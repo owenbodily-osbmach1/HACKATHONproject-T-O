@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d10">
+  <title>Pulse · Printable QR cards</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/cards.css">
+</head>
+<body class="cards-page">
+  <header class="cards-top no-print">
+    <p class="eyebrow">Pulse</p>
+    <h1>Printable QR cards</h1>
+    <p class="cards-sub">One card per room and per booth. Two cards per A4 or Letter page; no app, no login, no personal data.</p>
+    <form class="cards-add" id="addRoom">
+      <label for="roomId">Add any room id</label>
+      <div class="cards-add-row">
+        <input id="roomId" name="roomId" type="text" inputmode="text" autocomplete="off"
+          pattern="[A-Za-z0-9_-]{1,32}" maxlength="32" placeholder="151" required>
+        <button class="pill" type="submit">Add room</button>
+      </div>
+      <p class="cards-status" id="cardsStatus" role="status" aria-live="polite"></p>
+    </form>
+    <button class="ghost cards-print no-print" id="printBtn" type="button">Print cards</button>
+  </header>
+
+  <main id="cards" class="cards" aria-live="polite"></main>
+
+  <footer class="cards-foot no-print">No app, no login, no personal data.</footer>
+
+  <script src="/vendor/qrcode.js"></script>
+  <script type="module" src="/cards.js"></script>
+</body>
+</html>
