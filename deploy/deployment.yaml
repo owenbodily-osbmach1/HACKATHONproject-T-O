@@ -42,6 +42,14 @@ spec:
             limits:
               cpu: "1"
               memory: 512Mi
+          # Radar AI investigation (12:12 PM): the only Warning event was a readiness failure in the
+          # first second, before the server logged it was listening. The startup probe gives boot a grace window.
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 1
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /healthz
