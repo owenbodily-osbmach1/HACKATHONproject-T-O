@@ -20,6 +20,17 @@ Builds tested: `poc/one-room` @ `4593204` = `ty/backend` @ `19c5573` (#7) + `ui/
 | Page errors / 4xx responses on all of the above | ✅ none |
 | Real phones on the new design | not checked yet |
 
+## 2026-11-09: slide relay + talk lifecycle, automated (`scripts/relay-check.js`)
+
+**Setup:** `node scripts/relay-check.js` starts `server/index.js` as a child on a free port with `SPEAKER_KEY=sk TECH_KEY=tk`, no Elasticsearch. `node scripts/tickets-check.js` re-run with the live-talk fixture.
+
+All passed:
+- `POST /api/rooms/1/slide-frame`: 401 without the key, 200 `{n: 1, url}` with a JPEG body, 429 for a second upload within 1 s.
+- `GET /slides/live/:talkId/:n.jpg` returns the uploaded bytes with `Cache-Control: public, max-age=31536000, immutable`; an unknown frame is 404.
+- An attendee socket gets `talk {status: 'waiting'}` on join and the stored `slide {total: 0}`; after `POST /api/talks` the same socket gets `talk {status: 'live'}`, and after `/end`, `talk {status: 'ended', reportUrl}`.
+- `PUT /api/votes` before any talk returns `409 {error: 'no_live_talk'}`.
+- `/relay/1` without the key is 401; `/relay.html` is 404.
+
 ## 2026-11-09 11:45–11:56: real devices, one room (Owen)
 
 **Setup:** Owen's Windows PC runs the server (`tools/start-pulse.bat`) behind a Cloudflare quick tunnel (`https://<random>.trycloudflare.com`). Podium mic page in Chrome on the same PC (real mic, real Chrome speech recognition). Owen's phone scanned the QR code from the mic page.

@@ -182,6 +182,7 @@ function join(ws, room, role, clientId) {
     sendJson(ws, { t: 'caption_backlog', lines: state.captions.slice(-50) });
   }
   sendJson(ws, { t: 'room_settings', ...state.settings });
+  sendJson(ws, ctx.state.talkMessage(room));
   if (state.slide) sendJson(ws, { t: 'slide', ...state.slide });
   if (role === 'tech' || role === 'org') {
     // Lazy require: tickets/questions require the hub too.

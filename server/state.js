@@ -1,4 +1,6 @@
 // In-memory live state shared by every module. replicas: 1, so this is the source of truth for the live path.
+const config = require('./config');
+
 const rooms = new Map(); // room -> Room
 
 function room(id) {
@@ -32,4 +34,47 @@ function addLine(line) {
   if (arr.length > MAX_LINES) arr.shift();
 }
 
-module.exports = { rooms, room, talks, transcripts, addLine };
+// Captured slide frames: talkId or 'preshow:<room>' -> last 150 [{n, buf, ts}].
+const frames = new Map();
+const frameUploadAt = new Map(); // room -> epoch ms of the last accepted upload (1 s rate limit)
+const MAX_FRAMES = 150;
+
+// Only a talk without an end is live; an ended talk still sits on room.talkId.
+function liveTalk(id) {
+  const r = rooms.get(String(id));
+  const talk = r && r.talkId ? talks.get(r.talkId) : null;
+  return talk && !talk.end ? talk : null;
+}
+
+// WebSocket `talk` message (CONTRACT.md): waiting when the room has no talk.
+function talkMessage(id) {
+  const r = rooms.get(String(id));
+  const talk = r && r.talkId ? talks.get(r.talkId) : null;
+  if (!talk) {
+    return { t: 'talk', talkId: null, title: '', speaker: '', status: 'waiting', startedAt: null };
+  }
+  const start = typeof talk.start === 'number' ? talk.start : Date.parse(talk.start);
+  const msg = {
+    t: 'talk',
+    talkId: talk.talkId,
+    title: talk.title || '',
+    speaker: talk.speaker || '',
+    status: talk.end ? 'ended' : 'live',
+    startedAt: Number.isFinite(start) ? new Date(start).toISOString() : null,
+  };
+  if (talk.end) msg.reportUrl = `${config.PUBLIC_BASE_URL}/t/${talk.talkId}`;
+  return msg;
+}
+
+module.exports = {
+  rooms,
+  room,
+  talks,
+  transcripts,
+  addLine,
+  frames,
+  frameUploadAt,
+  MAX_FRAMES,
+  liveTalk,
+  talkMessage,
+};
