@@ -121,6 +121,7 @@ async function run() {
     env: Object.assign({}, process.env, {
       PORT: String(port),
       SPEAKER_KEY: 'sk',
+      SIGNIN: 'off',
       TECH_KEY: 'tk',
       PUBLIC_BASE_URL: '',
       ELASTIC_URL: '',

@@ -87,11 +87,17 @@ module.exports = {
       res.json({ talkId });
     });
 
-    app.post('/api/talks/:talkId/end', ctx.auth.api('SPEAKER_KEY'), (req, res) => {
+    // The speaker (Go live / mic page) or the AV tech can end a talk.
+    const speakerOrTech = (req, res, next) => {
+      const k = req.get('x-pulse-key');
+      return ctx.auth.ok('SPEAKER_KEY', k) || ctx.auth.ok('TECH_KEY', k) ? next() : res.status(401).json({ error: 'unauthorized' });
+    };
+    app.post('/api/talks/:talkId/end', speakerOrTech, (req, res) => {
       const talk = state.talks.get(req.params.talkId);
       if (!talk) return res.status(404).json({ error: 'not found' });
-      talk.end = Date.now();
+      if (!talk.end) talk.end = Date.now();
       log.info('talk.ended', { room: talk.room, talkId: talk.talkId });
+      hub.send(talk.room, { t: 'caption_interim', text: '' }, ['attendee', 'viewer']); // clear a half-spoken line
       hub.send(talk.room, state.talkMessage(talk.room));
       res.json({ reportUrl: `${ctx.config.PUBLIC_BASE_URL}/t/${talk.talkId}` });
     });
@@ -131,6 +137,7 @@ module.exports = {
         const url = `/slides/live/${encodeURIComponent(bucket)}/${n}.jpg`;
         const slide = { talkId, n, total: 0, url };
         state.room(roomId).slide = slide;
+        state.room(roomId).slideAt = now;
         hub.send(roomId, { t: 'slide', ...slide });
         esIndex(ctx, 'pulse-actions', {
           room: roomId,
@@ -156,15 +163,25 @@ module.exports = {
     app.get('/api/rooms', (req, res) => {
       const list = [...state.rooms.values()]
         .sort((a, b) => a.room.localeCompare(b.room))
-        .map((room) => ({
+        .map((room) => {
+          const talk = state.talkMessage(room.room); // status: waiting | live | ended
+          const s = require('./stats').statsFor(room.room); // joined (unique scans), here, capacity
+          return {
           room: room.room,
           // Only a live talk: an ended talk must not be resumed by the mic page (demo audit: votes 409).
           talkId: (state.liveTalk(room.room) || {}).talkId || null,
           title: state.liveTalk(room.room) ? room.title : '',
+          speaker: state.liveTalk(room.room) ? room.speaker || '' : '',
+          status: talk.status, // waiting | live | ended (an ended talk's id comes in the `talk` message)
+          startedAt: state.liveTalk(room.room) ? talk.startedAt : null,
           listeners: hub.listeners(room.room),
+          joined: s.joined,
+          here: s.here,
+          capacity: s.capacity,
           openTickets: tickets.openTickets(room.room),
           simulated: room.simulated,
-        }));
+          };
+        });
       res.json(list);
     });
 
@@ -182,8 +199,14 @@ module.exports = {
       for (const field of ['captions', 'listen', 'slides']) {
         if (typeof body[field] === 'boolean') room.settings[field] = body[field];
       }
+      // Seats in the room, for the "how full" bar (not a room switch, so not in room_settings).
+      const cap = Number(body.capacity);
+      if (Number.isInteger(cap) && cap > 0 && cap <= 100000) {
+        room.capacity = cap;
+        hub.send(room.room, require('./stats').statsMessage(room.room));
+      }
       hub.send(room.room, { t: 'room_settings', ...room.settings });
-      res.json(room.settings);
+      res.json({ ...room.settings, capacity: require('./stats').capacityOf(room) });
     });
 
     app.post('/api/rooms/:room/broadcast', ctx.auth.api('TECH_KEY'), (req, res) => {

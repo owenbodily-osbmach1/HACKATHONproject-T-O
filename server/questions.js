@@ -23,6 +23,7 @@ const countHits = (active, n) => {
 
 const groups = new Map(); // groupId -> {groupId, room, talkId, text, words, count, answered, askers:Set}
 const questions = new Map(); // qid -> {qid, groupId, room, talkId, text, clientId, ts, pinned, hidden, answered}
+const lastAsk = new Map(); // 'c:<clientId>' | 'v:<visitor>' -> epoch ms of the last question
 
 // Lowercase, punctuation to spaces: the word set used for Jaccard grouping.
 // Stopwords dropped and a crude stem (drops/dropped -> drop) so rephrasings of one question match.
@@ -225,6 +226,14 @@ function register(app, ctx) {
     const text = String(body.text || '').trim().slice(0, MAX_TEXT).trim();
     if (!room || !text) return res.status(400).json({ error: 'room and text are required' });
     const clientId = body.clientId == null ? '' : String(body.clientId);
+    // One question every 20 s per phone (r.js already says so on 429). Keyed on the clientId and on the
+    // server's visitor cookie, so changing the clientId alone doesn't get around it.
+    const vid = require('./stats').visitorFromHeaders(req.headers);
+    const now = Date.now();
+    const keys = [clientId && `c:${clientId}`, vid && `v:${vid}`].filter(Boolean);
+    if (keys.some((k) => now - (lastAsk.get(k) || 0) < 20000)) return res.status(429).json({ error: 'too_fast' });
+    keys.forEach((k) => lastAsk.set(k, now));
+    if (lastAsk.size > 50000) lastAsk.delete(lastAsk.keys().next().value);
     const talks = require('./talks');
     if (clientId && talks.isMuted?.(clientId)) return res.status(403).json({ error: 'muted' });
 
@@ -340,9 +349,11 @@ function register(app, ctx) {
         countHits(active, out.length);
         return out;
       });
+      // Lazy require: tickets requires the hub, which requires this module's callers.
+      const signals = require('./tickets').memorySignals(talkId);
       return res.json({
         transcript: buffered || [],
-        signalsByMinute: [],
+        signalsByMinute: countSignals(signals),
         questions: asked,
       });
     }

@@ -26,3 +26,12 @@
 details.card summary { cursor: pointer; font-weight: 700; color: var(--muted); }
 details.card[open] summary { margin-bottom: 12px; }
 @media (max-width: 600px) { .checks li { grid-template-columns: 26px 1fr; } .go-join { grid-template-columns: 1fr; } }
+
+/* What the phones show right now (talk title / ended), under the big button. */
+.talk-line { margin: 10px 0 0; font-size: 15px; font-weight: 700; color: var(--text); }
+
+/* Phone width: the detail goes under the name (not in the 26 px icon column), the meter full width. */
+@media (max-width: 600px) {
+  .checks li .ck-detail { grid-column: 2; overflow-wrap: anywhere; }
+  .checks li .mini-meter { grid-column: 1 / -1; width: 100%; }
+}

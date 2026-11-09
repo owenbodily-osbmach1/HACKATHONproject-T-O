@@ -161,7 +161,7 @@ async function main() {
 
   const port = await freePort();
   const base = `http://${HOST}:${port}`;
-  const env = { ...process.env, PORT: String(port), SPEAKER_KEY: 'sk', TECH_KEY: 'tk' };
+  const env = { ...process.env, PORT: String(port), SPEAKER_KEY: 'sk', TECH_KEY: 'tk', SIGNIN: 'off' };
   for (const key of [
     'ELASTIC_URL',
     'ELASTIC_API_KEY',

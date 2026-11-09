@@ -11,8 +11,10 @@ if (new URLSearchParams(location.search).has('mock')) await import('/dev/mock.js
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const key = params.get('key') || '';
-const explicitRooms = params.has('rooms') || params.has('room');
 const roomList = (params.get('rooms') || params.get('room') || '151').split(',').map((r) => r.trim()).filter(Boolean);
+// Rooms the server knows about (GET /api/rooms) are added on their own, so the tech can jump to any
+// room, including the seeded demo room. ?discover=0 keeps only the rooms in the URL.
+const DISCOVER = params.get('discover') !== '0';
 
 const TYPE_WORD = { cant_hear: 'SPEAK UP', cant_see: "CAN'T SEE SLIDES", room_full: 'ROOM FULL' };
 const ACTIVE = new Set(['open', 'reopened', 'claimed']);
@@ -21,11 +23,17 @@ const RED = new Set(['open', 'reopened']);
 const rooms = new Map(); // room -> {status, talk, captions[], settings, groups, conn}
 const tickets = new Map(); // id -> ticket
 const questionState = new Map(); // qid -> {pinned, hidden, answered}
-let selected = roomList[0];
+// #room=255 in the URL (kept up to date by select()) reopens the console on that room.
+const wanted = decodeURIComponent(location.hash.match(/room=([^&]+)/)?.[1] || '');
+if (wanted && !roomList.includes(wanted)) roomList.push(wanted);
+let selected = wanted || roomList[0];
 
-for (const r of roomList) {
-  rooms.set(r, { status: null, captions: [], settings: { captions: true, listen: true, slides: true }, groups: [], conn: 'connecting' });
+function addRoom(r) {
+  if (rooms.has(r)) return false;
+  rooms.set(r, { status: null, captions: [], settings: { captions: true, listen: true, slides: true }, groups: [], conn: 'connecting', talk: null, simulated: false });
+  return true;
 }
+for (const r of roomList) addRoom(r);
 
 // ---------- name, key ----------
 $('techName').value = store.get('pulse.techName', '');
@@ -74,7 +82,10 @@ function chime() {
   });
 }
 setInterval(() => {
-  if ([...tickets.values()].some((t) => RED.has(t.status))) chime();
+  if ([...tickets.values()].some((t) => {
+    const st = rooms.get(String(t.room)) || {};
+    return RED.has(t.status) && !st.simulated && talkStatus(st) === 'live';
+  })) chime();
 }, 30000);
 
 // ---------- alert limit ----------
@@ -114,9 +125,19 @@ function ageText(iso) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
+let pointerOnBoard = false;
+let renderPending = false;
+document.addEventListener('pointerdown', (e) => { pointerOnBoard = !!e.target.closest('#blocks'); });
+document.addEventListener('pointerup', () => {
+  if (!pointerOnBoard) return;
+  pointerOnBoard = false;
+  // Let the click land on the element that was pressed, then catch up.
+  if (renderPending) setTimeout(() => { renderPending = false; render(); }, 0);
+});
 function render() {
+  if (pointerOnBoard) { renderPending = true; renderTabs(); return; }
   const active = [...tickets.values()].filter((t) => ACTIVE.has(t.status) && rooms.has(String(t.room)));
-  active.sort((a, b) => (RED.has(b.status) - RED.has(a.status)) || (b.people - a.people) || (Date.parse(a.openedAt) - Date.parse(b.openedAt)));
+  active.sort((a, b) => (Date.parse(a.openedAt) - Date.parse(b.openedAt)) || String(a.id).localeCompare(String(b.id)));
 
   const blocks = $('blocks');
   blocks.replaceChildren(...active.map(blockEl));
@@ -127,6 +148,7 @@ function render() {
     blocks.append(p);
   }
 
+  renderFixed();
   const busyRooms = new Set(active.map((t) => String(t.room)));
   const tiles = [...rooms.keys()].filter((r) => !busyRooms.has(r)).map((r) => {
     const b = document.createElement('button');
@@ -140,11 +162,111 @@ function render() {
   });
   $('okTiles').replaceChildren(...tiles);
 
+  renderTabs(active);
   $('cRed').textContent = active.filter((t) => RED.has(t.status)).length;
   $('cAmber').textContent = active.filter((t) => t.status === 'claimed').length;
   $('cGreen').textContent = tiles.length;
   document.title = (active.some((t) => RED.has(t.status)) ? '🔴 ' : '') + 'Pulse · AV tech';
 }
+
+// Fixed in the last 3 minutes: who fixed it and what the phones answered to "Better now?".
+function renderFixed() {
+  const recent = [...tickets.values()]
+    .filter((t) => t.status === 'fixed' && t.fixedAt && Date.now() - Date.parse(t.fixedAt) < 180000 && rooms.has(String(t.room)))
+    .sort((a, b) => Date.parse(b.fixedAt) - Date.parse(a.fixedAt));
+  const ul = $('fixedList');
+  ul.hidden = !recent.length;
+  ul.replaceChildren(...recent.map((t) => {
+    const li = document.createElement('li');
+    const answers = t.better || t.stillBad ? `Better ${t.better} · Still bad ${t.stillBad}` : 'Waiting for "Better now?" answers';
+    li.textContent = `✓ Room ${t.room} ${TYPE_WORD[t.type] || t.type} fixed${t.fixedBy ? ` by ${t.fixedBy}` : ''} · ${answers}`;
+    if (t.stillBad > t.better) li.className = 'worse';
+    return li;
+  }));
+}
+setInterval(renderFixed, 15000);
+
+// ---------- room switcher ----------
+const STATUS_WORD = { live: 'Live', ended: 'Ended', waiting: 'Not started' };
+function talkStatus(st) { return st.talk?.status || (st.talk?.talkId ? 'live' : 'waiting'); }
+
+// Tabs are built once per room and then only their text changes: room_status re-renders them
+// every 2 s, and replacing the buttons would swallow a click that lands mid-update.
+const tabEls = new Map(); // room -> {btn, pill, demo, key, title, status, phones, alert}
+function tabFor(r) {
+  let t = tabEls.get(r);
+  if (t) return t;
+  const mk = (tag, cls, text = '') => Object.assign(document.createElement(tag), { className: cls, textContent: text });
+  t = {
+    btn: mk('button', 'room-tab'), pill: mk('span', 'talk-pill'), name: mk('span', 'rt-name', `Room ${r}`),
+    demo: mk('span', 'rt-demo', 'DEMO'), key: mk('span', 'rt-key'), title: mk('span', 'rt-title'),
+    status: mk('span', 'rt-status'), phones: mk('span', 'rt-phones'), alert: mk('span', 'rt-alert'),
+  };
+  t.btn.type = 'button';
+  t.btn.setAttribute('role', 'tab');
+  const top = mk('span', 'rt-top');
+  top.append(t.pill, t.name, t.demo, t.key);
+  const meta = mk('span', 'rt-meta');
+  meta.append(t.status, t.phones, t.alert);
+  t.btn.append(top, t.title, meta);
+  t.btn.onclick = () => select(r);
+  tabEls.set(r, t);
+  return t;
+}
+
+const roomIds = () => [...rooms.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+function roomWarning(st) {
+  const off = ['captions', 'listen', 'slides'].filter((k) => st.settings && st.settings[k] === false);
+  if (off.length) return `${off.map((k) => ({ captions: 'CC', listen: 'Listen', slides: 'Slides' }[k])).join(', ')} off`;
+  const t = st.tele;
+  if (!t || t.talk !== 'live') return '';
+  if (t.captions?.state === 'silent' && (t.captions.gapSec ?? 0) >= 60) return `silent ${Math.round(t.captions.gapSec / 60)} min`;
+  if (t.mic?.state === 'silent' || (typeof t.mic?.db === 'number' && t.mic.db < -50)) return 'mic quiet';
+  return '';
+}
+function renderTabs(active = [...tickets.values()].filter((t) => ACTIVE.has(t.status))) {
+  const ids = roomIds();
+  ids.forEach((r, i) => {
+    const st = rooms.get(r);
+    const t = tabFor(r);
+    const status = st.conn === 'live' ? talkStatus(st) : 'offline';
+    const alerts = active.filter((x) => String(x.room) === r && RED.has(x.status)).length;
+    t.btn.setAttribute('aria-selected', String(r === selected));
+    t.pill.dataset.status = status;
+    t.demo.hidden = !st.simulated;
+    t.key.textContent = i < 9 ? String(i + 1) : '';
+    t.key.hidden = i >= 9;
+    t.title.textContent = st.talk?.title || 'No talk yet';
+    t.status.textContent = STATUS_WORD[status] || 'Offline';
+    const s = st.stats;
+    t.phones.textContent = s ? `· ${s.here}/${s.capacity} here (${s.capacity ? Math.min(100, Math.round((s.here / s.capacity) * 100)) : 0}%) · ${s.joined} scanned` : '';
+    const warnText = roomWarning(st);
+    t.alert.textContent = [alerts ? `● ${alerts} to fix` : '', warnText ? `⚠ ${warnText}` : ''].filter(Boolean).join(' · ');
+    t.alert.hidden = !alerts && !warnText;
+  });
+  const bar = $('roomTabs');
+  const wantOrder = ids.map((r) => tabEls.get(r).btn);
+  if (bar.children.length !== wantOrder.length || wantOrder.some((b, i) => bar.children[i] !== b)) bar.replaceChildren(...wantOrder);
+}
+
+// A link or bookmark to …#room=255 switches rooms without a reload.
+window.addEventListener('hashchange', () => {
+  const r = decodeURIComponent(location.hash.match(/room=([^&]+)/)?.[1] || '');
+  if (!r || r === selected) return;
+  if (addRoom(r)) connect(r);
+  select(r);
+});
+
+// 1–9 jump to a room; [ and ] step through them (not while typing).
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input:not([type=checkbox]), textarea, select') || e.ctrlKey || e.metaKey || e.altKey) return;
+  const ids = roomIds();
+  if (/^[1-9]$/.test(e.key) && ids[Number(e.key) - 1]) select(ids[Number(e.key) - 1]);
+  if (e.key === '[' || e.key === ']') {
+    const i = ids.indexOf(selected);
+    select(ids[(i + (e.key === ']' ? 1 : ids.length - 1)) % ids.length]);
+  }
+});
 
 function blockEl(t) {
   const red = RED.has(t.status);
@@ -155,11 +277,11 @@ function blockEl(t) {
   const band = document.createElement('div');
   band.className = 'band';
   const label = document.createElement('span');
-  label.textContent = `${TYPE_WORD[t.type] || t.type}${t.status === 'reopened' ? ' · REOPENED' : ''}${red ? '' : ' · CLAIMED'}`;
+  label.textContent = `${TYPE_WORD[t.type] || t.type}${t.status === 'reopened' ? ' · REOPENED' : ''}${red ? '' : ` · CLAIMED${t.claimedBy ? ` BY ${t.claimedBy.toUpperCase()}` : ''}`}`;
   const age = document.createElement('span');
   age.className = 'age';
-  age.dataset.since = t.openedAt;
-  age.textContent = ageText(t.openedAt);
+  age.dataset.since = t.reopenedAt || t.openedAt; // a reopened ticket is a new complaint: count from then
+  age.textContent = ageText(age.dataset.since);
   band.append(label, age);
 
   const head = document.createElement('div');
@@ -225,8 +347,81 @@ async function act(t, action, btn) {
 
 setInterval(() => {
   for (const el of document.querySelectorAll('.age[data-since]')) el.textContent = ageText(el.dataset.since);
-  renderGap();
 }, 1000);
+
+// ---------- live status panel (room_telemetry every 2 s, for the selected room) ----------
+const ago = (ts) => {
+  const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+  return s < 60 ? `${s} s ago` : `${Math.round(s / 60)} min ago`;
+};
+function teleRow(id, state, text) {
+  const li = $(id);
+  li.dataset.state = state; // ok | wait | off | bad
+  li.querySelector('.v').textContent = text;
+}
+function renderTele() {
+  const st = rooms.get(selected);
+  if (!st) return;
+  teleRow('tServer', st.conn === 'live' ? 'ok' : 'bad', st.conn === 'live' ? 'Connected' : st.conn === 'unauthorized' ? 'Wrong tech key' : 'Disconnected · reconnecting…');
+  const t = st.tele;
+  if (!t || st.conn !== 'live') {
+    for (const id of ['tMic', 'tCaptions', 'tListen', 'tSlides', 'tPhones']) teleRow(id, 'off', '—');
+    renderFill(st);
+    return;
+  }
+  const db = typeof t.mic?.db === 'number' ? ` · ${Math.round(t.mic.db)} dB` : '';
+  teleRow('tMic', t.mic.state === 'live' ? (t.mic.db !== null && t.mic.db < -50 ? 'wait' : 'ok') : t.mic.state === 'silent' ? 'wait' : 'off',
+    t.mic.state === 'live' ? `Live${db}${t.mic.db !== null && t.mic.db < -50 ? ' · very quiet' : ''}`
+      : t.mic.state === 'silent' ? 'Connected, no sound coming in' : t.presenter ? 'Stopped (Go live page open)' : 'Stopped');
+  teleRow('tCaptions', t.captions.state === 'live' ? 'ok' : t.captions.state === 'silent' ? 'wait' : 'off',
+    t.captions.state === 'live' ? `Live · ${t.captions.lines} lines`
+      : t.captions.state === 'silent' ? (t.captions.gapSec === null ? 'Waiting for the first line' : `Silent ${t.captions.gapSec} s`) : 'Stopped');
+  teleRow('tListen', t.listen.state === 'live' ? 'ok' : 'off',
+    t.listen.state === 'live' ? `Live · ${t.listen.listening} listening` : 'Stopped');
+  teleRow('tSlides', t.slides.state === 'live' ? 'ok' : t.slides.state === 'none' ? 'wait' : 'off',
+    t.slides.state === 'live' ? `Live · slide ${t.slides.n}${t.slides.lastAt ? ` · changed ${ago(t.slides.lastAt)}` : ''}`
+      : t.slides.state === 'none' ? 'No slides shared yet' : 'Stopped');
+  const p = t.phones;
+  const rc = p.reconnects5m ? ` · ${p.reconnects5m} reconnected (5 min)` : '';
+  teleRow('tPhones', p.here > 0 ? 'ok' : 'off', `${p.here} here · ${p.joined} scanned · ${p.listening} listening${rc}`);
+  renderFill(st);
+}
+function renderFill(st) {
+  const s = st.stats;
+  if (!s) { $('dFill').textContent = '—'; $('dFillBar').style.width = '0%'; return; }
+  const pct = s.capacity ? Math.min(100, Math.round((s.here / s.capacity) * 100)) : 0;
+  $('dFill').textContent = `${s.here} / ${s.capacity} · ${pct}%`;
+  $('dFillBar').style.width = `${pct}%`;
+  $('fillRow').dataset.level = pct >= 100 ? 'full' : pct >= 85 ? 'near' : 'ok';
+  if (document.activeElement !== $('seatsInput')) $('seatsInput').value = String(s.capacity);
+  $('signinRow').hidden = s.signedIn === null || s.signedIn === undefined; // SIGNIN=off
+  $('dSignins').textContent = String(s.signedIn ?? '—');
+}
+// Sign-ins (names, emails) never travel over the socket: the CSV is fetched with the tech key on click.
+$('exportSignins').onclick = async () => {
+  try {
+    const res = await fetch(`/api/rooms/${encodeURIComponent(selected)}/signins?format=csv`, { headers: { 'x-pulse-key': key } });
+    if (res.status === 401) { warn('The server rejected the tech key.'); return; }
+    if (!res.ok) throw new Error(String(res.status));
+    const url = URL.createObjectURL(await res.blob());
+    const a = Object.assign(document.createElement('a'), { href: url, download: `pulse-room-${selected}-signins.csv` });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  } catch { flash($('signinRow'), 'Export failed, try again'); }
+};
+$('seatsForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const capacity = Number($('seatsInput').value);
+  if (!Number.isInteger(capacity) || capacity < 1) return;
+  try {
+    await api(`/api/rooms/${encodeURIComponent(selected)}/settings`, { ...rooms.get(selected).settings, capacity });
+    $('seatsInput').blur();
+    flash($('seatsForm'), `Seats set to ${capacity}`);
+  } catch { /* warned */ }
+};
+setInterval(() => { if (rooms.get(selected)?.tele?.slides?.lastAt) renderTele(); }, 5000); // keep "changed … ago" fresh
 
 // ---------- selected room drawer ----------
 function select(room) {
@@ -236,7 +431,9 @@ function select(room) {
     player.stop();
     $('listenPodium').setAttribute('aria-pressed', 'false');
   }
+  if (room !== selected) disarmEnd();
   selected = room;
+  history.replaceState(null, '', `#room=${encodeURIComponent(room)}`);
   render();
   renderDrawer();
   // render() rebuilt the board; put keyboard users back on the card they selected.
@@ -250,40 +447,41 @@ function renderDrawer() {
   const st = rooms.get(selected);
   $('dRoom').textContent = `Room ${selected}`;
   $('dConn').dataset.status = st.conn;
-  $('dConn').querySelector('.conn-word').textContent = { live: 'Live', reconnecting: 'Reconnecting…', connecting: 'Connecting…', unauthorized: 'Wrong key' }[st.conn] || st.conn;
-  $('dTalk').textContent = st.talk ? `${st.talk.title}${st.talk.speaker ? ' · ' + st.talk.speaker : ''}` : 'No talk running';
+  $('dConn').querySelector('.conn-word').textContent = { live: 'Connected', reconnecting: 'Reconnecting…', connecting: 'Connecting…', unauthorized: 'Wrong key' }[st.conn] || st.conn;
+  $('dTalk').textContent = st.talk?.talkId ? `${st.talk.title || 'Untitled talk'}${st.talk.speaker ? ' · ' + st.talk.speaker : ''}` : 'No talk yet';
+  const status = talkStatus(st);
+  $('dTalkPill').dataset.status = status;
+  $('dTalkPill').textContent = STATUS_WORD[status];
+  const started = st.talk?.startedAt ? new Date(st.talk.startedAt) : null;
+  $('dTalkTime').textContent = started && !Number.isNaN(started.getTime())
+    ? `${status === 'live' ? 'since' : 'started'} ${started.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : '';
+  $('endTalkBtn').hidden = status !== 'live';
+  $('demoRestartBtn').hidden = !st.simulated;
+  $('dAudience').href = `/r/${encodeURIComponent(selected)}`;
+  $('dTranscript').hidden = !st.talk?.talkId;
+  if (st.talk?.talkId) $('dTranscript').href = `/t/${encodeURIComponent(st.talk.talkId)}`;
   $('swCaptions').checked = !!st.settings.captions;
   $('swListen').checked = !!st.settings.listen;
   $('swSlides').checked = !!st.settings.slides;
   renderStatus();
+  renderTele();
   renderCaptions();
   renderQuestions();
 }
 
 function renderStatus() {
   const s = rooms.get(selected).status;
-  $('dListeners').textContent = s ? String(s.listeners ?? '—') : '—';
   const db = s?.micDb;
   const hasDb = typeof db === 'number' && Number.isFinite(db);
-  $('dMic').textContent = !hasDb ? 'No audio' : db < -50 ? `${Math.round(db)} dB · quiet` : `${Math.round(db)} dB`;
-  $('dMic').dataset.zone = !hasDb || db < -50 ? 'bad' : 'ok';
   const pct = hasDb ? Math.max(0, Math.min(100, ((db + 70) / 70) * 100)) : 0;
   $('dMeter').style.width = `${pct}%`;
   $('dMeter').dataset.zone = !hasDb || db < -50 ? 'low' : db > -3 ? 'hot' : 'ok';
-  renderGap();
 }
 
-function renderGap() {
-  const st = rooms.get(selected);
-  const s = st?.status;
-  if (!s) { $('dGap').textContent = '—'; return; }
-  const gap = typeof s.captionGapSec === 'number' ? s.captionGapSec + Math.floor((Date.now() - s.at) / 1000) : null;
-  $('dGap').textContent = gap === null ? 'Not started' : gap > 20 ? `Silent ${gap} s` : 'Flowing';
-  $('dGap').dataset.zone = gap !== null && gap > 20 ? 'bad' : 'ok';
-}
 
 function renderCaptions() {
-  const lines = rooms.get(selected).captions.slice(-5);
+  const st = rooms.get(selected);
+  const lines = st.captions.filter((l) => !st.talk?.talkId || !l.talkId || l.talkId === st.talk.talkId).slice(-5);
   const ol = $('dCaptions');
   if (!lines.length) { ol.replaceChildren(Object.assign(document.createElement('li'), { className: 'muted', textContent: 'Nothing yet.' })); return; }
   ol.replaceChildren(...lines.map((l) => Object.assign(document.createElement('li'), { textContent: l.text })));
@@ -320,6 +518,8 @@ function flash(el, text) {
 
 // ---------- questions ----------
 function renderQuestions() {
+  if ($('questions').querySelector('form')) { questionsPending = true; return; }
+  questionsPending = false;
   const groups = rooms.get(selected).groups
     .filter((g) => !(g.qid && questionState.get(g.qid)?.hidden))
     .sort((a, b) => (questionState.get(b.qid)?.pinned ? 1 : 0) - (questionState.get(a.qid)?.pinned ? 1 : 0) || (a.answered - b.answered) || (b.count - a.count));
@@ -338,7 +538,7 @@ function questionEl(g) {
   text.textContent = g.text;
   const meta = document.createElement('p');
   meta.className = 'q-meta';
-  meta.textContent = [g.count > 1 ? `${g.count} similar` : null, qs.pinned ? 'In Q&A queue' : null, g.answered || qs.answered ? 'Answered' : null].filter(Boolean).join(' · ') || 'New';
+  meta.textContent = [qs.replied ? `Replied: ${qs.replied}` : null, g.count > 1 ? `${g.count} similar` : null, qs.pinned ? 'In Q&A queue' : null, g.answered || qs.answered ? 'Answered' : null].filter(Boolean).join(' · ') || 'New';
   li.append(text, meta);
 
   const row = document.createElement('div');
@@ -375,6 +575,7 @@ async function qAction(g, action) {
   } catch { /* warned */ }
 }
 
+let questionsPending = false;
 function openReply(li, g) {
   if (li.querySelector('form')) return;
   const f = document.createElement('form');
@@ -386,8 +587,15 @@ function openReply(li, g) {
     e.preventDefault();
     const text = input.value.trim();
     if (!text) return;
-    try { await api(`/api/questions/${encodeURIComponent(g.qid)}/reply`, { text }); f.replaceWith(Object.assign(document.createElement('p'), { className: 'flash', textContent: `Replied: ${text}` })); } catch { /* warned */ }
+    try {
+      await api(`/api/questions/${encodeURIComponent(g.qid)}/reply`, { text });
+      questionState.set(g.qid, { ...(questionState.get(g.qid) || {}), replied: text });
+      f.remove();
+      renderQuestions();
+    } catch { /* warned */ }
   };
+  // Esc closes the box; the list catches up with anything that arrived meanwhile.
+  input.addEventListener('keydown', (e) => { if (e.key === 'Escape') { f.remove(); if (questionsPending) renderQuestions(); } });
   li.append(f);
   input.focus();
 }
@@ -417,28 +625,58 @@ async function loadRooms() {
     const list = await (await fetch('/api/rooms')).json();
     for (const r of list) {
       const id = String(r.room);
-      let st = rooms.get(id);
-      if (!st) {
-        if (explicitRooms) continue;
-        // No ?rooms= in the URL: follow every room the server knows about, including the demo room.
-        st = { status: null, captions: [], settings: { captions: true, listen: true, slides: true }, groups: [], conn: 'connecting' };
-        rooms.set(id, st);
-        subscribe(id);
-      }
-      if (r.talkId) {
-        if (!st.talk || st.talk.talkId !== r.talkId) st.talk = { talkId: r.talkId, title: r.title };
-      } else if (!st.talk || st.talk.status !== 'ended') {
-        st.talk = null;
+      if (DISCOVER && (r.status !== 'waiting' || r.simulated) && addRoom(id)) { connect(id); }
+      const st = rooms.get(id);
+      if (!st) continue;
+      st.simulated = !!r.simulated;
+      if (typeof r.here === 'number' && !st.stats) st.stats = { room: id, joined: r.joined, here: r.here, capacity: r.capacity };
+      // The socket's `talk` message is the truth (it also names an ended talk, which /api/rooms
+      // leaves out); the poll only fills in rooms whose socket hasn't spoken yet.
+      if (!st.talkFromSocket) {
+        st.talk = r.talkId ? { talkId: r.talkId, title: r.title, speaker: r.speaker, status: r.status, startedAt: r.startedAt } : null;
       }
     }
-    render();
+    // Tabs and drawer only: rebuilding the ticket blocks every 5 s lost clicks.
+    renderTabs();
     renderDrawer();
-  } catch { /* retry on next status */ }
+  } catch { /* retry on next poll */ }
 }
-setInterval(loadRooms, 15000);
+setInterval(loadRooms, 5000);
+
+// ---------- talk controls ----------
+let endArmed = null; // {room, talkId, at}
+let endTimer = null;
+function disarmEnd() {
+  endArmed = null;
+  clearTimeout(endTimer);
+  $('endTalkBtn').textContent = '■ End talk';
+}
+$('endTalkBtn').onclick = async () => {
+  const st = rooms.get(selected);
+  if (!st.talk?.talkId) return;
+  const armed = endArmed && endArmed.room === selected && endArmed.talkId === st.talk.talkId && Date.now() - endArmed.at <= 3000;
+  if (!armed || Date.now() - endArmed.at < 400) {
+    if (armed) return; // a double-click is not two taps
+    endArmed = { room: selected, talkId: st.talk.talkId, at: Date.now() };
+    $('endTalkBtn').textContent = `■ Tap again to end Room ${selected}`;
+    clearTimeout(endTimer);
+    endTimer = setTimeout(disarmEnd, 3000);
+    return;
+  }
+  disarmEnd();
+  try { await api(`/api/talks/${encodeURIComponent(st.talk.talkId)}/end`, {}); } catch { /* warned */ }
+};
+$('demoRestartBtn').onclick = async () => {
+  try {
+    await api(`/api/rooms/${encodeURIComponent(selected)}/demo/restart`, {});
+    flash($('demoRestartBtn').closest('.d-session'), 'Demo talk restarted');
+  } catch { /* warned */ }
+};
 
 // ---------- one socket per room ----------
-function subscribe(room) {
+for (const room of roomList) connect(room);
+
+function connect(room) {
   const st = rooms.get(room);
   connectRoom({
     room,
@@ -460,17 +698,28 @@ function subscribe(room) {
       switch (m.t) {
         case 'ticket': onTicket(m); break;
         case 'room_status': st.status = { ...m, at: Date.now() }; if (room === selected) renderStatus(); break;
+        case 'room_stats': st.stats = m; renderTabs(); if (room === selected) renderFill(st); break;
+        case 'room_telemetry': st.tele = m; renderTabs(); if (room === selected) renderTele(); break;
         case 'caption':
           if (!st.talk || (m.talkId && st.talk.talkId !== m.talkId)) loadRooms();
           st.captions.push(m); st.captions = st.captions.slice(-50);
           if (room === selected) renderCaptions();
           break;
-        case 'caption_backlog': st.captions = (m.lines || []).slice(-50); if (room === selected) renderCaptions(); break;
-        case 'room_settings': st.settings = { ...st.settings, ...m }; if (room === selected) renderDrawer(); break;
+        case 'caption_backlog': {
+          const lines = m.lines || [];
+          const last = lines.length ? lines[lines.length - 1].talkId : null; // the room keeps lines across talks
+          st.captions = lines.filter((l) => !last || l.talkId === last).slice(-50);
+          if (room === selected) renderCaptions();
+          break;
+        }
+        case 'room_settings': st.settings = { ...st.settings, ...m }; renderTabs(); if (room === selected) renderDrawer(); break;
         case 'question_groups': st.groups = m.groups || []; if (room === selected) renderQuestions(); break;
         case 'question_update': onQuestionUpdate(m); break;
         case 'talk':
-          st.talk = m.talkId ? { talkId: m.talkId, title: m.title, speaker: m.speaker, status: m.status } : null;
+          if (m.talkId && st.talk?.talkId && m.talkId !== st.talk.talkId) st.captions = [];
+          st.talkFromSocket = true;
+          st.talk = m.talkId ? { talkId: m.talkId, title: m.title, speaker: m.speaker, status: m.status, startedAt: m.startedAt } : null;
+          render();
           if (room === selected) renderDrawer();
           break;
         default: break;
@@ -479,7 +728,6 @@ function subscribe(room) {
   });
 }
 
-for (const room of roomList) subscribe(room);
 
 render();
 renderDrawer();

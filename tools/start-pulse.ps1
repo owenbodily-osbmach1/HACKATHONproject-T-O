@@ -23,19 +23,18 @@ Write-Host "=== Pulse one-room test ===" -ForegroundColor Cyan
 if (-not (Have node)) { Write-Host "Node.js is not installed. Install it from https://nodejs.org (LTS), then run this again." -ForegroundColor Red; Read-Host "Press Enter to close"; exit 1 }
 
 if (Have git) {
-  Write-Host "Updating to the latest version of this branch..."
-  & git pull --ff-only
-  if ($LASTEXITCODE -ne 0) {
-    # Usually local edits (hot fixes copied in) block the pull: stash them (kept, not deleted) and retry.
-    $before = & git rev-parse -q --verify refs/stash
-    & git stash push -m "start-pulse auto-stash" | Out-Host
-    $stashed = ((& git rev-parse -q --verify refs/stash) -ne $before)
+  # Never stash or overwrite local edits: the demo must run exactly the code that was tested.
+  # With uncommitted changes (or -NoPull / PULSE_NO_PULL=1) the pull is skipped and this says so.
+  $dirty = (& git status --porcelain --untracked-files=no)
+  if ($env:PULSE_NO_PULL -eq '1' -or $args -contains '-NoPull') {
+    Write-Host "Not updating (no-pull mode): using the files already here." -ForegroundColor Yellow
+  } elseif ($dirty) {
+    Write-Host "Not updating: this folder has uncommitted changes, so it runs the files already here." -ForegroundColor Yellow
+    Write-Host "  (Commit or discard them to get the latest version on the next start.)" -ForegroundColor Yellow
+  } else {
+    Write-Host "Updating to the latest version of this branch..."
     & git pull --ff-only
-    if ($LASTEXITCODE -ne 0) {
-      # Still blocked: put the local edits back so the demo runs with them, as the message says.
-      if ($stashed) { & git stash pop | Out-Host }
-      Write-Host "(git pull skipped, using the files already here)" -ForegroundColor Yellow
-    }
+    if ($LASTEXITCODE -ne 0) { Write-Host "(git pull failed, using the files already here)" -ForegroundColor Yellow }
   }
 }
 # Reinstall packages when package-lock.json changed since the last install (new branch or pull).
@@ -79,7 +78,10 @@ if (-not $url) { Write-Host "The tunnel didn't give a URL. Log: $log" -Foregroun
 
 # 2) Server.
 $env:PORT = "$port"; $env:SPEAKER_KEY = $speakerKey; $env:TECH_KEY = $techKey; $env:PUBLIC_BASE_URL = $url; $env:ALERT_THRESHOLD = '1'
-$server = Start-Process -FilePath node -ArgumentList "server/index.js" -WindowStyle Minimized -PassThru
+# .env (git-ignored) holds the Elastic and Dash0 keys; without it search and telemetry stay local only.
+$nodeArgs = if (Test-Path '.env') { '--env-file=.env server/index.js' } else { 'server/index.js' }
+if (-not (Test-Path '.env')) { Write-Host "No .env file: Elasticsearch and Dash0 are off for this run." -ForegroundColor Yellow }
+$server = Start-Process -FilePath node -ArgumentList $nodeArgs -WindowStyle Minimized -PassThru
 $up = $false
 for ($i = 0; $i -lt 20 -and -not $up; $i++) { Start-Sleep -Milliseconds 500; try { $up = (Invoke-WebRequest "http://localhost:$port/healthz" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop).Content -eq 'ok' } catch {} }
 if (-not $up -or $server.HasExited) { Write-Host "The server didn't start on port $port." -ForegroundColor Red; Read-Host "Press Enter to close"; Stop-Process -Id $tunnel.Id -ErrorAction SilentlyContinue; exit 1 }
@@ -110,7 +112,8 @@ Pulse is running.
 Alert limit is 1 vote for this test.
 "@ | Tee-Object -FilePath (Join-Path $env:TEMP 'pulse-test-urls.txt') | Write-Host -ForegroundColor Green
 
-Read-Host "Leave this window open while testing. Press Enter to STOP the server and tunnel"
+# A stray Enter must not end the demo: only typing STOP does.
+do { $answer = Read-Host "Leave this window open while testing. Type STOP and press Enter to stop the server and tunnel" } while ($answer -ne 'STOP')
 Stop-Process -Id $server.Id -ErrorAction SilentlyContinue
 Stop-Process -Id $tunnel.Id -ErrorAction SilentlyContinue
 Stop-Transcript | Out-Null

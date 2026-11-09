@@ -18,6 +18,9 @@ const questions = require('./questions');
 const qr = require('./qr');
 const booths = require('./booths');
 const schedule = require('./schedule');
+const mockroom = require('./mockroom');
+const stats = require('./stats');
+const signin = require('./signin');
 const privacy = require('./privacy');
 const metrics = require('./metrics');
 
@@ -69,7 +72,8 @@ app.get('/rum-config.js', (req, res) => {
 
 const pub = path.join(__dirname, '..', 'public');
 const page = (file) => (req, res) => res.sendFile(path.join(pub, file));
-app.get('/r/:room', page('r.html'));
+// Counts the scan (server-issued visitor cookie), then the sign-in form until this phone has signed in.
+app.get('/r/:room', stats.scan, signin.gate, page('r.html'));
 app.get('/t/:talkId', page('t.html'));
 app.get('/room/:room', page('t.html'));
 app.get('/org', page('org.html'));
@@ -84,7 +88,7 @@ app.get('/present/:room', auth.page('SPEAKER_KEY'), page('present.html'));
 app.get('/relay/:room', auth.page('SPEAKER_KEY'), page('relay.html'));
 app.get('/go/:room', auth.page('SPEAKER_KEY'), page('go.html'));
 // Keyed pages are reachable only through their routes above, never as static files.
-const keyedFiles = /^\/(tech|mic|present|booth|relay|go)(\.html)?$/i;
+const keyedFiles = /^\/(tech|mic|present|booth|relay|go)(\.html)?\/?$/i;
 app.use((req, res, next) => {
   let p;
   try { p = path.posix.normalize(decodeURIComponent(req.path)).replace(/\/+/g, '/'); } catch { return res.status(400).end(); }
@@ -93,7 +97,8 @@ app.use((req, res, next) => {
 app.use(express.static(pub, { extensions: ['html'], index: false }));
 
 const ctx = { config, state, auth, es, hub, otel };
-for (const m of [tickets, talks, questions, booths, qr, schedule, privacy, metrics]) m.register(app, ctx);
+// signin first: its guards on votes/questions/feedback must run before those routes.
+for (const m of [signin, tickets, talks, questions, booths, qr, schedule, privacy, metrics, mockroom, stats]) m.register(app, ctx);
 
 const server = http.createServer(app);
 hub.attach(server, ctx);

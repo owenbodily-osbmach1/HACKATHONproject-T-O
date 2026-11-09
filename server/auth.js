@@ -23,12 +23,15 @@ const page = (keyName) => (req, res, next) => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Key needed</title>
+  <title>Pulse · Key needed</title>
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <main>
+  <main class="join">
+    <span class="wordmark">PULSE</span>
     <h1>Key needed</h1>
-    <p>This page needs the staff or speaker key in the link — ask the organizer.</p>
+    <p class="join-sub">This page needs the staff or speaker key in the link, and the key here is missing or wrong.</p>
+    <p class="join-sub">Use the exact link printed by <b>start-pulse</b> (Go live, AV tech, mic, relay): it changes every time Pulse starts. Or ask the organizer.</p>
     <p><a href="/org">Organizer overview</a></p>
   </main>
 </body>

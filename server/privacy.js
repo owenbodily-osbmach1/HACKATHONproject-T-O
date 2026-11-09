@@ -50,7 +50,16 @@ function register(app, ctx) {
       elasticsearch: enabled,
       indices,
       privacy: {
-        personalData: false,
+        // Sign-in (server/signin.js): contact details in server memory only, never in these indices.
+        personalData: require('./signin').enabled,
+        signIn: {
+          enabled: require('./signin').enabled,
+          collects: ['first name', 'last name', 'company or occupation', 'email address'],
+          storage: 'server memory only, cleared on restart',
+          inElasticsearch: false,
+          linkedToClientId: false,
+          export: 'event team, staff key',
+        },
         identifier: 'clientId', // random id generated on the phone
         clientIdRandom: true,
         clientIdGeneratedOnDevice: true,

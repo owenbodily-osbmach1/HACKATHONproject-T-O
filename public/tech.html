@@ -28,10 +28,13 @@
 
   <p class="warn tech-warn" id="warn" role="alert" hidden></p>
 
+  <nav class="room-tabs" id="roomTabs" aria-label="Rooms (keys 1–9, or [ and ] to switch)"></nav>
+
   <main class="tech-main">
     <section class="board" aria-label="Rooms">
       <p class="sr-only" id="boardStatus" role="status" aria-live="polite"></p>
       <div class="blocks" id="blocks"></div>
+      <ul class="fixed-list" id="fixedList" aria-live="polite" hidden></ul>
       <div class="ok-tiles" id="okTiles"></div>
     </section>
 
@@ -41,11 +44,36 @@
         <span class="conn" id="dConn"><span class="dot"></span><span class="conn-word">Connecting…</span></span>
       </header>
       <p class="d-talk" id="dTalk">No talk running</p>
+      <div class="d-session">
+        <span class="talk-pill" id="dTalkPill" data-status="waiting">Not started</span>
+        <span class="muted" id="dTalkTime"></span>
+        <span class="d-session-btns">
+          <button type="button" class="ghost small" id="endTalkBtn" hidden>■ End talk</button>
+          <button type="button" class="ghost small" id="demoRestartBtn" hidden>↻ Restart demo talk</button>
+        </span>
+      </div>
+      <p class="d-links">
+        <a id="dAudience" href="#" target="_blank" rel="noopener">Audience view ↗</a>
+        <a id="dTranscript" href="#" target="_blank" rel="noopener" hidden>Transcript ↗</a>
+      </p>
 
-      <div class="d-stats">
-        <div><span class="k">Phones connected</span><b id="dListeners">—</b></div>
-        <div><span class="k">Podium mic</span><b id="dMic">—</b></div>
-        <div><span class="k">Captions</span><b id="dGap">—</b></div>
+      <h3 class="h-blue">Live status</h3>
+      <ul class="tele" id="tele" aria-live="polite">
+        <li id="tServer"><span class="ck" aria-hidden="true"></span><b>Server</b><span class="v">—</span></li>
+        <li id="tMic"><span class="ck" aria-hidden="true"></span><b>Microphone</b><span class="v">—</span></li>
+        <li id="tCaptions"><span class="ck" aria-hidden="true"></span><b>Captions</b><span class="v">—</span></li>
+        <li id="tListen"><span class="ck" aria-hidden="true"></span><b>Listen-in</b><span class="v">—</span></li>
+        <li id="tSlides"><span class="ck" aria-hidden="true"></span><b>Slides</b><span class="v">—</span></li>
+        <li id="tPhones"><span class="ck" aria-hidden="true"></span><b>Phones</b><span class="v">—</span></li>
+      </ul>
+      <div class="fill-row" id="fillRow">
+        <span class="k">Room fill</span>
+        <span class="rs-bar" aria-hidden="true"><span id="dFillBar"></span></span>
+        <b id="dFill">—</b>
+      </div>
+      <div class="signins" id="signinRow">
+        <span class="k">Signed in</span><b id="dSignins">—</b>
+        <button type="button" class="ghost small" id="exportSignins">Export CSV</button>
       </div>
       <div class="meter" aria-hidden="true"><span id="dMeter"></span><i class="meter-mark"></i></div>
 
@@ -63,6 +91,11 @@
         <label><input type="checkbox" id="swListen" checked> Listen-in</label>
         <label><input type="checkbox" id="swSlides" checked> Slides on phones</label>
       </div>
+      <form class="seats" id="seatsForm">
+        <label for="seatsInput">Seats in this room</label>
+        <input id="seatsInput" type="number" min="1" max="100000" inputmode="numeric">
+        <button type="submit" class="ghost small">Save</button>
+      </form>
 
       <h3 class="h-yellow">Message every phone</h3>
       <form class="bcast" id="bcastForm">

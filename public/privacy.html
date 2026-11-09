@@ -33,10 +33,13 @@
   <main class="privacy-wrap">
     <p class="eyebrow">Pulse</p>
     <h1>Privacy</h1>
-    <p class="lede">Pulse counts problems in a room. It does not collect who you are.</p>
+    <p class="lede">Pulse counts problems in a room. Your votes and questions never say who you are.</p>
 
     <h2>What we never store</h2>
-    <p>Pulse stores <strong>no names, no email addresses, no phone numbers, no IP addresses and no accounts</strong>. There is no sign-up, no login, and no profile.</p>
+    <p>Pulse's data store (Elasticsearch), logs, dashboards and sponsor reports hold <strong>no names, no email addresses, no phone numbers, no IP addresses and no accounts</strong>. There is no password and no profile.</p>
+
+    <h2>Joining a room (sign-in)</h2>
+    <p>When the event turns sign-in on, your phone asks once for your <strong>first and last name, company or occupation, and email</strong> before it opens the room. Only the event team sees them, to follow up with you about the session: the AV crew can export the list with the staff key. They are kept <strong>in the server's memory only</strong> (gone when it restarts), never written to Elasticsearch, logs or telemetry, never shown to other attendees, and never linked to the random id that counts votes. A cookie remembers that this phone signed in, for 24 hours.</p>
 
     <h2>The one identifier</h2>
     <p><strong>clientId</strong> is a random id generated on your phone. It is used only to count distinct devices — for example “3 different people cannot hear this talk” — and is never linked to a name, an email address or an account.</p>

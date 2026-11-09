@@ -1,5 +1,8 @@
 // Reconnecting JSON WebSocket client shared by every page.
 // Backoff 1, 2, 4, 8 s, capped at 10 s (CONTRACT.md). Answers server pings.
+// Heartbeat: sends {t:'ping'} every 10 s; if nothing at all (not even the pong) has arrived for
+// 25 s the socket is treated as dead and replaced. A phone that slept or changed networks often
+// keeps a socket that looks open but never delivers anything, and never fires onclose.
 
 export function connectRoom({ room, role, key, clientId, onMessage, onStatus }) {
   const delays = [1000, 2000, 4000, 8000, 10000];
@@ -7,6 +10,10 @@ export function connectRoom({ room, role, key, clientId, onMessage, onStatus }) 
   let ws = null;
   let closedByUs = false;
   let retryTimer = null;
+  let lastSeen = Date.now();
+  const PING_MS = 10000; // the server answers every ping, so 25 s of nothing means the socket is dead
+  const DEAD_MS = 25000;
+  let lastPing = 0;
 
   function url() {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -29,10 +36,12 @@ export function connectRoom({ room, role, key, clientId, onMessage, onStatus }) 
     sock.onopen = () => {
       if (ws !== sock) return;
       attempt = 0;
+      lastSeen = Date.now();
       onStatus?.('live');
     };
     sock.onmessage = (ev) => {
       if (ws !== sock || typeof ev.data !== 'string') return; // JSON socket only
+      lastSeen = Date.now();
       let msg;
       try { msg = JSON.parse(ev.data); } catch { return; }
       if (msg.t === 'ping') { send({ t: 'pong' }); return; }
@@ -42,14 +51,15 @@ export function connectRoom({ room, role, key, clientId, onMessage, onStatus }) 
     sock.onclose = (ev) => {
       if (closedByUs || ws !== sock) return;
       if (ev.code === 4401) { onStatus?.('unauthorized'); return; }
+      if (ev.code === 4403) { onStatus?.('signin'); return; } // attendee hasn't signed in (server/signin.js)
       schedule();
     };
     sock.onerror = () => { /* onclose follows */ };
   }
 
   // Replace a dead or dying socket right away (phone back online, tab woken up).
-  function reopenNow() {
-    if (closedByUs || (ws && ws.readyState <= WebSocket.OPEN)) return;
+  function reopenNow(force = false) {
+    if (closedByUs || (!force && ws && ws.readyState <= WebSocket.OPEN)) return;
     attempt = 0;
     clearTimeout(retryTimer);
     const old = ws;
@@ -74,14 +84,22 @@ export function connectRoom({ room, role, key, clientId, onMessage, onStatus }) 
     return false;
   }
 
-  window.addEventListener('online', reopenNow);
+  window.addEventListener('online', () => reopenNow());
+  window.addEventListener('offline', () => { if (!closedByUs) onStatus?.('reconnecting'); });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') reopenNow();
+    if (document.visibilityState !== 'visible') return;
+    // Woken up after a long sleep: the old socket is probably dead even if it says OPEN.
+    reopenNow(ws?.readyState === WebSocket.OPEN && Date.now() - lastSeen > DEAD_MS);
   });
+  const heartbeat = setInterval(() => {
+    if (closedByUs || !ws || ws.readyState !== WebSocket.OPEN) return;
+    if (Date.now() - lastSeen > DEAD_MS) { reopenNow(true); return; }
+    if (Date.now() - lastPing >= PING_MS) { lastPing = Date.now(); send({ t: 'ping' }); }
+  }, 5000);
 
   open();
   return {
     send,
-    close() { closedByUs = true; clearTimeout(retryTimer); ws?.close(); },
+    close() { closedByUs = true; clearTimeout(retryTimer); clearInterval(heartbeat); ws?.close(); },
   };
 }

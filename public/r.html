@@ -27,6 +27,14 @@
         <h1 id="talkTitle">Waiting for the talk to start</h1>
       </div>
       <p class="speaker" id="talkSpeaker"></p>
+      <div class="room-stats" id="roomStats" hidden>
+        <span class="rs-num"><b id="rsHere">0</b> here now</span>
+        <span class="rs-num"><b id="rsJoined">0</b> scanned in</span>
+        <span class="rs-fill" id="rsFill" data-level="ok">
+          <span class="rs-bar" aria-hidden="true"><span id="rsBar"></span></span>
+          <span id="rsFillText">0% full</span>
+        </span>
+      </div>
     </header>
 
     <div class="banner" id="banner" role="alert" hidden>
@@ -36,6 +44,15 @@
 
     <section class="group group-watch" aria-labelledby="gWatch">
       <div class="group-head"><span class="bar blue" aria-hidden="true"></span><h2 id="gWatch">Watch</h2><span class="group-sub">slides or live captions</span></div>
+
+      <div class="talk-state" id="talkState" role="status" hidden>
+        <p class="ts-title"><span class="ts-dot" aria-hidden="true"></span><span id="tsTitle">This talk has ended</span></p>
+        <p class="ts-sub" id="tsSub">Live captions stopped. The full transcript is saved.</p>
+        <p class="ts-links">
+          <a class="pill" id="tsTranscript" href="#">Read the transcript</a>
+          <a class="ts-dl" id="tsDownload" href="#">Download .txt</a>
+        </p>
+      </div>
 
       <nav class="modes" id="modes" aria-label="What to show">
         <button type="button" data-mode="slides">Slides</button>
@@ -59,7 +76,7 @@
 
         <section class="caption-pane" aria-label="Live captions">
           <div class="caption-tools">
-            <span class="label">Live captions</span>
+            <span class="label" id="capLabel">Live captions</span>
             <span class="sizes">
               <button type="button" class="ghost" id="fontDown" aria-label="Smaller text">A−</button>
               <button type="button" class="ghost" id="fontUp" aria-label="Larger text">A+</button>
@@ -138,7 +155,7 @@
       </details>
     </section>
 
-    <p class="footnote">No app · no login · this page can't use your mic</p>
+    <p class="footnote">No app · this page can't use your mic</p>
   </div>
 
   <div class="zoom" id="zoom" hidden>

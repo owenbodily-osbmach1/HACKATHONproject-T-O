@@ -8,6 +8,7 @@ const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 }); // a
 const senders = new Map(); // room -> sender ws (one active)
 const outs = new Map(); // room -> Set<ws>
 const dbByRoom = new Map(); // room -> latest RMS dBFS
+const lastFrameAt = new Map(); // room -> epoch ms of the last frame from the sender (AV telemetry)
 
 let ctx = null;
 let frames = null;
@@ -58,6 +59,7 @@ function addOut(room, ws) {
 
 function relay(room, frame) {
   if (frames) frames.add(1, { 'pulse.room': room });
+  lastFrameAt.set(room, Date.now());
   const db = dbfs(frame);
   if (db !== null) {
     dbByRoom.set(room, db);
@@ -88,7 +90,12 @@ function addSender(ws, room) {
     relay(room, Buffer.isBuffer(data) ? data : Buffer.from(data));
   });
   ws.on('close', () => {
-    if (senders.get(room) === ws) senders.delete(room);
+    if (senders.get(room) !== ws) return;
+    senders.delete(room);
+    // No podium audio any more: don't keep showing the last level (a "can't hear" ticket would get
+    // the wrong cause, and the AV meter would look healthy).
+    dbByRoom.delete(room);
+    if (ctx) ctx.state.room(room).micDb = null;
   });
   ws.on('error', () => {});
 }
@@ -115,9 +122,24 @@ module.exports = {
       wss.handleUpgrade(req, socket, head, (ws) => closeQuietly(ws, 4401, 'unauthorized'));
       return;
     }
+    if (isOut && !require('./signin').allowSocket(req)) {
+      wss.handleUpgrade(req, socket, head, (ws) => closeQuietly(ws, 4403, 'signin_required'));
+      return;
+    }
     wss.handleUpgrade(req, socket, head, (ws) => {
       if (isIn) addSender(ws, room); else addOut(room, ws);
     });
+  },
+
+  // AV telemetry (server/stats.js): is a podium mic streaming, and how many phones are listening.
+  senderInfo(room) {
+    const id = String(room);
+    const ws = senders.get(id);
+    return { connected: !!ws && ws.readyState === ws.OPEN, lastFrameAt: lastFrameAt.get(id) || 0 };
+  },
+  outCount(room) {
+    const set = outs.get(String(room));
+    return set ? set.size : 0;
   },
 
   micDb(room) {

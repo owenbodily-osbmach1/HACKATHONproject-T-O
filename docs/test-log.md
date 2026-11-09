@@ -2,6 +2,71 @@
 
 What has been tested, how, what broke and what is still open. Newest first. Add to it when you test something.
 
+## 2026-11-09 14:20–14:45: agent group test, then fixes + sign-in on `ui/live-state-rooms` (Claude)
+
+**Agent group test** (`poc/one-room` build, shared server, 14:19–14:33): a presenter agent (headless Go live with fake mic, screen share and speech), an audience agent (6 headless phones + 40–51 socket phones, offline / locked-screen / blocked-WebSocket phones), an AV agent (3 consoles, real clicks and keys), and a chaos agent on its own servers. Fixed on this branch from their findings:
+
+| Finding | Fix |
+| --- | --- |
+| Laptop swap / second Go live tab: overlapping `seq`, phones silently dropped new lines; duplicate lines in the transcript | The server owns `seq` per talk (`hub.js`): keeps the mic's number only while it moves forward, drops an exact repeat of the last line |
+| Captions accepted for an ended talk; a stale tab's old `talkId` could flip phones between talks | Captions go to the room's live talk only; none when no talk is live |
+| AV: End armed in one room ended another room with one tap | Armed per room + talk, disarmed on room switch, a double-click isn't two taps |
+| AV: Reply box wiped every 5 s; clicks lost / landing on another ticket while blocks rebuilt and re-sorted | No question rebuild under an open reply; blocks in stable order, no rebuild while the mouse is down, the 5 s poll only updates tabs + drawer |
+| Go live: a second click during start-up ended the talk; a denied mic still started a talk; pill said LIVE after End | End ignored for 5 s after going live; mic opens before the talk; pill shows the talk state + "Phones show: …" line |
+| Replies never reached real phones (no `clientId` on the socket) | `r.js` passes `clientId` |
+| Phones kept LIVE for ~65 s after losing signal | ping every 10 s, dead after 25 s of silence |
+| Vote after the end said "check your connection"; question after the end filed under the ended talk; "Better now?" stayed up | 409 → "votes are closed"; question parked for the next talk; card hidden on end |
+| AV: old talk's captions under the new title; tabs numbered differently per console; typo'd `/r/152` added a tab; reminder chime for ended talks; silent rooms invisible | captions filtered by talk; tabs sorted by room id; only rooms with a talk (or the demo room) are added; chime only for live talks; ⚠ "silent N min" / "mic quiet" / "CC off" on the tab |
+| `/mic` page kept captioning after the AV ended the talk; half-said line stayed on phones after the mic page closed | `/mic` stops like Go live; interim cleared when the last mic socket leaves |
+
+Follow-ups, fixed in a third commit (15:00–15:10), each checked against a running server:
+
+| Follow-up | Fix | Check |
+| --- | --- | --- |
+| Who claimed / fixed, "Better now?" answers invisible to the AV | `claimedBy`, `fixedBy`, `better`, `stillBad` on `ticket` (console only, not in Elasticsearch); "CLAIMED BY …" on the block; "Just fixed" list for 3 min, also for a console opened after the fix | ✅ "fixed by Sam · Better 2 · Still bad 1" |
+| Reopened ticket showed its original age | age counts from `reopenedAt` | code |
+| Report "0 signals" without Elasticsearch | signals kept in memory too (same anonymous rows) | ✅ `signalsByMinute` filled; questions carry no `clientId` (already on main) |
+| Presenter walked off: talk live forever, next speaker inherits it | auto-end after `AUTO_END_MIN` (10) with no mic socket and no captions; Go live offers "End that talk and start a new one" | ✅ phone flipped to Ended (test with 3 s) |
+| Burst of votes at 300 phones | `vote_count` coalesced per room+type (300 ms); `ticket_status` only on status change | ✅ 20 votes → 1 `vote_count`, 1 `ticket_status` per phone |
+| No question rate limit on the server | 1 per 20 s per `clientId` and visitor cookie | ✅ second question `429` |
+| `/go` on a phone: one word per line, raw `getDisplayMedia` error | narrow layout fixed; clear "can't share slides from this device" | ✅ screenshot at 390 px |
+| Bare 401 page | styled, says to use the links start-pulse prints | ✅ |
+| Dash0 had no headcounts | gauges `pulse.room.scanned`, `pulse.room.here`, `pulse.room.fill`, `pulse.room.signed_in` (counts only, `pulse.simulated` marks the demo room) | not checked against Dash0 (no `OTEL_*` on this laptop) |
+
+**Sign-in, scan counts, telemetry** (PR folder, `node server/index.js` on 8099, desktop app browser at 375×812 and headless Chrome at 390 / 320 / 1440):
+
+| Check | Result |
+| --- | --- |
+| `/r/151` on a new phone → form; submit with a missing name, missing company and `not-an-email` → an error under each field | ✅ |
+| Bad data sent straight to `POST /api/signin` (blank, 70-char name, `a@b`) → `400` with per-field errors; no cookie → `400 no_visitor` | ✅ |
+| Without signing in: attendee socket closed `4403`, `PUT /api/votes` → `403` | ✅ |
+| Valid submit → live room at once (Live, 4 captions, "1 here now · 1 scanned in · 1% full"); reload → room again, no form, counts unchanged; `/r/255` → no form | ✅ |
+| CSV export: `401` without the tech key; with it, the real row plus 143 `demo` rows for room 255; a `=HYPERLINK(...)` name is written as text | ✅ |
+| Names / emails in the server log | ✅ none |
+| AV console: Live status rows (Server, Microphone, Captions, Listen-in, Slides, Phones), room fill, Signed in + Export CSV, ⚠ "silent 1 min" on a quiet room's tab | ✅ |
+| `npm run smoke` and every `scripts/*-check.js` (run with `SIGNIN=off`) | ✅ |
+| Real phones | not checked |
+
+## 2026-11-09 14:00–14:20: talk stopped/live on phones, reconnect, rooms + demo room (Claude)
+
+**Bug (Owen's run):** ending the talk on Go live left phones saying **Live**. Two causes: the attendee page never handled the server's `talk` message (its red "Live" pill only meant "socket connected"), and Go live / the mic page resumed the room's talk even after it had ended, so going live again never flipped back.
+
+**Setup:** tested on `poc/one-room`, then replayed onto `main` for the PR; `node server/index.js` on port 8091 with test keys, no Elasticsearch. A script playing Go live's role (start or resume a live talk, captions over a `role=mic` socket, `/end`). Desktop app browser pane: `/r/151` and `/r/255` at 375×812, `/tech` at 1440×900.
+
+| Check | Result |
+| --- | --- |
+| Phone open, talk live → captions, pill **Live** | ✅ |
+| End talk → same open phone: pill **Ended**, "This talk has ended" card with Read the transcript / Download .txt, "Captions stopped at …" line, vote buttons disabled ("Talk ended"), header "Ended: <title>" | ✅ within a second, no reload |
+| Go live again → new talk, phone back to **Live**, "The talk is live again" hint, captions reset | ✅ |
+| Server restart with the phone open → **Reconnecting…**, then back on its own with the new state | ✅ |
+| Phone socket made silently dead (messages swallowed, no close), 60 lines sent meanwhile | ✅ heartbeat replaced the socket after ~45–65 s; all 63 lines present and in order (13 more than the 50-line backlog, filled from `/api/talks/:id/transcript?from=`) |
+| `/tech?rooms=151` finds room 255 (demo) by itself; tabs show Live/Ended, phones, "to fix"; keys 1/2 switch; `#room=255` reopens on that room | ✅ |
+| AV **End talk** (two taps) on 151 and on 255 → that room's phones show Ended; drawer shows Ended and "Stopped (talk ended)" | ✅ |
+| AV **Restart demo talk** → `/r/255` back to Live with the seeded transcript; the open ticket isn't doubled | ✅ |
+| `/t/<demo talk>` transcript page, `/go/151` page load | ✅ no page errors |
+| `npm run check` scripts (syntax, booths, relay, tickets) | ✅ |
+| Real **Go live** button (screen share + real mic) and real phones | not checked: the logic it runs (resume only a `live` talk) was exercised by the script |
+
 ## 2026-11-09: Elasticsearch search network-failure fallback, automated (Gitar)
 
 **Setup:** `mise x node@22.23.4 -- npm ci`, `mise x node@22.23.4 -- npm run check`, `mise x node@22.23.4 -- npm run smoke`, and a focused mocked-Elasticsearch search handler check.
