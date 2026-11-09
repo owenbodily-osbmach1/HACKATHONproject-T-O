@@ -231,7 +231,11 @@ function clearVotes(room, type) {
 }
 
 function configBody() {
-  return { alertThreshold, nudgeThreshold: Math.max(1, alertThreshold - 1) };
+  return {
+    alertThreshold,
+    nudgeThreshold: Math.max(1, alertThreshold - 1),
+    publicBaseUrl: require('./config').PUBLIC_BASE_URL,
+  };
 }
 
 function register(app, context) {
@@ -338,8 +342,7 @@ function register(app, context) {
     pruneVotes(now);
     for (const room of ctx.state.rooms.values()) {
       const id = room && room.room != null ? String(room.room) : String(room);
-      const listeners = ctx.hub.listeners(id);
-      if (!listeners) continue;
+      const listeners = ctx.hub.listeners(id); // sent even at 0 so the mic page can show "0 phones"
       const last = room && Number(room.lastCaptionTs);
       const gap = Number.isFinite(last) && last > 0 ? Math.max(0, Math.floor((now - last) / 1000)) : null;
       ctx.hub.send(
@@ -352,15 +355,24 @@ function register(app, context) {
           captionGapSec: gap,
           openTickets: openTickets(id),
         },
-        ['tech', 'org']
+        ['tech', 'org', 'mic']
       );
     }
   }, 2000);
   if (ticker.unref) ticker.unref();
 }
 
+// Snapshot for a tech/org socket that joins mid-talk.
+function activeTicketMessages(room) {
+  const id = String(room);
+  const out = [];
+  for (const ticket of tickets.values()) if (ticket.room === id && ACTIVE.has(ticket.status)) out.push(ticketMessage(ticket));
+  return out;
+}
+
 module.exports = {
   register,
   openTickets,
+  activeTicketMessages,
   _test: { countDistinct, VOTE_TTL_MS, REOPEN_MS },
 };

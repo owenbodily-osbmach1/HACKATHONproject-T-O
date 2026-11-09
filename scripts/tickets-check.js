@@ -174,11 +174,11 @@ const vote = (clientId, type, on = true) =>
   assert.equal(tickets.openTickets('151'), 1);
 
   res = await call('GET', '/api/config');
-  assert.deepEqual(res.body, { alertThreshold: 3, nudgeThreshold: 2 });
+  assert.deepEqual(res.body, { alertThreshold: 3, nudgeThreshold: 2, publicBaseUrl: '' });
   res = await call('POST', '/api/config', { body: { alertThreshold: 5 } });
   assert.equal(res.statusCode, 401);
   res = await call('POST', '/api/config', { body: { alertThreshold: 5 }, key: 'tech' });
-  assert.deepEqual(res.body, { alertThreshold: 5, nudgeThreshold: 4 });
+  assert.deepEqual(res.body, { alertThreshold: 5, nudgeThreshold: 4, publicBaseUrl: '' });
 
   const now = 1000000;
   const records = [

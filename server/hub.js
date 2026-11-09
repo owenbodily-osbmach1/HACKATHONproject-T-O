@@ -162,6 +162,11 @@ function join(ws, room, role, clientId) {
   }
   sendJson(ws, { t: 'room_settings', ...state.settings });
   if (state.slide) sendJson(ws, { t: 'slide', ...state.slide });
+  if (role === 'tech' || role === 'org') {
+    // Lazy require: tickets/questions require the hub too.
+    for (const m of require('./tickets').activeTicketMessages(room)) sendJson(ws, m);
+    sendJson(ws, { t: 'question_groups', groups: require('./questions').groupList(room) });
+  }
 
   ws.on('pong', () => { rec.alive = true; });
   ws.on('message', (data, isBinary) => {
