@@ -8,6 +8,7 @@
 //   on(t, fn)                           subscribe to inbound messages: fn(msg, {room, role, clientId})
 const { WebSocketServer } = require('ws');
 const otel = require('./otel');
+const wordfix = require('./wordfix');
 const log = require('./log');
 
 const ROLES = new Set(['attendee', 'viewer', 'mic', 'present', 'tech', 'org', 'booth']);
@@ -80,10 +81,22 @@ function esIndex(index, doc) {
   } catch {}
 }
 
+// Caption cleanup (server/wordfix.js): fixes cloud-native terms speech recognition mishears.
+// Best effort: any problem leaves the caption exactly as the mic sent it.
+function tidyText(text) {
+  try {
+    const out = wordfix.fix(text);
+    return typeof out === 'string' && out.trim() ? out : text;
+  } catch {
+    return text;
+  }
+}
+
 function onCaption(rec, msg) {
   const room = ctx.state.room(rec.room);
-  const text = typeof msg.text === 'string' ? msg.text : '';
-  if (!text.trim()) return;
+  const spoken = typeof msg.text === 'string' ? msg.text : '';
+  if (!spoken.trim()) return;
+  const text = tidyText(spoken);
 
   // Captions belong to the room's LIVE talk, whatever talkId the mic page sent: a stale tab still
   // sending an old talkId must not flip phones between talks, and nothing is added to an ended talk.
@@ -191,7 +204,7 @@ function inbound(rec, msg) {
     if (rec.role !== 'mic') return;
     if (msg.t === 'caption') return onCaption(rec, msg);
     const text = typeof msg.text === 'string' ? msg.text : '';
-    if (text.trim()) send(rec.room, { t: 'caption_interim', text }, ['attendee', 'viewer']);
+    if (text.trim()) send(rec.room, { t: 'caption_interim', text: tidyText(text) }, ['attendee', 'viewer']);
     return;
   }
 
