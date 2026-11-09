@@ -1,0 +1,28 @@
+/* Pulse "Go live" control page (/go/:room). Builds on styles.css (podium styles). */
+.go-wrap { max-width: 880px; margin: 0 auto; padding: 20px 16px 40px; display: grid; gap: 14px; }
+.go-hero { text-align: center; }
+.go-btn { width: 100%; min-height: 84px; border: 0; border-radius: 16px; font-size: 30px; font-weight: 900; background: var(--green); color: #00210f; }
+.go-btn:disabled { opacity: .6; }
+.go-btn.stop { background: var(--red); color: #2a0503; font-size: 24px; }
+.go-btn small { font-size: 15px; font-weight: 600; }
+.go-hint { margin: 12px 0 0; color: var(--muted); font-size: 15px; text-align: left; }
+
+.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.checks li { display: grid; grid-template-columns: 26px 120px 1fr auto; align-items: center; gap: 10px; background: var(--panel-2); border-radius: 10px; padding: 10px 12px; min-height: 48px; }
+.checks .ck { width: 18px; height: 18px; border-radius: 50%; background: var(--line); }
+.checks li[data-state="ok"] .ck { background: var(--green); }
+.checks li[data-state="wait"] .ck { background: var(--amber); }
+.checks li[data-state="bad"] .ck { background: var(--red); }
+.checks li[data-state="ok"] .ck::after { content: "✓"; display: block; text-align: center; line-height: 18px; font-size: 13px; font-weight: 900; color: #00210f; }
+.ck-detail { color: var(--muted); font-size: 15px; }
+.mini-meter { width: 120px; height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; }
+.mini-meter span { display: block; height: 100%; width: 0; background: var(--green); transition: width .1s linear; }
+.go-row { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.go-row img { height: 72px; border-radius: 6px; border: 1px solid var(--line); margin-left: auto; }
+.go-join { display: grid; grid-template-columns: 1fr 180px; gap: 16px; align-items: center; }
+.go-join .qr { width: 180px; }
+.go-join .qr img { width: 100%; display: block; image-rendering: pixelated; }
+.go-join .qr-url { text-align: left; font-size: 16px; }
+details.card summary { cursor: pointer; font-weight: 700; color: var(--muted); }
+details.card[open] summary { margin-bottom: 12px; }
+@media (max-width: 600px) { .checks li { grid-template-columns: 26px 1fr; } .go-join { grid-template-columns: 1fr; } }
