@@ -16,7 +16,7 @@ const state = {
   followLive: true,
   lastSeq: 0,
   autoScroll: true,
-  votes: {},         // type -> true/false (my current vote)
+  votes: {},         // type -> time my vote was cast (ms), or false
   voted: {},         // type -> true if I voted at any point this talk
   betterTicket: null,
 };
@@ -34,11 +34,32 @@ function setConn(status) {
 
 function setTalk({ talkId, title, speaker }) {
   if (talkId && talkId !== state.talkId) {
+    const hadTalk = state.talkId !== null;
     state.talkId = talkId;
+    if (hadTalk) resetForNewTalk();
     loadVotes();
+    if (!title) loadRoomInfo(); // a new talk started after this phone joined
   }
   if (title) $('talkTitle').textContent = title;
   if (speaker !== undefined) $('talkSpeaker').textContent = speaker || '';
+}
+
+// A new talk in the same room: caption seq restarts at 1 and it has its own deck.
+function resetForNewTalk() {
+  state.lastSeq = 0;
+  state.slides = [];
+  state.liveN = 0;
+  state.viewN = 0;
+  state.followLive = true;
+  capEl.replaceChildren();
+  $('interim').textContent = '';
+  $('slideImg').hidden = true;
+  $('slideImg').removeAttribute('src');
+  $('slideEmpty').hidden = false;
+  $('slideLabel').textContent = '—';
+  $('slideLive').hidden = true;
+  $('zoom').hidden = true;
+  for (const t of Object.keys(lastCount)) lastCount[t] = 0;
 }
 
 async function loadRoomInfo() {
@@ -192,31 +213,47 @@ function showHint(text, actionLabel, action, ms = 8000) {
 function hideHint() { $('hint').hidden = true; }
 
 // ---------- votes: one per phone per type, tap again to take it back ----------
+const VOTE_TTL = 10 * 60 * 1000; // server drops votes after 10 min (CONTRACT.md)
+const lastCount = {};
 const voteKey = () => `pulse.votes.${state.talkId || room}`;
+const isOn = (type) => typeof state.votes[type] === 'number' && Date.now() - state.votes[type] < VOTE_TTL;
+
 function loadVotes() {
   const saved = store.get(voteKey(), {});
-  state.votes = saved.votes || {};
+  state.votes = {};
+  for (const [t, ts] of Object.entries(saved.votes || {})) if (typeof ts === 'number') state.votes[t] = ts;
   state.voted = saved.voted || {};
+  expireVotes();
   renderVotes();
 }
+
+function expireVotes() {
+  let changed = false;
+  for (const t of Object.keys(state.votes)) {
+    if (state.votes[t] !== false && !isOn(t)) { state.votes[t] = false; changed = true; }
+  }
+  if (changed) { saveVotes(); renderVotes(); }
+}
+setInterval(expireVotes, 30000);
 function saveVotes() { store.set(voteKey(), { votes: state.votes, voted: state.voted }); }
 
-function renderVotes(counts = {}) {
+// Colour is never the only signal: the sub-label always says whether my vote counts.
+function renderVotes() {
   for (const b of document.querySelectorAll('.vote')) {
-    const on = !!state.votes[b.dataset.type];
+    const t = b.dataset.type;
+    const on = isOn(t);
     b.setAttribute('aria-pressed', String(on));
     b.classList.toggle('on', on);
-    if (counts[b.dataset.type] !== undefined) setVoteCount(b.dataset.type, counts[b.dataset.type]);
+    setVoteCount(t, lastCount[t] ?? 0);
   }
 }
 
 function setVoteCount(type, count) {
+  lastCount[type] = count;
   const b = document.querySelector(`.vote[data-type="${type}"]`);
   if (!b) return;
-  const sub = b.querySelector('.vote-sub');
   const base = type === 'cant_hear' ? "Can't hear" : 'the slides';
-  const on = !!state.votes[type];
-  sub.textContent = on ? (count > 1 ? `Counted · ${count} people` : 'Counted') : base;
+  b.querySelector('.vote-sub').textContent = isOn(type) ? (count > 1 ? `Counted · ${count} people` : 'Counted') : base;
 }
 
 async function sendVote(type, on) {
@@ -230,8 +267,9 @@ async function sendVote(type, on) {
 }
 
 async function toggleVote(type) {
-  const on = !state.votes[type];
-  state.votes[type] = on;
+  const prev = state.votes[type];
+  const on = !isOn(type);
+  state.votes[type] = on ? Date.now() : false;
   if (on) state.voted[type] = true;
   saveVotes();
   renderVotes();
@@ -252,7 +290,7 @@ async function toggleVote(type) {
     if (typeof r?.count === 'number') setVoteCount(type, r.count);
   } catch {
     // Undo so the button never lies about what the server has.
-    state.votes[type] = !on;
+    state.votes[type] = prev ?? false;
     saveVotes();
     renderVotes();
     showHint("Couldn't send that. Check your connection and tap again.");
