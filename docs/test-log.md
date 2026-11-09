@@ -2,6 +2,17 @@
 
 What has been tested, how, what broke and what is still open. Newest first. Add to it when you test something.
 
+## 2026-11-09: question-group lifecycle, automated live smoke (Gitar)
+
+**Setup:** `mise x node@22.23.4 -- npm ci`, then `mise x node@22.23.4 -- npm run check` and `mise x node@22.23.4 -- npm run smoke`.
+
+| Check | Result |
+| --- | --- |
+| Repository JavaScript syntax checks and `booths-check`, `extras-check`, `find-check`, `relay-check`, `tickets-check` | passed |
+| Local live-server smoke: the open tech socket sees the old talk's group, receives an empty group list after the next talk starts, and a late-joining tech socket gets an empty snapshot | passed |
+
+This was automated local-server QA; browser and real-device QA were not rerun.
+
 ## 2026-11-09: answeredSeq persistence, automated (Gitar)
 
 **Setup:** `mise x node@22.23.4 -- npm ci`, then `mise x node@22.23.4 -- npm run check` and `mise x node@22.23.4 -- npm run smoke`.
