@@ -43,7 +43,7 @@ app.get('/present/:room', auth.page('SPEAKER_KEY'), page('present.html'));
 const keyedFiles = /^\/(tech|mic|present)(\.html)?$/i;
 app.use((req, res, next) => {
   let p;
-  try { p = decodeURIComponent(req.path); } catch { return res.status(400).end(); }
+  try { p = path.posix.normalize(decodeURIComponent(req.path)).replace(/\/+/g, '/'); } catch { return res.status(400).end(); }
   return keyedFiles.test(p) ? res.status(404).end() : next();
 });
 app.use(express.static(pub, { extensions: ['html'], index: false }));

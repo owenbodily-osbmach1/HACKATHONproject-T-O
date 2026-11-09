@@ -36,7 +36,8 @@ function jaccard(a, b) {
   let shared = 0;
   for (const w of a) if (b.has(w)) shared++;
   const small = Math.min(a.size, b.size);
-  return shared >= Math.min(3, small) ? shared / small : 0; // short questions group only if identical in content
+  if (small < 3) return a.size === b.size && shared === small ? 1 : 0; // short questions group only if identical in content
+  return shared >= 3 ? shared / small : 0;
 
 }
 
@@ -70,10 +71,9 @@ function memoryQuestions(talkId) {
 
 // transcript rows from the room's rolling buffer while the talk is live.
 function memoryCaptions(talkId, from) {
-  const talk = state.talks.get(talkId);
-  const room = talk && state.rooms.get(String(talk.room));
-  if (!room) return null;
-  return room.captions
+  const lines = state.transcripts.get(talkId);
+  if (!lines || !lines.length) return null;
+  return lines
     .filter((c) => c.talkId === talkId && (from == null || c.seq >= from))
     .map((c) => ({ talkId: c.talkId, seq: c.seq, text: c.text, ts: c.ts }));
 }
@@ -254,7 +254,7 @@ function register(app, ctx) {
     const from = Number.isFinite(parsed) ? parsed : null;
 
     let rows;
-    const buffered = isLive(talkId) ? memoryCaptions(talkId, from) : null;
+    const buffered = memoryCaptions(talkId, from); // full transcript held in memory; ES covers talks from before a restart
     if (buffered) {
       rows = buffered;
     } else {
