@@ -13,6 +13,17 @@ What has been tested, how, what broke and what is still open. Newest first. Add 
 
 Builds tested: `poc/one-room` @ `4593204` = `ty/backend` @ `19c5573` (#7) + `ui/tech-console` (#8). Not tested yet: Ty's later backend commits (`4af33f5` demo simulator, `b5910df` question grouping), and the B&W redesign (#10) on real phones (headless checks are below).
 
+## 2026-11-09: `/find` + schedule search, automated (`scripts/find-check.js`)
+
+**Setup:** `node scripts/find-check.js` starts `server/index.js` as a child on a free port with `SPEAKER_KEY=sk TECH_KEY=tk` and every `ELASTIC_*` / `OTEL_EXPORTER_OTLP_*` variable deleted, so only the in-memory fallback runs.
+
+All passed:
+- `GET /find` → 200, rendered search box.
+- `POST /api/talks` (`room 1`) then three `caption` messages from a keyed mic socket → attendee received them.
+- `GET /api/find?q=kubernetes` → 200, `sessions[]` non-empty with `id`, `title`, `start`, `location`; `said[]` contains the relaying talk's "Kubernetes agents" line.
+- `GET /api/find/next?clientId=c1` → 200, non-empty, every row has a `because` line ≤ 120 chars.
+- Not covered: the Elasticsearch path (RRF over `pulse-schedule` / `pulse-captions`, schedule indexing on start). Needs a run against the Radar cluster.
+
 ## 2026-11-09 12:10–12:40: design pass across screen sizes, fake data (Claude)
 
 **Setup:** branch `ui/bw-design-preview` (#10) merged with `main` @ `6635fa0`, `python3 -m http.server` in `public/`, headless Chrome (Playwright), `?mock=1` on every page.
