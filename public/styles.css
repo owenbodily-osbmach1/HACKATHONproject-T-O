@@ -279,3 +279,12 @@ button:disabled { opacity: .4; cursor: default; }
 .q-meta { margin: 2px 0 6px; color: var(--muted); font-size: 13px; }
 .q-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .q-item form { margin-top: 8px; }
+
+/* ---------- slide relay /relay/:room (presenting computer) ---------- */
+.relay-wrap .card { grid-column: 1 / -1; }
+.relay-ctl { display: flex; gap: 10px; flex-wrap: wrap; }
+.relay-previews { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.relay-previews figure { margin: 0; }
+.relay-previews figcaption { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.relay-previews video, .relay-previews img { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: #000; border: 1px solid var(--line); border-radius: 10px; }
+@media (max-width: 640px) { .relay-previews { grid-template-columns: 1fr; } }
