@@ -16,6 +16,10 @@ spec:
     metadata:
       labels:
         app: app
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
     spec:
       # Pulse never calls the Kubernetes API, so it gets no service account token (Radar check).
       automountServiceAccountToken: false
