@@ -41,7 +41,7 @@ Pulse treats every room like a service: SLO-style signals, an on-call crew, quor
 - Claim, fix, then answer "Better now?" on a phone.
 - End the talk and open the report; search the transcript by meaning.
 
-Full run of show: [`docs/DEMO.md`](docs/DEMO.md). Timings and narration: TBD(DEMO.md).
+Full run of show with timings: [`docs/DEMO.md`](docs/DEMO.md).
 
 ## How we used the sponsor tools
 
@@ -67,7 +67,7 @@ Full run of show: [`docs/DEMO.md`](docs/DEMO.md). Timings and narration: TBD(DEM
 
 **Where:** Manifests in `deploy/`. Cluster overlay in `deploy-byo/`. Argo CD Application in `argocd/application-byo.yaml`. Image build and manifest bump in `.github/workflows/deploy.yaml`.
 
-**Evidence:** Checks before: 197/247 passing, 1 High, 10 Medium. After pod hardening (no service-account token, read-only root FS, no privilege escalation): TBD(radar check). The AI investigation found (1) a readiness-probe failure at pod start, fixed with a startup probe, and (2) a recurring Elasticsearch write timeout: ELSER inference on a cold model exceeded our 3 s abort, so writes now use a 15 s timeout. Radar also showed metrics-server was missing; we installed it. The pod uses about 11m CPU and 35 MiB against requests of 100m and 128 MiB; right-sizing is TBD(decision).
+**Evidence:** Checks before: 197/247 passing, 1 High, 10 Medium. After pod hardening (no service-account token, read-only root FS, no privilege escalation), our namespace `team-pulse` shows 0 Critical, 0 High, 0 security and 0 efficiency findings. The remaining reliability findings: missing probes on the tunnel (fixed with cloudflared's `/ready`), and single replica on the app, dismissed in Radar's audited register as accepted by design (in-memory rooms; next step is cross-pod fan-out). The AI investigation found (1) a readiness-probe failure at pod start, fixed with a startup probe, and (2) a recurring Elasticsearch write timeout: ELSER inference on a cold model exceeded our 3 s abort, so writes now use a 15 s timeout. Radar also showed metrics-server was missing; we installed it. The pod used about 11m CPU and 35 MiB against requests of 100m and 128 MiB. We load-tested one pod directly: 500 of 500 phones connected, about 51 captions each in 30 s, peak about 52m CPU and 41 MiB. Decision: requests 50m / 64Mi, limits 500m / 256Mi.
 
 GitOps: a GitHub Action builds a multi-arch image to GHCR, bumps `deploy/kustomization.yaml`, and Argo CD syncs `deploy-byo`.
 
@@ -77,7 +77,7 @@ GitOps: a GitHub Action builds a multi-arch image to GHCR, bumps `deploy/kustomi
 
 **Where:** Review instructions in `.gitar/review/pulse.md`; rules in `.gitar/rules/`. Every change lands as a PR.
 
-**Evidence:** Real catches today include a malformed WebSocket upgrade URL that crashed the single pod; keyed pages served without a key through static files and through percent-encoded or `//` paths; and a deploy change that would have deleted the hackathon HTTPRoute. PR count, Gitar findings and median time to merge: TBD(gh api: PRs, Gitar findings, median time to merge).
+**Evidence:** Real catches today include a malformed WebSocket upgrade URL that crashed the single pod; keyed pages served without a key through static files and through percent-encoded or `//` paths; and a deploy change that would have deleted the hackathon HTTPRoute. By 12:45 PM: 24 pull requests, 18 merged, 53 inline Gitar findings, median 13 minutes from open to merge. Every PR was reviewed by Gitar and merged by the other person.
 
 ## Architecture
 
