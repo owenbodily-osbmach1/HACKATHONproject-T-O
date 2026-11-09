@@ -11,4 +11,4 @@ resources:
 images:
   - name: app
     newName: ghcr.io/owenbodily-osbmach1/hackathonproject-t-o
-    newTag: "cda8656"
+    newTag: "bbe2204"
