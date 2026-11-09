@@ -76,7 +76,7 @@ The Deployment uses `strategy: Recreate` so two pods never overlap during a roll
 | Phone sleeps or changes network | The socket closes. The phone reconnects with backoff (1, 2, 4 s, up to 10 s), keeps the last captions, and receives the backlog on join. Dead audio-out sockets are found by ping every 20 s. |
 | Podium laptop loses the network or reloads | Captions and audio stop. `room_status` shows the caption gap and a null or stale mic level. The tech console sees the room degrade. The audio sender is replaced when the mic page reconnects. |
 | Pod restarts | Rooms, tickets, votes, question groups and talks in memory are lost. Phones reconnect but the backlog is empty. Elasticsearch keeps previously written captions and signals. The talk must be started again. |
-| Elasticsearch write is slow | Writes use a 15 s timeout and are never awaited. A cold ELSER model no longer aborts the write at 3 s. |
+| Elasticsearch write is slow | Writes use a 15 s timeout and are never awaited. A cold inference model no longer aborts the write at 3 s. |
 | Slow phone on audio | Frames are dropped once its buffer passes 64 KiB instead of growing memory without bound. |
 | Malformed WebSocket upgrade | The upgrade handler parses the URL defensively and rejects the connection, so it cannot crash the pod. |
 

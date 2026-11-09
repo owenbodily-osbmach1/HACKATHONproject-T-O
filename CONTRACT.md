@@ -15,7 +15,7 @@ Plain HTML + vanilla JS, no build step. Node 20, Express + `ws`. One pod (`repli
 | `scripts/` | Ty | `es-setup.js` (index mappings), `loadtest.js` |
 | `CONTRACT.md`, `.gitar/` | Both | Changes need a note in the PR description |
 
-Every change goes in as a pull request. Gitar reviews it; the *other* person merges.
+Every change goes in as a pull request. Gitar reviews it; merge only after Gitar approves.
 
 ## HTTP routes
 
