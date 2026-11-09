@@ -35,7 +35,9 @@ function setConn(status) {
 function setTalk({ talkId, title, speaker }) {
   if (talkId && talkId !== state.talkId) {
     state.talkId = talkId;
+    state.lastSeq = 0;
     loadVotes();
+    if (!title) loadRoomInfo(); // a new talk started after this phone joined
   }
   if (title) $('talkTitle').textContent = title;
   if (speaker !== undefined) $('talkSpeaker').textContent = speaker || '';
