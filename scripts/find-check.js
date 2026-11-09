@@ -149,6 +149,16 @@ async function main() {
   assert.equal(schedule._test.instant('2026-11-10T10:45:00-08:00'), Date.parse('2026-11-10T18:45:00Z'),
     'offset-qualified schedule times must keep their stated offset');
 
+  // Simulator replays repeat captions; "said" results keep only the highest-ranked normalized copy.
+  const saidDupes = schedule._test.groupSaid([
+    { talkId: 't1', seq: 1, text: 'When the Uplink drops!' },
+    { talkId: 't1', seq: 2, text: '  when   the uplink drops ' },
+    { talkId: 't1', seq: 3, text: 'A different line.' },
+    { talkId: 't2', seq: 4, text: 'WHEN THE UPLINK DROPS' },
+  ], 10);
+  assert.deepStrictEqual(saidDupes.map((row) => row.text), ['When the Uplink drops!', 'A different line.'],
+    'said results must dedupe normalized duplicate captions and keep the highest-ranked row');
+
   const port = await freePort();
   const base = `http://${HOST}:${port}`;
   const env = { ...process.env, PORT: String(port), SPEAKER_KEY: 'sk', TECH_KEY: 'tk', SIGNIN: 'off' };

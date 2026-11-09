@@ -5,6 +5,7 @@ const state = require('./state');
 const es = require('./es');
 const log = require('./log');
 const otel = require('./otel');
+const { dedupeByText } = require('./text');
 
 const MAX_TEXT = 280;
 
@@ -138,14 +139,17 @@ function memorySearch(q, talkId) {
 }
 
 const SOURCE = ['talkId', 'seq', 'text', 'ts'];
+const SEARCH_TIMEOUT_MS = 8000;
+
+function memorySearchRows(q, talkId, active) {
+  const rows = dedupeByText(memorySearch(q, talkId));
+  countHits(active, rows.length);
+  return rows;
+}
 
 async function searchCaptions(q, talkId) {
   if (!es.enabled) {
-    return otel.span('pulse.search.memory', talkAttrs(talkId), (active) => {
-      const rows = memorySearch(q, talkId);
-      countHits(active, rows.length);
-      return rows;
-    });
+    return otel.span('pulse.search.memory', talkAttrs(talkId), (active) => memorySearchRows(q, talkId, active));
   }
   const filter = talkId ? [{ term: { talkId } }] : [];
   const hybrid = {
@@ -165,22 +169,26 @@ async function searchCaptions(q, talkId) {
   return otel.span('pulse.search.es', esAttrs(talkId), async (active) => {
     let res;
     try {
-      res = await es.raw('POST', '/pulse-captions/_search', hybrid);
-    } catch {
-      // No inference endpoint or an older cluster: plain text match.
-      return otel.span('pulse.search.es', esAttrs(talkId), async (inner) => {
-        const rows = await es.search('pulse-captions', {
+      res = await es.raw('POST', '/pulse-captions/_search', hybrid, SEARCH_TIMEOUT_MS);
+    } catch (err) {
+      // Network failure or timeout: Elasticsearch is unreachable, so use the room buffers right away.
+      if (!err || !err.status) return memorySearchRows(q, talkId, active);
+      // HTTP error (no inference endpoint, older cluster): plain text match.
+      const rows = await otel.span('pulse.search.es', esAttrs(talkId), async (inner) => {
+        const out = dedupeByText(await es.search('pulse-captions', {
           size: 20,
           _source: SOURCE,
           query: { bool: { must: [{ match: { text: q } }], filter } },
-        });
-        countHits(inner, rows.length);
-        return rows;
+        }));
+        countHits(inner, out.length);
+        return out;
       });
+      if (rows.length) return rows;
+      return memorySearchRows(q, talkId, active);
     }
-    const hits = (res && res.hits && Array.isArray(res.hits.hits)) ? res.hits.hits.length : 0;
-    countHits(active, hits);
-    return ((res && res.hits && res.hits.hits) || []).map((h) => h._source).filter(Boolean);
+    const rows = dedupeByText(((res && res.hits && res.hits.hits) || []).map((h) => h._source).filter(Boolean));
+    countHits(active, rows.length);
+    return rows;
   });
 }
 

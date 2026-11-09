@@ -2,6 +2,7 @@
 // Public read-only search. Elasticsearch is best-effort; the in-memory fallback never throws.
 const schedule = require('./schedule.json');
 const state = require('./state');
+const { dedupeByText, normalizeText } = require('./text');
 
 const INDEX = 'pulse-schedule';
 const CAPTIONS = 'pulse-captions';
@@ -147,7 +148,7 @@ async function esSessions(ctx, q, fromMs, limit) {
           },
         },
       ]),
-    });
+    }, 8000);
     return ((out && out.hits && out.hits.hits) || []).map((h) => h._source).filter(Boolean);
   } catch {
     return null;
@@ -189,16 +190,20 @@ function decorateSaid(row) {
   };
 }
 
-// Relevance order is kept; at most two lines per talk, then the requested total.
+// Relevance order is kept; duplicate text is dropped, at most two lines per talk, then the requested total.
 function groupSaid(rows, limit) {
   const out = [];
   const perTalk = new Map();
+  const seen = new Set();
   for (const row of rows) {
     const talkId = String(row.talkId || '');
     if (!talkId) continue;
     if (out.length >= limit) break;
+    const key = normalizeText(row.text);
+    if (!key || seen.has(key)) continue;
     const n = perTalk.get(talkId) || 0;
     if (n >= 2) continue;
+    seen.add(key);
     perTalk.set(talkId, n + 1);
     out.push(decorateSaid(row));
   }
@@ -214,7 +219,7 @@ async function esSaid(ctx, q, limit) {
         { standard: { query: { match: { text: q } } } },
         { standard: { query: { semantic: { field: 'text_sem', query: q } } } },
       ]),
-    });
+    }, 8000);
     return ((out && out.hits && out.hits.hits) || []).map((h) => h._source).filter(Boolean);
   } catch {
     return null;
@@ -266,7 +271,7 @@ function heardBy(ctx, clientId) {
     }
   }
   lines.sort((a, b) => a.ts - b.ts);
-  return lines.slice(-MAX_HEARD).map((l) => l.text);
+  return dedupeByText(lines.slice(-MAX_HEARD).map((l) => l.text));
 }
 
 // The caption line with the most shared words with this session.
