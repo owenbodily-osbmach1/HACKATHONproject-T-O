@@ -9,7 +9,7 @@ const room = location.pathname.match(/^\/relay\/([^/?#]+)/)?.[1] || params.get('
 const key = params.get('key') || '';
 
 const CFG = {
-  intervalMs: Number(params.get('every') || 2) * 1000,
+  intervalMs: Math.round(Number(params.get('every') || 0.5) * 1000),
   changeThreshold: 0.02,  // mean pixel difference vs last sent slide that counts as "new slide"
   stableThreshold: 0.006, // difference between two samples below which the picture is "still"
   maxMovingGapMs: 10000,  // a slide that never stops moving (video) is sent at most every 10 s
@@ -17,6 +17,10 @@ const CFG = {
   quality: 0.8,
   uploadUrl: `/api/rooms/${encodeURIComponent(room)}/slide-frame`,
   key,
+  // Only send while the shared tab/window is full screen (Slideshow / Present mode), so the
+  // editor, thumbnails and speaker notes never reach phones. Set per share in start().
+  requireFullscreen: params.get('all') !== '1',
+  screenAspect: screen.width / screen.height,
 };
 
 let stream = null;
@@ -60,7 +64,8 @@ async function start() {
   track.addEventListener('ended', () => stop('You stopped sharing.'));
 
   const surface = track.getSettings?.().displaySurface;
-  if (surface === 'browser') status('Sharing a browser tab. If your slides are in another window, press Stop and pick that window.');
+  // A whole screen (projector display) is always "presenting"; a tab or window only when full screen.
+  const cfg = { ...CFG, requireFullscreen: CFG.requireFullscreen && surface !== 'monitor' };
 
   $('live').srcObject = stream;
   $('live').play().catch(() => {});
@@ -71,10 +76,10 @@ async function start() {
   if (window.MediaStreamTrackProcessor) {
     // Frames flow straight into the worker, so a hidden window keeps sampling.
     const processor = new MediaStreamTrackProcessor({ track });
-    worker.postMessage({ type: 'start', readable: processor.readable, cfg: CFG }, [processor.readable]);
+    worker.postMessage({ type: 'start', readable: processor.readable, cfg }, [processor.readable]);
   } else {
     // Fallback: grab a frame from the <video> on each tick and hand it to the worker.
-    worker.postMessage({ type: 'start', cfg: CFG });
+    worker.postMessage({ type: 'start', cfg });
     fallbackTimer = setInterval(async () => {
       const v = $('live');
       if (paused || v.readyState < 2) return;
@@ -90,7 +95,9 @@ async function start() {
   $('ctl').hidden = false;
   $('pauseBtn').textContent = '❚❚ Pause';
   setState('Watching slides', 'live');
-  status(`Watching. A new slide reaches phones about ${Math.round(CFG.intervalMs / 1000) * 2} s after you click.`);
+  status(cfg.requireFullscreen
+    ? 'Watching. Press Slideshow (full screen) in your slides: only slides shown full screen go to phones.'
+    : 'Watching the whole screen. A new slide reaches phones about a second after you click.');
 }
 
 function onWorker(e) {
@@ -107,6 +114,11 @@ function onWorker(e) {
     status('Slide sent to phones.');
   } else if (m.type === 'skip' && m.reason === 'moving') {
     status('Slide is still changing (animation or video)…');
+  } else if (m.type === 'skip' && m.reason === 'not-presenting') {
+    setState('Waiting for slideshow', 'reconnecting');
+    status('Not in Slideshow / full screen, so nothing is sent. Phones keep the last presented slide.');
+  } else if (m.type === 'presenting') {
+    setState('Watching slides', 'live');
   } else if (m.type === 'skip' && m.reason === 'blank') {
     status('Screen looks blank. Waiting for a slide…');
   } else if (m.type === 'error') {
