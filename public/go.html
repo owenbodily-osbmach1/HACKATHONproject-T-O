@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pulse · Go live</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/go.css">
+</head>
+<body class="podium">
+  <main class="go-wrap">
+    <header class="podium-top">
+      <div>
+        <p class="eyebrow">Pulse control · on the presenting computer · never projected</p>
+        <h1 id="roomTitle">Room —</h1>
+      </div>
+      <span class="conn" id="conn"><span class="dot"></span><span class="conn-word">Connecting…</span></span>
+    </header>
+
+    <p class="warn" id="warn" role="alert" hidden></p>
+
+    <section class="card go-hero">
+      <button type="button" class="go-btn" id="goBtn">▶ Go live</button>
+      <button type="button" class="go-btn stop" id="endBtn" hidden>■ End talk <small>(saves the transcript)</small></button>
+      <p class="go-hint" id="goHint">One click: starts captions and listen-in from this computer's mic, and shares your slides with phones. When Chrome asks, pick your <b>Google Slides / PowerPoint tab</b> and click <b>Share</b>, then <b>allow the microphone</b>. Then press <b>Slideshow</b> in your slides.</p>
+      <p class="done" id="doneLine" hidden></p>
+    </section>
+
+    <section class="card">
+      <h2>Status</h2>
+      <ul class="checks">
+        <li id="ckServer"><span class="ck"></span><b>Server</b><span class="ck-detail">Connecting…</span></li>
+        <li id="ckMic"><span class="ck"></span><b>Microphone</b><span class="ck-detail">Not started</span><span class="mini-meter"><span id="meterBar"></span></span></li>
+        <li id="ckCaptions"><span class="ck"></span><b>Captions</b><span class="ck-detail">Not started</span></li>
+        <li id="ckListen"><span class="ck"></span><b>Listen-in</b><span class="ck-detail">Not started</span></li>
+        <li id="ckSlides"><span class="ck"></span><b>Slides</b><span class="ck-detail">Not shared</span><button type="button" class="ghost small" id="shareBtn" hidden>Share slides</button></li>
+        <li id="ckPhones"><span class="ck"></span><b>Phones</b><span class="ck-detail">0 connected</span></li>
+      </ul>
+      <div class="go-row" id="slideCtl" hidden>
+        <button type="button" class="ghost" id="pauseBtn">❚❚ Pause slides</button>
+        <button type="button" class="ghost" id="sendNowBtn">⟳ Send slide now</button>
+        <img id="lastSlide" alt="Last slide sent to phones" hidden>
+      </div>
+    </section>
+
+    <section class="card go-join">
+      <div>
+        <h2>Join link (on the first slide)</h2>
+        <p class="qr-url" id="joinUrl">—</p>
+        <p class="hint-small">This link changes each time Pulse restarts. Ask Claude to "update the QR codes in the deck" after a restart.</p>
+      </div>
+      <div class="qr"><img id="qrImg" alt="QR code for the join link"></div>
+    </section>
+
+    <details class="card">
+      <summary>Settings (optional)</summary>
+      <div class="field-row">
+        <label>Talk title<input id="title" autocomplete="off" placeholder="Pulse demo"></label>
+        <label>Speaker<input id="speaker" autocomplete="off" placeholder="Tyler"></label>
+      </div>
+      <div class="field-row">
+        <label>Microphone<select id="micSelect"><option value="">Default microphone</option></select></label>
+      </div>
+    </details>
+  </main>
+  <script type="module" src="/go.js"></script>
+</body>
+</html>

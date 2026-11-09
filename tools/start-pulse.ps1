@@ -82,13 +82,15 @@ Start-Sleep -Seconds 4
 $mic = "$url/mic/$room`?key=$speakerKey&base=$url"
 $tech = "$url/tech?key=$techKey&rooms=$room"
 $relay = "$url/relay/$room`?key=$speakerKey"
+$go = "$url/go/$room`?key=$speakerKey"
 $phone = "$url/r/$room"
 
 $chrome = @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe", "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
-if ($chrome) { Start-Process $chrome -ArgumentList "--new-window `"$mic`" `"$tech`" `"$relay`"" } else { Start-Process $mic; Start-Process $tech; Start-Process $relay }
+if ($chrome) { Start-Process $chrome -ArgumentList "--new-window `"$go`" `"$tech`"" } else { Start-Process $go; Start-Process $tech }
 
 @"
 Pulse is running.
+  >>> GO LIVE (one button):  $go
   Phone page (QR code):  $phone
   Podium mic page:       $mic
   Tech screen:           $tech
