@@ -57,7 +57,28 @@ function validate(body) {
   return { ok: !Object.keys(errors).length, errors, value: out };
 }
 
-const signedIn = (vid) => !!vid && people.has(vid);
+// Seen = signed in and active (page, socket, vote, question). Used to pick who may be dropped when full.
+function signedIn(vid) {
+  const p = vid && people.get(vid);
+  if (!p) return false;
+  p.seen = Date.now();
+  return true;
+}
+
+// The caller's network address for the per-network limit. A forwarded address is trusted only when the
+// request comes from a local proxy (cloudflared on this machine, or the cluster gateway): Cloudflare
+// overwrites cf-connecting-ip at its edge, and the gateway appends the real peer as the LAST
+// x-forwarded-for entry. A client talking to us directly can't choose its bucket (Gitar).
+function clientAddress(req) {
+  const peer = String(req.socket.remoteAddress || '').replace(/^::ffff:/, '');
+  const viaProxy = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|fc|fd)/i.test(peer);
+  if (!viaProxy) return peer;
+  const cf = req.get('cf-connecting-ip');
+  if (cf) return cf.trim();
+  const xff = String(req.get('x-forwarded-for') || '').split(',').map((v) => v.trim()).filter(Boolean);
+  return xff.length ? xff[xff.length - 1] : peer;
+}
+const IDLE_MS = 30 * 60 * 1000;
 
 // For WebSocket upgrades (no Express req): read the visitor cookie from the raw request.
 function allowSocket(req) {
@@ -119,7 +140,7 @@ module.exports = {
     if (!ENABLED) return next();
     const vid = res.locals.vid;
     const p = vid && people.get(vid);
-    if (p) { addToRoom(vid, p, String(req.params.room)); return next(); }
+    if (p) { p.seen = Date.now(); addToRoom(vid, p, String(req.params.room)); return next(); }
     res.sendFile(require('path').join(__dirname, '..', 'public', 'join.html'));
   },
 
@@ -139,7 +160,7 @@ module.exports = {
       const vid = stats.visitorFromHeaders(req.headers);
       if (!vid) return res.status(400).json({ error: 'no_visitor', message: 'Open the room link (scan the QR code) first.' });
       const now = Date.now();
-      const ip = String(req.get('cf-connecting-ip') || (req.get('x-forwarded-for') || '').split(',')[0] || req.socket.remoteAddress || '').trim();
+      const ip = clientAddress(req);
       const fromIp = (ipTries.get(ip) || []).filter((t) => now - t < 60000);
       if (fromIp.length >= IP_LIMIT) return res.status(429).json({ error: 'too_many', message: 'Too many sign-ins from this network. Try again in a minute.' });
       fromIp.push(now);
@@ -154,12 +175,17 @@ module.exports = {
       if (!ok) return res.status(400).json({ error: 'invalid', fields: errors });
       const prev = people.get(vid);
       if (!prev && people.size >= MAX_PEOPLE) {
-        // Full: drop the oldest sign-in rather than locking every new phone out (Gitar).
-        const [oldVid, old] = people.entries().next().value;
-        people.delete(oldVid);
-        for (const r of old.rooms) roomPeople.get(r)?.delete(oldVid);
+        // Full: drop the longest-idle sign-in (not seen for 30 min), never one that is in a talk
+        // right now. If everyone is active, new phones wait (Gitar).
+        let idleVid = null;
+        let idleSeen = Infinity;
+        for (const [v, q] of people) if ((q.seen || q.at) < idleSeen) { idleSeen = q.seen || q.at; idleVid = v; }
+        if (!idleVid || now - idleSeen < IDLE_MS) return res.status(503).json({ error: 'full', message: 'Sign-in is full right now. Try again in a few minutes.' });
+        const old = people.get(idleVid);
+        people.delete(idleVid);
+        for (const r of old.rooms) roomPeople.get(r)?.delete(idleVid);
       }
-      const p = { ...value, at: prev ? prev.at : now, rooms: prev ? prev.rooms : new Set() };
+      const p = { ...value, at: prev ? prev.at : now, seen: now, rooms: prev ? prev.rooms : new Set() };
       people.set(vid, p);
       addToRoom(vid, p, room);
       if (room) ctx.hub.send(room, stats.statsMessage(room)); // counts move right away

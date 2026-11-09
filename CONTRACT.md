@@ -149,7 +149,7 @@ Set `inference_id` explicitly from `ES_INFERENCE_ID`. If inference isn't availab
 | Method | Path | Body | Returns |
 | --- | --- | --- | --- |
 | GET | `/r/:room` | — | the sign-in form (`public/join.html`) until this phone's `pulse_v` cookie has signed in, then the audience page. `Cache-Control: no-store`. |
-| POST | `/api/signin` | `{room, first, last, company, email}` | `{ok}` · `400 {error:'invalid', fields:{first?, last?, company?, email?}}` · `400 no_visitor` (no cookie: open the room link first) · `429` (10 tries / min per phone, 120 / min per network address) |
+| POST | `/api/signin` | `{room, first, last, company, email}` | `{ok}` · `400 {error:'invalid', fields:{first?, last?, company?, email?}}` · `400 no_visitor` (no cookie: open the room link first) · `429` (10 tries / min per phone, 120 / min per network address: the socket peer, or the proxy-set `cf-connecting-ip` / last `x-forwarded-for` entry only when the peer is a local proxy) · `503 full` only when all 50,000 sign-ins were active in the last 30 min (otherwise the longest-idle one is dropped) |
 | GET | `/api/rooms/:room/signins` (`TECH_KEY`) | — | `{room, count, enabled}`; `?format=csv` → `first_name, last_name, company_or_occupation, email, signed_in_at, source` (`source: demo` for the demo room's fictional crowd) |
 
 - Server checks: every field required, trimmed, control characters removed; names ≤ 60, company ≤ 100, email ≤ 254 and a basic `name@domain.tld` check. The phone never says it signed in: the server looks up its own record for the `pulse_v` cookie (httpOnly, 24 h).
