@@ -198,7 +198,10 @@ function register(app, ctx) {
     const q = questions.get(qid);
     if (!q) return res.status(404).json({ error: 'unknown question' });
     Object.assign(q, patch);
-    es.update('pulse-questions', q.qid, { hidden: !!q.hidden, answered: !!q.answered });
+    es.update('pulse-questions', q.qid, Object.assign(
+      { hidden: !!q.hidden, answered: !!q.answered },
+      q.answeredSeq != null ? { answeredSeq: q.answeredSeq } : {}
+    ));
     const g = groups.get(q.groupId);
     if (g && patch.answered) g.answered = true;
     sendTech(q.room, { t: 'question_update', qid: q.qid, pinned: q.pinned, hidden: q.hidden, answered: q.answered });
