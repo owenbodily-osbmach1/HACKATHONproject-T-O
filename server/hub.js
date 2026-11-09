@@ -12,6 +12,7 @@ const ROLES = new Set(['attendee', 'viewer', 'mic', 'present', 'tech', 'org']);
 const wss = new WebSocketServer({ noServer: true });
 const rooms = new Map(); // room -> Set<{ws, role, clientId, alive}>
 const handlers = new Map(); // t -> Set<fn>
+const heardRooms = new Map(); // attendee clientId -> Set(room) joined while connected
 
 let ctx = null;
 let pingTimer = null;
@@ -157,6 +158,12 @@ function join(ws, room, role, clientId) {
   if (!set) rooms.set(room, (set = new Set()));
   set.add(rec);
 
+  if (role === 'attendee' && clientId) {
+    let heard = heardRooms.get(clientId);
+    if (!heard) heardRooms.set(clientId, (heard = new Set()));
+    heard.add(room);
+  }
+
   const state = ctx.state.room(room);
   if (role === 'attendee' || role === 'viewer' || role === 'tech') {
     sendJson(ws, { t: 'caption_backlog', lines: state.captions.slice(-50) });
@@ -183,6 +190,7 @@ function join(ws, room, role, clientId) {
 module.exports = {
   attach(server, c) {
     ctx = c;
+    ctx.state.heardRooms = heardRooms;
     wss.on('error', () => {});
     if (pingTimer) return;
     pingTimer = setInterval(() => {
@@ -235,6 +243,11 @@ module.exports = {
     let n = 0;
     for (const rec of set) if (rec.role === 'attendee') n++;
     return n;
+  },
+
+  roomsJoined(clientId) {
+    const set = heardRooms.get(String(clientId));
+    return set ? [...set] : [];
   },
 
   on(t, fn) {

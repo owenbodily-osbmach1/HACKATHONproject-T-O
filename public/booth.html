@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pulse · Booth staff</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/booth.css">
+</head>
+<body class="techpage boothpage">
+  <header class="tech-top">
+    <div class="booth-head">
+      <p class="eyebrow">Booth staff</p>
+      <h1 id="boothName">Booth</h1>
+    </div>
+    <div class="counters" aria-label="Booth totals">
+      <span class="ctr"><b id="cVisits">—</b> visits</span>
+      <span class="ctr"><b id="cDevices">—</b> unique devices</span>
+      <span class="ctr amber"><b id="cOpen">0</b> waiting</span>
+    </div>
+    <div class="tech-tools">
+      <span class="conn" id="conn" data-status="connecting" role="status"><span class="dot"></span><span class="conn-word">Connecting…</span></span>
+      <button type="button" class="sound-btn" id="soundBtn" aria-pressed="false">🔕 Turn on sound</button>
+    </div>
+  </header>
+
+  <p class="warn tech-warn" id="warn" role="alert" hidden></p>
+
+  <main class="tech-main booth-main">
+    <section class="booth-queue-wrap" aria-labelledby="queueTitle">
+      <div class="queue-head">
+        <h2 id="queueTitle">Queue</h2>
+        <span class="queue-count" id="qCount"></span>
+      </div>
+      <div class="queue" id="queue" aria-live="polite" aria-relevant="additions text"></div>
+    </section>
+
+    <aside class="booth-side" aria-label="Booth report">
+      <section class="card">
+        <h2>Talks that sent people here</h2>
+        <ol class="ranked" id="fromTalks"></ol>
+      </section>
+      <section class="card">
+        <h2>What they heard</h2>
+        <ul class="ranked" id="topics"></ul>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="booth-foot">Buckets under 3 people are hidden to protect privacy.</footer>
+
+  <script type="module" src="/booth.js"></script>
+</body>
+</html>
