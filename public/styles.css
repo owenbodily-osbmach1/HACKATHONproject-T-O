@@ -55,8 +55,9 @@ button:disabled { opacity: .4; cursor: default; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .icon { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round; }
 
-.ghost { background: var(--bg); border: 1px solid var(--line-strong); border-radius: 10px; min-width: 44px; min-height: 40px; padding: 0 10px; font-weight: 700; }
-.pill { background: var(--blue); color: var(--on-color); border: 0; border-radius: 999px; padding: 8px 14px; font-weight: 800; min-height: 40px; }
+/* audit A3 #8: every touch target is at least 44x44 px. */
+.ghost { background: var(--bg); border: 1px solid var(--line-strong); border-radius: 10px; min-width: 44px; min-height: 44px; padding: 0 10px; font-weight: 700; }
+.pill { background: var(--blue); color: var(--on-color); border: 0; border-radius: 999px; padding: 8px 14px; font-weight: 800; min-width: 44px; min-height: 44px; }
 
 /* =====================================================================
    ATTENDEE PAGE /r/:room
@@ -96,7 +97,7 @@ button:disabled { opacity: .4; cursor: default; }
   border-radius: var(--radius); padding: 10px 12px;
 }
 .banner span { flex: 1; }
-.banner-x { background: transparent; border: 0; font-size: 18px; min-width: 40px; min-height: 40px; color: inherit; }
+.banner-x { background: transparent; border: 0; font-size: 18px; min-width: 44px; min-height: 44px; color: inherit; }
 
 /* ---------- groups: a big label with a colour bar, then the controls ---------- */
 .group { display: flex; flex-direction: column; gap: 8px; }
@@ -314,8 +315,9 @@ button:disabled { opacity: .4; cursor: default; }
    PODIUM MIC PAGE /mic/:room (laptop first; stacks on narrow screens)
    ===================================================================== */
 /* ---------- podium mic page /mic/:room (laptop) ---------- */
-.podium-wrap { max-width: 880px; margin: 0 auto; padding: 20px 16px 40px; display: grid; gap: 14px; grid-template-columns: 1fr; }
-@media (min-width: 820px) { .podium-wrap { grid-template-columns: 1.4fr 1fr; } .podium-top, .warn, .podium-wrap > .card:first-of-type { grid-column: 1 / -1; } }
+/* audit A3 #7: minmax(0, …) stops the grid column inheriting min-content width at 320 px. */
+.podium-wrap { max-width: 880px; margin: 0 auto; padding: 20px 16px 40px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 820px) { .podium-wrap { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); } .podium-top, .warn, .podium-wrap > .card:first-of-type { grid-column: 1 / -1; } }
 .podium-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .eyebrow { margin: 0; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
 .podium-top h1 { margin: 2px 0 0; font-size: 28px; }
@@ -324,7 +326,7 @@ button:disabled { opacity: .4; cursor: default; }
 .card h2 { margin: 0 0 10px; font-size: 15px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
 .field-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 .field-row label { flex: 1 1 220px; display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
-.field-row input, .field-row select { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px; min-height: 42px; padding: 0 10px; font: inherit; font-size: 16px; }
+.field-row input, .field-row select { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px; min-height: 44px; padding: 0 10px; font: inherit; font-size: 16px; }
 .big-btns button { width: 100%; min-height: 64px; border-radius: 14px; border: 0; font-size: 20px; font-weight: 800; }
 .big-btns small { font-weight: 500; font-size: 14px; opacity: .85; }
 .big-btns .start { background: var(--text); color: var(--on-color); }
@@ -337,7 +339,7 @@ button:disabled { opacity: .4; cursor: default; }
 .meter span[data-zone="low"] { background: var(--yellow); }
 .meter span[data-zone="hot"] { background: var(--red); }
 .meter-mark { position: absolute; top: 0; bottom: 0; left: calc(20 / 70 * 100%); width: 2px; background: var(--muted); opacity: .5; }
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0 0; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0 0; }
 .stats div { background: var(--raised); border-radius: 10px; padding: 8px 10px; }
 .stats dt { font-size: 12px; color: var(--muted); }
 .stats dd { margin: 2px 0 0; font-size: 20px; font-weight: 800; }
@@ -350,7 +352,7 @@ button:disabled { opacity: .4; cursor: default; }
 .qr-url { display: inline-block; color: var(--text); text-decoration: none; margin: 8px 0 0; font-size: 20px; font-weight: 800; word-break: break-all; }
 .hint-small { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 .hint-small code { color: var(--text); }
-.slide-ctl { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+.slide-ctl { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
 .ghost.big { min-height: 56px; min-width: 110px; font-size: 18px; font-weight: 800; }
 
 /* =====================================================================
@@ -370,17 +372,20 @@ button:disabled { opacity: .4; cursor: default; }
 .ctr.red { border-color: var(--red); } .ctr.red b { color: var(--red); }
 .ctr.amber { border-color: var(--yellow); } .ctr.amber b { color: var(--yellow); }
 .tech-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 15px; color: var(--muted); }
-.tech-tools select, .tech-tools input { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; min-height: 38px; padding: 0 8px; font: inherit; }
+.tech-tools select, .tech-tools input { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; min-height: 44px; padding: 0 8px; font: inherit; }
 .tech-tools input { width: 110px; }
-.sound-btn { background: var(--yellow); color: var(--on-color); border: 0; border-radius: 10px; min-height: 40px; padding: 0 14px; font-weight: 800; }
+.sound-btn { background: var(--yellow); color: var(--on-color); border: 0; border-radius: 10px; min-width: 44px; min-height: 44px; padding: 0 14px; font-weight: 800; }
 .sound-btn[aria-pressed="true"] { background: var(--bg); color: var(--text); border: 1px solid var(--line-strong); }
 .tech-warn { margin: 12px 18px 0; }
-.tech-main { display: grid; grid-template-columns: 1fr; gap: 16px; padding: 16px 18px 40px; }
-@media (min-width: 980px) { .tech-main { grid-template-columns: 1fr 400px; align-items: start; } .drawer { position: sticky; top: 76px; max-height: calc(100vh - 92px); overflow-y: auto; } }
+/* audit A3 #6: minmax(0, …) stops the board/drawer columns inheriting min-content width at 320 px. */
+.tech-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px 18px 40px; }
+@media (min-width: 980px) { .tech-main { grid-template-columns: minmax(0, 1fr) 400px; align-items: start; } .drawer { position: sticky; top: 76px; max-height: calc(100vh - 92px); overflow-y: auto; } }
 
 .blocks { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
 .all-clear { grid-column: 1 / -1; margin: 0; padding: 28px; text-align: center; font-family: var(--font-head); font-size: 24px; font-weight: 700; color: var(--text); background: var(--surface); border: 1px dashed var(--line-strong); border-radius: var(--radius); }
 .block { background: var(--surface); border: 2px solid var(--line); border-radius: var(--radius); overflow: hidden; cursor: pointer; }
+/* The card body is the keyboard-selectable area; keep its focus ring inside the clipped card. */
+.b-open:focus-visible { outline-offset: -3px; border-radius: 6px; }
 .block.red { border-color: var(--red); }
 .block.amber { border-color: var(--yellow); }
 .block.sel { box-shadow: 0 0 0 3px var(--blue); }
@@ -397,7 +402,7 @@ button:disabled { opacity: .4; cursor: default; }
 .act { flex: 1; min-height: 56px; border: 0; border-radius: 12px; font-size: 20px; font-weight: 800; }
 .act.claim { background: var(--red); color: var(--on-color); }
 .act.fixed { background: var(--text); color: var(--on-color); }
-.ghost.small { min-height: 36px; font-size: 14px; padding: 0 10px; }
+.ghost.small { min-height: 44px; font-size: 14px; padding: 0 10px; }
 .b-actions .ghost.small { min-height: 56px; }
 .ok-tiles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .ok-tile { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; min-height: 44px; padding: 0 14px; color: var(--text); font-size: 16px; font-weight: 700; }
@@ -423,13 +428,13 @@ button:disabled { opacity: .4; cursor: default; }
 .d-captions li { margin-bottom: 4px; }
 .muted { color: var(--muted); }
 .switches { display: grid; gap: 8px; }
-.switches label { display: flex; align-items: center; gap: 10px; font-size: 16px; min-height: 36px; }
+.switches label { display: flex; align-items: center; gap: 10px; font-size: 16px; min-height: 44px; }
 .switches input { width: 22px; height: 22px; accent-color: var(--accent); }
 .bcast { display: flex; gap: 8px; }
-.bcast input { flex: 1; min-width: 0; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px; min-height: 42px; padding: 0 10px; font: inherit; }
-.bcast button { background: var(--blue); color: var(--on-color); border: 0; border-radius: 10px; padding: 0 16px; font-weight: 800; }
+.bcast input { flex: 1; min-width: 0; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px; min-height: 44px; padding: 0 10px; font: inherit; }
+.bcast button { background: var(--blue); color: var(--on-color); border: 0; border-radius: 10px; padding: 0 16px; font-weight: 800; min-width: 44px; min-height: 44px; }
 .quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.chip { background: var(--raised); border: 1px solid var(--line-strong); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+.chip { display: inline-flex; align-items: center; background: var(--raised); border: 1px solid var(--line-strong); border-radius: 999px; padding: 6px 12px; font-size: 13px; min-height: 44px; }
 .flash { margin: 6px 0 0; color: var(--text); font-size: 14px; font-weight: 700; }
 .questions { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .q-item { background: var(--raised); border-radius: 10px; padding: 10px 12px; border-left: 4px solid var(--blue); }
@@ -462,3 +467,15 @@ button:disabled { opacity: .4; cursor: default; }
 .relay-previews figcaption { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
 .relay-previews video, .relay-previews img { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: #000; border: 1px solid var(--line); border-radius: 10px; }
 @media (max-width: 640px) { .relay-previews { grid-template-columns: 1fr; } }
+
+/* ---------- reduced motion (audit A3 #9) ----------
+   Users who ask their OS for less motion get no transitions, animations or smooth scroll. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .vote:active { transform: none; }
+}

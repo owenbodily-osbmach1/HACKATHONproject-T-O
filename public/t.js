@@ -3,6 +3,7 @@
 import { connectRoom } from '/lib/socket.js';
 
 const $ = (id) => document.getElementById(id);
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const NS = 'http://www.w3.org/2000/svg';
 
 function decodePart(value) {
@@ -476,7 +477,7 @@ function jumpToSeq(seq) {
   applyFilter();
   target.hidden = false;
   target.classList.add('tr-flash');
-  target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  target.scrollIntoView({ block: 'center', behavior: reduceMotion() ? 'auto' : 'smooth' });
   try { target.focus({ preventScroll: true }); } catch { target.focus(); }
   setTimeout(() => target.classList.remove('tr-flash'), 4000);
   setSearchNote(`Showing caption ${seq}${target.querySelector('.tr-ts')?.textContent ? ` at ${target.querySelector('.tr-ts').textContent}` : ''}.`);

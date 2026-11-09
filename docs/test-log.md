@@ -24,6 +24,21 @@ What has been tested, how, what broke and what is still open. Newest first. Add 
 
 Elasticsearch schedule indexing was not integration-tested.
 
+## 2026-11-09: accessibility fixes, automated (headless Chromium)
+
+**Setup:** `npm run check`; server on port 8180 (`PORT=8180 SPEAKER_KEY=sk TECH_KEY=tk node server/index.js`); managed headless Chromium at 320×800 plus `?mock=1` pages.
+
+| Check | Result |
+| --- | --- |
+| `npm run check` and the three `*-check.js` scripts | ✅ |
+| `/r/151`, `/tech?key=…`, `/mic/151?key=…`, `/present/151?key=…` | ✅ 200 |
+| Document scroll width at 320 px on `/r`, `/tech`, `/mic` | ✅ 320 px |
+| Tech ticket card: Enter selects the room; focus stays after Claim/Fixed | ✅ |
+| "Better now?" prompt: polite live region, focus on Yes, focus returns to the vote button | ✅ |
+| Listen-in after the audio socket closes + visibilitychange | ✅ context resumes, socket reopens |
+| A−/A+ and tech controls | ✅ 44×44 px minimum |
+| `prefers-reduced-motion: reduce` | ✅ transitions and smooth scroll disabled |
+
 ## 2026-11-09: attendee relay restoration and image-format contract, automated (Gitar)
 
 **Setup:** `mise x node@20 -- npm ci`, then `mise x node@20 -- npm run check`.
