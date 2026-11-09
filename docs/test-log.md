@@ -2,6 +2,26 @@
 
 What has been tested, how, what broke and what is still open. Newest first. Add to it when you test something.
 
+## 2026-11-09 14:00–14:20: talk stopped/live on phones, reconnect, rooms + demo room (Claude)
+
+**Bug (Owen's run):** ending the talk on Go live left phones saying **Live**. Two causes: the attendee page never handled the server's `talk` message (its red "Live" pill only meant "socket connected"), and Go live / the mic page resumed the room's talk even after it had ended, so going live again never flipped back.
+
+**Setup:** tested on `poc/one-room`, then replayed onto `main` for the PR; `node server/index.js` on port 8091 with test keys, no Elasticsearch. A script playing Go live's role (start or resume a live talk, captions over a `role=mic` socket, `/end`). Desktop app browser pane: `/r/151` and `/r/255` at 375×812, `/tech` at 1440×900.
+
+| Check | Result |
+| --- | --- |
+| Phone open, talk live → captions, pill **Live** | ✅ |
+| End talk → same open phone: pill **Ended**, "This talk has ended" card with Read the transcript / Download .txt, "Captions stopped at …" line, vote buttons disabled ("Talk ended"), header "Ended: <title>" | ✅ within a second, no reload |
+| Go live again → new talk, phone back to **Live**, "The talk is live again" hint, captions reset | ✅ |
+| Server restart with the phone open → **Reconnecting…**, then back on its own with the new state | ✅ |
+| Phone socket made silently dead (messages swallowed, no close), 60 lines sent meanwhile | ✅ heartbeat replaced the socket after ~45–65 s; all 63 lines present and in order (13 more than the 50-line backlog, filled from `/api/talks/:id/transcript?from=`) |
+| `/tech?rooms=151` finds room 255 (demo) by itself; tabs show Live/Ended, phones, "to fix"; keys 1/2 switch; `#room=255` reopens on that room | ✅ |
+| AV **End talk** (two taps) on 151 and on 255 → that room's phones show Ended; drawer shows Ended and "Stopped (talk ended)" | ✅ |
+| AV **Restart demo talk** → `/r/255` back to Live with the seeded transcript; the open ticket isn't doubled | ✅ |
+| `/t/<demo talk>` transcript page, `/go/151` page load | ✅ no page errors |
+| `npm run check` scripts (syntax, booths, relay, tickets) | ✅ |
+| Real **Go live** button (screen share + real mic) and real phones | not checked: the logic it runs (resume only a `live` talk) was exercised by the script |
+
 ## 2026-11-09: answeredSeq persistence, automated (Gitar)
 
 **Setup:** `mise x node@22.23.4 -- npm ci`, then `mise x node@22.23.4 -- npm run check` and `mise x node@22.23.4 -- npm run smoke`.

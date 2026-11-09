@@ -13,6 +13,11 @@ const clientId = getClientId();
 
 const state = {
   talkId: null,
+  talkStatus: null,  // 'waiting' | 'live' | 'ended' (from the server's `talk` message)
+  endedAt: null,
+  conn: 'connecting', // socket status
+  filling: false,    // fetching missed lines after a reconnect; live captions wait in `held`
+  held: [],
   settings: { captions: true, listen: true, slides: true },
   slides: [],        // every slide seen this talk, index = n - 1
   liveN: 0,          // slide the presenter is on
@@ -29,11 +34,80 @@ const state = {
 $('roomBadge').textContent = `Room ${room}`;
 document.title = `Pulse · Room ${room}`;
 
-const CONN_WORDS = { live: 'Live', connecting: 'Connecting…', reconnecting: 'Reconnecting…', unauthorized: 'Not allowed' };
+// The pill in the header says what the TALK is doing once the socket is up:
+// Live (red dot) only while the talk is live; Ended / Not started otherwise.
+// While the socket is down it says Connecting… / Reconnecting… instead.
+const CONN_WORDS = { connecting: 'Connecting…', reconnecting: 'Reconnecting…', unauthorized: 'Not allowed' };
+const TALK_WORDS = { live: 'Live', ended: 'Ended', waiting: 'Not started' };
 function setConn(status) {
+  state.conn = status;
+  renderPill();
+  if (status === 'live') stopPolling(); else startPolling();
+}
+function renderPill() {
   const el = $('conn');
-  el.dataset.status = status;
-  el.querySelector('.conn-word').textContent = CONN_WORDS[status] || status;
+  const pill = state.conn === 'live' ? (state.talkStatus || 'waiting') : state.conn;
+  el.dataset.status = pill;
+  el.querySelector('.conn-word').textContent = state.conn === 'live' ? TALK_WORDS[pill] || pill : CONN_WORDS[pill] || pill;
+}
+
+const fmtTime = (iso) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+};
+
+// ---------- talk status: waiting · live · ended ----------
+// The server sends `talk` on join and on every change (CONTRACT.md). Ending the talk on Go live,
+// the mic page or the AV console flips every phone to "Ended" right away; a new talk flips it back.
+function onTalk(m) {
+  const status = m.status || (m.talkId ? 'live' : 'waiting');
+  if (m.talkId) setTalk({ talkId: m.talkId, title: m.title, speaker: m.speaker });
+  else if (status === 'waiting') {
+    $('talkTitle').textContent = 'Waiting for the talk to start';
+    $('talkSpeaker').textContent = '';
+  }
+  const was = state.talkStatus;
+  state.talkStatus = status;
+  state.endedAt = status === 'ended' ? (m.endedAt || state.endedAt || new Date().toISOString()) : null;
+  renderPill();
+  renderTalkState();
+  renderVotes();
+  if (status === 'ended') {
+    $('interim').textContent = '';
+    markEnded();
+    if (was === 'live') {
+      hideHint();
+      if (navigator.vibrate) navigator.vibrate(60);
+    }
+  }
+  if (status === 'live' && was && was !== 'live') showHint('The talk is live again.', null, null, 4000);
+}
+
+function renderTalkState() {
+  const box = $('talkState');
+  const s = state.talkStatus;
+  document.body.dataset.talk = s || 'waiting';
+  if (s !== 'ended' || !state.talkId) { box.hidden = true; return; }
+  const at = fmtTime(state.endedAt);
+  $('tsTitle').textContent = 'This talk has ended';
+  $('tsSub').textContent = `Live captions stopped${at ? ` at ${at}` : ''}. The full transcript is saved.`;
+  const id = encodeURIComponent(state.talkId);
+  $('tsTranscript').href = `/t/${id}`;
+  $('tsDownload').href = `/api/talks/${id}/transcript?format=txt`;
+  $('tsDownload').setAttribute('download', `pulse-${state.talkId}.txt`);
+  box.hidden = false;
+}
+
+// One line at the end of the captions so the stop is obvious even while reading them.
+function markEnded() {
+  if (capEl.querySelector('.end-mark')) return;
+  const p = document.createElement('p');
+  p.className = 'line end-mark';
+  const at = fmtTime(state.endedAt);
+  p.textContent = `■ Captions stopped${at ? ` at ${at}` : ''} · talk ended`;
+  $('captionEmpty')?.remove();
+  capEl.appendChild(p);
+  if (state.autoScroll) scrollCaptionsToEnd();
 }
 
 function setTalk({ talkId, title, speaker }) {
@@ -57,6 +131,7 @@ function resetForNewTalk() {
   state.viewN = 0;
   state.followLive = true;
   capEl.replaceChildren();
+  state.held = [];
   $('interim').textContent = '';
   $('slideImg').hidden = true;
   $('slideImg').removeAttribute('src');
@@ -73,9 +148,64 @@ async function loadRoomInfo() {
     if (!res.ok) return;
     const rooms = await res.json();
     const r = rooms.find((x) => String(x.room) === String(room));
-    if (r) setTalk({ talkId: r.talkId, title: r.title, speaker: r.speaker });
+    if (!r) return;
+    // While the socket is up its `talk` messages are the truth; use the HTTP status only when it's down.
+    if (r.status && state.conn !== 'live') onTalk({ talkId: r.talkId, title: r.title, speaker: r.speaker, status: r.status });
+    else setTalk({ talkId: r.talkId, title: r.title, speaker: r.speaker });
   } catch { /* offline: the socket will fill this in */ }
 }
+
+// ---------- catching up after a dropped connection ----------
+// The join backlog is only the last 50 lines. If more were missed, fetch them from the transcript
+// route; live captions that arrive meanwhile are held and added after, so nothing comes out of order.
+async function fetchMissed() {
+  if (!state.talkId || state.filling) return;
+  const talkId = state.talkId;
+  state.filling = true;
+  try {
+    const res = await fetch(`/api/talks/${encodeURIComponent(talkId)}/transcript?from=${state.lastSeq + 1}&format=json`);
+    if (res.ok && talkId === state.talkId) {
+      const rows = await res.json();
+      state.filling = false;
+      (Array.isArray(rows) ? rows : []).filter((l) => l.talkId === undefined || l.talkId === talkId)
+        .sort((a, b) => a.seq - b.seq).forEach(addCaption);
+    }
+  } catch { /* try again on the next reconnect or poll */ }
+  state.filling = false;
+  const held = state.held.splice(0).sort((a, b) => (a.seq || 0) - (b.seq || 0));
+  held.forEach(addCaption);
+  if (state.talkStatus === 'ended') markEnded();
+}
+
+function onBacklog(lines) {
+  lines = Array.isArray(lines) ? lines : [];
+  // The room keeps the last 50 lines across talks: show only the newest talk's lines.
+  const talkId = lines.length ? lines[lines.length - 1].talkId : null;
+  if (talkId) {
+    setTalk({ talkId });
+    lines = lines.filter((l) => l.talkId === talkId);
+  }
+  // A gap between what this phone has and the backlog: fetch the missing lines first.
+  if (state.lastSeq > 0 && lines.length && lines[0].seq > state.lastSeq + 1) {
+    state.held.push(...lines);
+    fetchMissed();
+    return;
+  }
+  lines.forEach(addCaption);
+}
+
+// ---------- HTTP fallback while the socket is down ----------
+// Some venue networks block WebSockets or a phone's socket keeps dropping: poll the room status and
+// the transcript every 10 s until the socket is back, so the page still updates on its own.
+let pollTimer = null;
+function startPolling() {
+  if (pollTimer) return;
+  pollTimer = setInterval(async () => {
+    await loadRoomInfo();
+    if (state.talkId && state.talkStatus === 'live') fetchMissed();
+  }, 10000);
+}
+function stopPolling() { clearInterval(pollTimer); pollTimer = null; }
 
 // ---------- mode switch: Slides · Captions · Both ----------
 function setMode(mode) {
@@ -132,11 +262,14 @@ function captionChunks(text, max = 8) {
   return out.map((c) => c.join(' '));
 }
 
-function addCaption({ seq, text }) {
+function addCaption(line) {
+  const { seq, text } = line;
   if (!text) return;
+  if (state.filling) { state.held.push(line); return; }
   if (seq && seq <= state.lastSeq) return; // duplicate after reconnect/backlog
   if (seq) state.lastSeq = seq;
   $('captionEmpty')?.remove();
+  capEl.querySelector('.end-mark')?.remove(); // lines still arriving: the talk isn't over
   // A Web Speech final can be a long sentence. Short lines keep the Both crawl box
   // from ever clipping the newest line, and read better as live captions anyway.
   for (const chunk of captionChunks(text)) {
@@ -283,12 +416,15 @@ setInterval(expireVotes, 30000);
 function saveVotes() { store.set(voteKey(), { votes: state.votes, voted: state.voted }); }
 
 // Colour is never the only signal: the sub-label always says whether my vote counts.
+// Votes only count during a live talk (the server answers 409 otherwise), so the buttons say so.
+const votesOpen = () => state.talkStatus === null || state.talkStatus === 'live';
 function renderVotes() {
   for (const b of document.querySelectorAll('.vote')) {
     const t = b.dataset.type;
     const on = isOn(t);
     b.setAttribute('aria-pressed', String(on));
     b.classList.toggle('on', on);
+    b.disabled = !votesOpen();
     setVoteCount(t, lastCount[t] ?? 0);
   }
 }
@@ -297,6 +433,7 @@ function setVoteCount(type, count) {
   lastCount[type] = count;
   const b = document.querySelector(`.vote[data-type="${type}"]`);
   if (!b) return;
+  if (!votesOpen()) { b.querySelector('.vote-sub').textContent = state.talkStatus === 'ended' ? 'Talk ended' : 'Not live yet'; return; }
   const base = type === 'cant_hear' ? "I can't hear" : 'the slides';
   const voted = count > 1 ? `Voted · ${count} people · tap to undo` : 'Voted · tap to undo';
   b.querySelector('.vote-sub').textContent = isOn(type) ? voted : base;
@@ -492,7 +629,8 @@ connectRoom({
     switch (m.t) {
       case 'caption': if (m.talkId) setTalk({ talkId: m.talkId }); addCaption(m); break;
       case 'caption_interim': $('interim').textContent = m.text || ''; if (state.autoScroll) scrollCaptionsToEnd(); break;
-      case 'caption_backlog': (m.lines || []).forEach(addCaption); break;
+      case 'caption_backlog': onBacklog(m.lines); break;
+      case 'talk': onTalk(m); if (state.lastSeq > 0 && m.talkId === state.talkId) fetchMissed(); break;
       case 'slide': onSlide(m); break;
       case 'vote_count': setVoteCount(m.type, m.count); break;
       case 'ticket_status': onTicketStatus(m); break;

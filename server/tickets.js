@@ -98,7 +98,10 @@ function recentFixed(room, type, now) {
 
 function latestMicDb(room) {
   try {
-    const db = audio.micDb(room);
+    let db = audio.micDb(room);
+    // The seeded demo room (server/mockroom.js) has no real mic: it writes a fake level on the room.
+    const r = ctx && ctx.state && ctx.state.rooms.get(String(room));
+    if (!Number.isFinite(db) && r && r.simulated) db = r.micDb;
     return Number.isFinite(db) ? db : null;
   } catch (_) {
     return null;

@@ -27,6 +27,8 @@
 
   <p class="warn tech-warn" id="warn" role="alert" hidden></p>
 
+  <nav class="room-tabs" id="roomTabs" aria-label="Rooms (keys 1–9, or [ and ] to switch)"></nav>
+
   <main class="tech-main">
     <section class="board" aria-label="Rooms">
       <div class="blocks" id="blocks" aria-live="polite"></div>
@@ -39,6 +41,18 @@
         <span class="conn" id="dConn"><span class="dot"></span><span class="conn-word">Connecting…</span></span>
       </header>
       <p class="d-talk" id="dTalk">No talk running</p>
+      <div class="d-session">
+        <span class="talk-pill" id="dTalkPill" data-status="waiting">Not started</span>
+        <span class="muted" id="dTalkTime"></span>
+        <span class="d-session-btns">
+          <button type="button" class="ghost small" id="endTalkBtn" hidden>■ End talk</button>
+          <button type="button" class="ghost small" id="demoRestartBtn" hidden>↻ Restart demo talk</button>
+        </span>
+      </div>
+      <p class="d-links">
+        <a id="dAudience" href="#" target="_blank" rel="noopener">Audience view ↗</a>
+        <a id="dTranscript" href="#" target="_blank" rel="noopener" hidden>Transcript ↗</a>
+      </p>
 
       <div class="d-stats">
         <div><span class="k">Phones connected</span><b id="dListeners">—</b></div>

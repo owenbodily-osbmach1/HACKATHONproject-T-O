@@ -12,6 +12,9 @@ const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const key = params.get('key') || '';
 const roomList = (params.get('rooms') || params.get('room') || '151').split(',').map((r) => r.trim()).filter(Boolean);
+// Rooms the server knows about (GET /api/rooms) are added on their own, so the tech can jump to any
+// room, including the seeded demo room. ?discover=0 keeps only the rooms in the URL.
+const DISCOVER = params.get('discover') !== '0';
 
 const TYPE_WORD = { cant_hear: 'SPEAK UP', cant_see: "CAN'T SEE SLIDES", room_full: 'ROOM FULL' };
 const ACTIVE = new Set(['open', 'reopened', 'claimed']);
@@ -20,11 +23,17 @@ const RED = new Set(['open', 'reopened']);
 const rooms = new Map(); // room -> {status, talk, captions[], settings, groups, conn}
 const tickets = new Map(); // id -> ticket
 const questionState = new Map(); // qid -> {pinned, hidden, answered}
-let selected = roomList[0];
+// #room=255 in the URL (kept up to date by select()) reopens the console on that room.
+const wanted = decodeURIComponent(location.hash.match(/room=([^&]+)/)?.[1] || '');
+if (wanted && !roomList.includes(wanted)) roomList.push(wanted);
+let selected = wanted || roomList[0];
 
-for (const r of roomList) {
-  rooms.set(r, { status: null, captions: [], settings: { captions: true, listen: true, slides: true }, groups: [], conn: 'connecting' });
+function addRoom(r) {
+  if (rooms.has(r)) return false;
+  rooms.set(r, { status: null, captions: [], settings: { captions: true, listen: true, slides: true }, groups: [], conn: 'connecting', talk: null, simulated: false });
+  return true;
 }
+for (const r of roomList) addRoom(r);
 
 // ---------- name, key ----------
 $('techName').value = store.get('pulse.techName', '');
@@ -130,11 +139,82 @@ function render() {
   });
   $('okTiles').replaceChildren(...tiles);
 
+  renderTabs(active);
   $('cRed').textContent = active.filter((t) => RED.has(t.status)).length;
   $('cAmber').textContent = active.filter((t) => t.status === 'claimed').length;
   $('cGreen').textContent = tiles.length;
   document.title = (active.some((t) => RED.has(t.status)) ? '🔴 ' : '') + 'Pulse · AV tech';
 }
+
+// ---------- room switcher ----------
+const STATUS_WORD = { live: 'Live', ended: 'Ended', waiting: 'Not started' };
+function talkStatus(st) { return st.talk?.status || (st.talk?.talkId ? 'live' : 'waiting'); }
+
+// Tabs are built once per room and then only their text changes: room_status re-renders them
+// every 2 s, and replacing the buttons would swallow a click that lands mid-update.
+const tabEls = new Map(); // room -> {btn, pill, demo, key, title, status, phones, alert}
+function tabFor(r) {
+  let t = tabEls.get(r);
+  if (t) return t;
+  const mk = (tag, cls, text = '') => Object.assign(document.createElement(tag), { className: cls, textContent: text });
+  t = {
+    btn: mk('button', 'room-tab'), pill: mk('span', 'talk-pill'), name: mk('span', 'rt-name', `Room ${r}`),
+    demo: mk('span', 'rt-demo', 'DEMO'), key: mk('span', 'rt-key'), title: mk('span', 'rt-title'),
+    status: mk('span', 'rt-status'), phones: mk('span', 'rt-phones'), alert: mk('span', 'rt-alert'),
+  };
+  t.btn.type = 'button';
+  t.btn.setAttribute('role', 'tab');
+  const top = mk('span', 'rt-top');
+  top.append(t.pill, t.name, t.demo, t.key);
+  const meta = mk('span', 'rt-meta');
+  meta.append(t.status, t.phones, t.alert);
+  t.btn.append(top, t.title, meta);
+  t.btn.onclick = () => select(r);
+  tabEls.set(r, t);
+  return t;
+}
+
+function renderTabs(active = [...tickets.values()].filter((t) => ACTIVE.has(t.status))) {
+  const ids = [...rooms.keys()];
+  ids.forEach((r, i) => {
+    const st = rooms.get(r);
+    const t = tabFor(r);
+    const status = st.conn === 'live' ? talkStatus(st) : 'offline';
+    const alerts = active.filter((x) => String(x.room) === r && RED.has(x.status)).length;
+    t.btn.setAttribute('aria-selected', String(r === selected));
+    t.pill.dataset.status = status;
+    t.demo.hidden = !st.simulated;
+    t.key.textContent = i < 9 ? String(i + 1) : '';
+    t.key.hidden = i >= 9;
+    t.title.textContent = st.talk?.title || 'No talk yet';
+    t.status.textContent = STATUS_WORD[status] || 'Offline';
+    t.phones.textContent = st.status && typeof st.status.listeners === 'number' ? `· ${st.status.listeners} ${st.status.listeners === 1 ? 'phone' : 'phones'}` : '';
+    t.alert.textContent = alerts ? `● ${alerts} to fix` : '';
+    t.alert.hidden = !alerts;
+  });
+  const bar = $('roomTabs');
+  const wantOrder = ids.map((r) => tabEls.get(r).btn);
+  if (bar.children.length !== wantOrder.length || wantOrder.some((b, i) => bar.children[i] !== b)) bar.replaceChildren(...wantOrder);
+}
+
+// A link or bookmark to …#room=255 switches rooms without a reload.
+window.addEventListener('hashchange', () => {
+  const r = decodeURIComponent(location.hash.match(/room=([^&]+)/)?.[1] || '');
+  if (!r || r === selected) return;
+  if (addRoom(r)) connect(r);
+  select(r);
+});
+
+// 1–9 jump to a room; [ and ] step through them (not while typing).
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select') || e.ctrlKey || e.metaKey || e.altKey) return;
+  const ids = [...rooms.keys()];
+  if (/^[1-9]$/.test(e.key) && ids[Number(e.key) - 1]) select(ids[Number(e.key) - 1]);
+  if (e.key === '[' || e.key === ']') {
+    const i = ids.indexOf(selected);
+    select(ids[(i + (e.key === ']' ? 1 : ids.length - 1)) % ids.length]);
+  }
+});
 
 function blockEl(t) {
   const red = RED.has(t.status);
@@ -208,6 +288,7 @@ function select(room) {
     $('listenPodium').setAttribute('aria-pressed', 'false');
   }
   selected = room;
+  history.replaceState(null, '', `#room=${encodeURIComponent(room)}`);
   render();
   renderDrawer();
 }
@@ -216,8 +297,19 @@ function renderDrawer() {
   const st = rooms.get(selected);
   $('dRoom').textContent = `Room ${selected}`;
   $('dConn').dataset.status = st.conn;
-  $('dConn').querySelector('.conn-word').textContent = { live: 'Live', reconnecting: 'Reconnecting…', connecting: 'Connecting…', unauthorized: 'Wrong key' }[st.conn] || st.conn;
-  $('dTalk').textContent = st.talk ? `${st.talk.title}${st.talk.speaker ? ' · ' + st.talk.speaker : ''}` : 'No talk running';
+  $('dConn').querySelector('.conn-word').textContent = { live: 'Connected', reconnecting: 'Reconnecting…', connecting: 'Connecting…', unauthorized: 'Wrong key' }[st.conn] || st.conn;
+  $('dTalk').textContent = st.talk?.talkId ? `${st.talk.title || 'Untitled talk'}${st.talk.speaker ? ' · ' + st.talk.speaker : ''}` : 'No talk yet';
+  const status = talkStatus(st);
+  $('dTalkPill').dataset.status = status;
+  $('dTalkPill').textContent = STATUS_WORD[status];
+  const started = st.talk?.startedAt ? new Date(st.talk.startedAt) : null;
+  $('dTalkTime').textContent = started && !Number.isNaN(started.getTime())
+    ? `${status === 'live' ? 'since' : 'started'} ${started.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : '';
+  $('endTalkBtn').hidden = status !== 'live';
+  $('demoRestartBtn').hidden = !st.simulated;
+  $('dAudience').href = `/r/${encodeURIComponent(selected)}`;
+  $('dTranscript').hidden = !st.talk?.talkId;
+  if (st.talk?.talkId) $('dTranscript').href = `/t/${encodeURIComponent(st.talk.talkId)}`;
   $('swCaptions').checked = !!st.settings.captions;
   $('swListen').checked = !!st.settings.listen;
   $('swSlides').checked = !!st.settings.slides;
@@ -243,6 +335,8 @@ function renderGap() {
   const st = rooms.get(selected);
   const s = st?.status;
   if (!s) { $('dGap').textContent = '—'; return; }
+  const talk = talkStatus(st);
+  if (talk !== 'live') { $('dGap').textContent = talk === 'ended' ? 'Stopped (talk ended)' : 'Not started'; $('dGap').dataset.zone = 'ok'; return; }
   const gap = typeof s.captionGapSec === 'number' ? s.captionGapSec + Math.floor((Date.now() - s.at) / 1000) : null;
   $('dGap').textContent = gap === null ? 'Not started' : gap > 20 ? `Silent ${gap} s` : 'Flowing';
   $('dGap').dataset.zone = gap !== null && gap > 20 ? 'bad' : 'ok';
@@ -382,16 +476,49 @@ async function loadRooms() {
   try {
     const list = await (await fetch('/api/rooms')).json();
     for (const r of list) {
-      const st = rooms.get(String(r.room));
-      if (st) st.talk = r.talkId ? { talkId: r.talkId, title: r.title, speaker: r.speaker } : null;
+      const id = String(r.room);
+      if (DISCOVER && addRoom(id)) connect(id);
+      const st = rooms.get(id);
+      if (!st) continue;
+      st.simulated = !!r.simulated;
+      // The socket's `talk` message is the truth (it also names an ended talk, which /api/rooms
+      // leaves out); the poll only fills in rooms whose socket hasn't spoken yet.
+      if (!st.talkFromSocket) {
+        st.talk = r.talkId ? { talkId: r.talkId, title: r.title, speaker: r.speaker, status: r.status, startedAt: r.startedAt } : null;
+      }
     }
+    render();
     renderDrawer();
-  } catch { /* retry on next status */ }
+  } catch { /* retry on next poll */ }
 }
-setInterval(loadRooms, 15000);
+setInterval(loadRooms, 5000);
+
+// ---------- talk controls ----------
+let endArmed = 0;
+$('endTalkBtn').onclick = async () => {
+  const st = rooms.get(selected);
+  if (!st.talk?.talkId) return;
+  if (Date.now() - endArmed > 3000) {
+    endArmed = Date.now();
+    $('endTalkBtn').textContent = '■ Tap again to end';
+    setTimeout(() => { $('endTalkBtn').textContent = '■ End talk'; }, 3000);
+    return;
+  }
+  endArmed = 0;
+  $('endTalkBtn').textContent = '■ End talk';
+  try { await api(`/api/talks/${encodeURIComponent(st.talk.talkId)}/end`, {}); } catch { /* warned */ }
+};
+$('demoRestartBtn').onclick = async () => {
+  try {
+    await api(`/api/rooms/${encodeURIComponent(selected)}/demo/restart`, {});
+    flash($('demoRestartBtn').closest('.d-session'), 'Demo talk restarted');
+  } catch { /* warned */ }
+};
 
 // ---------- one socket per room ----------
-for (const room of roomList) {
+for (const room of roomList) connect(room);
+
+function connect(room) {
   const st = rooms.get(room);
   connectRoom({
     room,
@@ -412,7 +539,7 @@ for (const room of roomList) {
     onMessage: (m) => {
       switch (m.t) {
         case 'ticket': onTicket(m); break;
-        case 'room_status': st.status = { ...m, at: Date.now() }; if (room === selected) renderStatus(); break;
+        case 'room_status': st.status = { ...m, at: Date.now() }; renderTabs(); if (room === selected) renderStatus(); break;
         case 'caption':
           if (!st.talk || (m.talkId && st.talk.talkId !== m.talkId)) loadRooms();
           st.captions.push(m); st.captions = st.captions.slice(-50);
@@ -422,6 +549,12 @@ for (const room of roomList) {
         case 'room_settings': st.settings = { ...st.settings, ...m }; if (room === selected) renderDrawer(); break;
         case 'question_groups': st.groups = m.groups || []; if (room === selected) renderQuestions(); break;
         case 'question_update': onQuestionUpdate(m); break;
+        case 'talk':
+          st.talkFromSocket = true;
+          st.talk = m.talkId ? { talkId: m.talkId, title: m.title, speaker: m.speaker, status: m.status, startedAt: m.startedAt } : null;
+          render();
+          if (room === selected) renderDrawer();
+          break;
         default: break;
       }
     },

@@ -143,7 +143,9 @@ async function findOrCreateTalk() {
   try {
     const res = await fetch('/api/rooms');
     if (res.ok) {
-      const r = (await res.json()).find((x) => String(x.room) === String(room) && x.talkId);
+      // Resume only a talk that is still live. An ended talk stays ended (its transcript is saved):
+      // going live again starts a new talk, so every phone flips from "Ended" back to "Live".
+      const r = (await res.json()).find((x) => String(x.room) === String(room) && x.talkId && x.status === 'live');
       if (r) return r.talkId;
     }
   } catch { /* create one below */ }

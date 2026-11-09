@@ -122,6 +122,7 @@ function onSlide(rec, msg) {
   const total = Number.isInteger(Number(msg.total)) ? Number(msg.total) : 0;
   const slide = { talkId, n, total, url };
   room.slide = slide;
+  room.slideAt = Date.now();
 
   send(rec.room, { t: 'slide', ...slide });
   esIndex('pulse-actions', {
@@ -183,6 +184,8 @@ function join(ws, room, role, clientId) {
   }
 
   const state = ctx.state.room(room);
+  const stats = require('./stats'); // lazy: stats requires the hub too
+  stats.onJoin(room, role, clientId);
   if (role === 'attendee' || role === 'viewer' || role === 'tech') {
     // Backlog only for the room's current talk, so a late joiner never mixes two talks (contract audit).
     sendJson(ws, { t: 'caption_backlog', lines: state.captions.filter((c) => !state.talkId || c.talkId === state.talkId).slice(-50) });
@@ -190,6 +193,7 @@ function join(ws, room, role, clientId) {
   sendJson(ws, { t: 'room_settings', ...state.settings });
   sendJson(ws, ctx.state.talkMessage(room));
   if (state.slide) sendJson(ws, { t: 'slide', ...state.slide });
+  sendJson(ws, stats.statsMessage(room));
   if (role === 'tech' || role === 'org') {
     // Lazy require: tickets/questions require the hub too.
     for (const m of require('./tickets').activeTicketMessages(room)) sendJson(ws, m);
@@ -203,7 +207,7 @@ function join(ws, room, role, clientId) {
     try { msg = JSON.parse(data.toString()); } catch { return; }
     inbound(rec, msg);
   });
-  ws.on('close', () => remove(rec));
+  ws.on('close', () => { remove(rec); stats.onLeave(room, role, clientId); });
   ws.on('error', () => {});
 }
 
@@ -267,6 +271,14 @@ module.exports = {
     if (!set) return 0;
     let n = 0;
     for (const rec of set) if (rec.role === 'attendee') n++;
+    return n;
+  },
+
+  roleCount(room, role) {
+    const set = rooms.get(String(room));
+    if (!set) return 0;
+    let n = 0;
+    for (const rec of set) if (rec.role === role) n++;
     return n;
   },
 

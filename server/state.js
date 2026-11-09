@@ -62,7 +62,10 @@ function talkMessage(id) {
     status: talk.end ? 'ended' : 'live',
     startedAt: Number.isFinite(start) ? new Date(start).toISOString() : null,
   };
-  if (talk.end) msg.reportUrl = `${config.PUBLIC_BASE_URL}/t/${talk.talkId}`;
+  if (talk.end) {
+    msg.reportUrl = `${config.PUBLIC_BASE_URL}/t/${talk.talkId}`;
+    msg.endedAt = new Date(talk.end).toISOString();
+  }
   return msg;
 }
 

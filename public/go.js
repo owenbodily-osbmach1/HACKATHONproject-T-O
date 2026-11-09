@@ -87,6 +87,8 @@ const sock = connectRoom({
   onMessage: (m) => {
     // Only a live talk is resumed; an ended one stays ended and Go live starts a new talk.
     if (m.t === 'talk') { talkKnown = true; liveTalkId = m.status === 'live' ? m.talkId : null; }
+    // The AV tech ended this talk from the console: stop here too, so no captions go to an ended talk.
+    if (m.t === 'talk' && st.running && st.talkId && m.talkId === st.talkId && m.status === 'ended') endedElsewhere(m);
     if (m.t === 'room_status' && typeof m.listeners === 'number') check('ckPhones', m.listeners > 0 ? 'ok' : '', `${m.listeners} connected`);
   },
 });
@@ -302,6 +304,21 @@ async function endTalk() {
     warn(`Stopped, but ending the talk failed (${e.message}). Lines already sent are saved; press End again.`);
   }
 }
+function endedElsewhere(m) {
+  stopMic();
+  stopSlides();
+  st.running = false;
+  try { st.wake?.release(); } catch { /* ignore */ }
+  ['ckMic', 'ckCaptions', 'ckListen', 'ckSlides'].forEach((id) => check(id, '', 'Stopped'));
+  const a = document.createElement('a');
+  a.href = m.reportUrl || `/t/${st.talkId}`; a.target = '_blank'; a.textContent = a.href;
+  $('doneLine').replaceChildren('The AV tech ended the talk. Transcript saved: ', a);
+  $('doneLine').hidden = false;
+  st.talkId = null;
+  liveTalkId = null;
+  showGoBtn();
+}
+
 function showGoBtn() {
   $('endBtn').hidden = true;
   $('goBtn').hidden = false;

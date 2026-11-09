@@ -22,8 +22,9 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 | Method | Path | Body | Returns |
 | --- | --- | --- | --- |
 | POST | `/api/talks` | `{room, title, speaker}` | `{talkId}` |
-| POST | `/api/talks/:talkId/end` | — | `{reportUrl}` |
-| GET | `/api/rooms` | — | `[{room, talkId, title, speaker?, listeners, openTickets, simulated}]` (`talkId: null`, `title: ''` when no talk is live) |
+| POST | `/api/talks/:talkId/end` | — (`SPEAKER_KEY` or `TECH_KEY`) | `{reportUrl}` |
+| GET | `/api/rooms` | — | `[{room, talkId, title, speaker, status, startedAt, listeners, joined, here, capacity, openTickets, simulated}]` (`talkId: null`, `title: ''` when no talk is live; `status` = `waiting` \| `live` \| `ended`, same as the `talk` message) |
+| POST | `/api/rooms/:room/demo/restart` | — (`TECH_KEY`) | `{talkId}`: restarts the seeded demo room's talk (only the `MOCK_ROOM` room) |
 | PUT | `/api/votes` | `{room, talkId, type, clientId, on}` | `{count, ticketStatus}` |
 | POST | `/api/questions` | `{room, talkId, text, clientId}` | `{qid, groupId}` |
 | POST | `/api/feedback` | `{ticketId, clientId, better}` | `{better, stillBad}` |
@@ -45,7 +46,10 @@ Every change goes in as a pull request. Gitar reviews it; the *other* person mer
 - Ticket `status`: `open` | `claimed` | `fixed` | `reopened` | `dismissed`.
 - One vote per `clientId` per type per talk. `on: false` takes the vote back. Votes expire after 10 min and clear when a ticket is marked fixed.
 - "Still bad": the phone sends `POST /api/feedback` with `better: false` **and then** `PUT /api/votes` with `on: true`. The feedback route only records the answer; it does not re-add the vote itself.
-- Room switches: `POST /api/rooms/:room/settings` `{captions, listen, slides}` (tech only). Server sends `room_settings` to every role in the room.
+- Going live again after a talk ended starts a **new** talk (Go live and the mic page resume only a talk whose `status` is `live`), so phones flip from Ended back to Live.
+- Demo room: on start the server seeds room `MOCK_ROOM` (default `255`, `off` disables) with a live talk, a transcript that keeps growing, a fake mic level, 3 questions and a "can't see" ticket. It is `simulated: true` in `/api/rooms` and is never written to Elasticsearch.
+- Room switches: `POST /api/rooms/:room/settings` `{captions, listen, slides, capacity?}` (tech only; `capacity` = seats, for the room-fill bar).
+- Scans: `GET /r/:room` sets a server-issued random cookie `pulse_v` (httpOnly, 1 day) and counts each visitor once per room (`joined`). The phone never reports a count. `here` = open attendee sockets. Default capacity `ROOM_CAPACITY` (120). Server sends `room_settings` to every role in the room.
 
 Search: `GET /api/search?q=&talkId=` → `[{talkId, seq, text, ts}]`, hybrid (RRF of a match query and a semantic query on `text_sem`), falling back to a plain match.
 
@@ -64,11 +68,11 @@ One mechanism everywhere. Keyed **pages** are opened with `?key=...` in the URL 
 
 | Key | HTTP routes and pages that require it |
 | --- | --- |
-| `TECH_KEY` | `POST /api/tickets/:id/claim` · `/fixed` · `/dismiss` · `POST /api/config` · `POST /api/rooms/:room/settings` · `POST /api/questions/:qid/*` · `POST /api/rooms/:room/broadcast` · `POST /api/clients/:clientId/mute` · page `/tech` |
+| `TECH_KEY` | `POST /api/talks/:talkId/end` (also `SPEAKER_KEY`) · `POST /api/rooms/:room/demo/restart` · `POST /api/tickets/:id/claim` · `/fixed` · `/dismiss` · `POST /api/config` · `POST /api/rooms/:room/settings` · `POST /api/questions/:qid/*` · `POST /api/rooms/:room/broadcast` · `POST /api/clients/:clientId/mute` · page `/tech` |
 | `SPEAKER_KEY` | `POST /api/talks` · `POST /api/talks/:talkId/end` · `POST /api/rooms/:room/slide-frame` · pages `/mic/:room`, `/present/:room`, `/relay/:room` and `/go/:room` |
 | none | `GET /api/rooms`, `PUT /api/votes`, `POST /api/questions`, `POST /api/feedback`, `GET /api/report/:talkId`, `GET /api/config`, transcript routes, `/healthz`, pages `/r/:room`, `/t/:talkId`, `/room/:room`, `/org`, `/find` |
 
-## WebSocket: `/ws?room=151&role=attendee|viewer|mic|present|tech|org`
+## WebSocket: `/ws?room=151&role=attendee|viewer|mic|present|tech|org[&clientId=]`
 
 `viewer` (no key) is for transcript/report pages: it receives `caption`, `caption_interim` and `caption_backlog` like `attendee` but is not counted in `listeners`.
 
@@ -93,8 +97,10 @@ All messages are JSON with a `t` field. `role=mic` and `role=present` must also 
 | `broadcast` | server → | `text` | attendee |
 | `feed` | server → | `kind, room, text, ts, refId` | tech |
 | `slide` | present/mic → server → room (or server, after a relay upload) | `talkId, n, total, url, alt?` (`total: 0` = unknown, captured deck) | all (and new phones on join) |
-| `talk` | server → (on join and on every change) | `talkId, title, speaker, status: 'waiting'\|'live'\|'ended', startedAt, reportUrl?, next?: {title, start}` | all |
-| `ping` / `pong` | both, every 20 s | — | all |
+| `talk` | server → (on join and on every change) | `talkId, title, speaker, status: 'waiting'\|'live'\|'ended', startedAt, endedAt?, reportUrl?, next?: {title, start}` | all (the attendee pill shows Live / Ended / Not started from this, not from the socket state) |
+| `room_stats` | server → (on join and when it changes, checked every 2 s) | `room, joined, here, capacity, fill` | all |
+| `room_telemetry` | server → (every 2 s) | `room, talk, presenter, mic{state: live\|silent\|stopped, db}, captions{state: live\|silent\|stopped, gapSec, lines}, listen{state, listening}, slides{state: live\|none\|stopped, n, lastAt}, phones{here, joined, capacity, listening, reconnects5m}` | tech, org |
+| `ping` / `pong` | both, every 20 s | — | all (`lib/socket.js` replaces a socket that has received nothing, not even a `pong`, for 45 s) |
 
 Audio uses its own binary-only sockets:
 
@@ -132,7 +138,7 @@ Set `inference_id` explicitly from `ES_INFERENCE_ID`. If inference isn't availab
 
 Kubernetes Secret (entered in the Radar UI) or local `.env`. **Never committed.** See `.env.example`.
 
-`PORT` · `PUBLIC_BASE_URL` · `SPEAKER_KEY` · `TECH_KEY` · `ALERT_THRESHOLD=3` · `ALERT_WINDOW_SEC=60` · `CAPTIONS_DEFAULT=on` · `ELASTIC_URL` · `ELASTIC_API_KEY` · `ES_INFERENCE_ID` · `OTEL_SERVICE_NAME=pulse` · `OTEL_EXPORTER_OTLP_ENDPOINT` · `OTEL_EXPORTER_OTLP_HEADERS` · `DASH0_RUM_TOKEN` (public, ingest-only) · `DASH0_RUM_ENDPOINT=https://ingress.us-west-2.aws.dash0.com`
+`PORT` · `MOCK_ROOM=255` · `ROOM_CAPACITY=120` · `PUBLIC_BASE_URL` · `SPEAKER_KEY` · `TECH_KEY` · `ALERT_THRESHOLD=3` · `ALERT_WINDOW_SEC=60` · `CAPTIONS_DEFAULT=on` · `ELASTIC_URL` · `ELASTIC_API_KEY` · `ES_INFERENCE_ID` · `OTEL_SERVICE_NAME=pulse` · `OTEL_EXPORTER_OTLP_ENDPOINT` · `OTEL_EXPORTER_OTLP_HEADERS` · `DASH0_RUM_TOKEN` (public, ingest-only) · `DASH0_RUM_ENDPOINT=https://ingress.us-west-2.aws.dash0.com`
 
 ## Booths (expo floor)
 

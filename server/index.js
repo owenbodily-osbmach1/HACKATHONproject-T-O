@@ -18,6 +18,8 @@ const questions = require('./questions');
 const qr = require('./qr');
 const booths = require('./booths');
 const schedule = require('./schedule');
+const mockroom = require('./mockroom');
+const stats = require('./stats');
 
 otel.start();
 
@@ -67,7 +69,7 @@ app.get('/rum-config.js', (req, res) => {
 
 const pub = path.join(__dirname, '..', 'public');
 const page = (file) => (req, res) => res.sendFile(path.join(pub, file));
-app.get('/r/:room', page('r.html'));
+app.get('/r/:room', stats.scan, page('r.html')); // counts the scan (server-issued visitor cookie)
 app.get('/t/:talkId', page('t.html'));
 app.get('/room/:room', page('t.html'));
 app.get('/org', page('org.html'));
@@ -89,7 +91,7 @@ app.use((req, res, next) => {
 app.use(express.static(pub, { extensions: ['html'], index: false }));
 
 const ctx = { config, state, auth, es, hub, otel };
-for (const m of [tickets, talks, questions, booths, qr, schedule]) m.register(app, ctx);
+for (const m of [tickets, talks, questions, booths, qr, schedule, mockroom, stats]) m.register(app, ctx);
 
 const server = http.createServer(app);
 hub.attach(server, ctx);

@@ -79,6 +79,8 @@ button:disabled { opacity: .4; cursor: default; }
 .room-badge { flex: none; }
 .room-line h1 { margin: 0; font-size: inherit; font-weight: inherit; letter-spacing: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .room-line h1::before { content: "· Now: "; }
+body[data-talk="ended"] .room-line h1::before { content: "· Ended: "; }
+body[data-talk="waiting"] .room-line h1::before { content: "· "; }
 .speaker { margin: 0; color: var(--muted); font-size: 14px; }
 .speaker:empty { display: none; }
 
@@ -89,6 +91,26 @@ button:disabled { opacity: .4; cursor: default; }
 .conn[data-status="reconnecting"] { color: var(--yellow); border-color: var(--yellow); }
 .conn[data-status="reconnecting"] .dot { background: var(--yellow); }
 .conn[data-status="unauthorized"] { color: var(--red); border-color: var(--red); }
+/* Talk status in the attendee pill: Live pulses; Ended / Not started are plainly grey. */
+.conn[data-status="live"] { border-color: var(--red); }
+.conn[data-status="live"] .dot { animation: live-dot 1.6s ease-in-out infinite; }
+@keyframes live-dot { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.conn[data-status="ended"], .conn[data-status="waiting"] { color: var(--muted); border-color: var(--line-strong); }
+.conn[data-status="ended"] .dot { background: var(--muted); border-radius: 2px; }
+@media (prefers-reduced-motion: reduce) { .conn[data-status="live"] .dot { animation: none; } }
+
+/* "This talk has ended" card above the captions. */
+.talk-state { margin: 0 0 10px; padding: 12px 14px; border: 2px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); }
+.talk-state p { margin: 0; }
+.ts-title { display: flex; align-items: center; gap: 8px; font-family: var(--font-head); font-size: 18px; font-weight: 700; }
+.ts-dot { width: 10px; height: 10px; border-radius: 2px; background: var(--muted); flex: none; }
+.ts-sub { margin-top: 4px !important; color: var(--muted); font-size: 14px; }
+.ts-links { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 10px !important; }
+.ts-links .pill { text-decoration: none; display: inline-flex; align-items: center; }
+.ts-dl { color: var(--blue); font-weight: 700; font-size: 14px; }
+.captions .line.end-mark { color: var(--muted) !important; font-size: 14px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+body[data-talk="ended"] .interim { display: none; }
+.vote:disabled { opacity: .45; }
 
 .banner {
   display: flex; align-items: center; gap: 10px;
@@ -403,6 +425,25 @@ button:disabled { opacity: .4; cursor: default; }
 .ok-tile { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; min-height: 44px; padding: 0 14px; color: var(--text); font-size: 16px; font-weight: 700; }
 .ok-tile.sel { box-shadow: 0 0 0 3px var(--blue); }
 
+/* Room switcher: one tab per room, the AV tech jumps between them (keys 1–9, [ and ]). */
+.room-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 12px 18px 0; scrollbar-width: thin; }
+.room-tab { flex: none; display: grid; gap: 2px; text-align: left; min-width: 150px; max-width: 260px; padding: 8px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line-strong); color: var(--text); }
+.room-tab[aria-selected="true"] { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue); background: var(--blue-tint); }
+.room-tab .rt-top { display: flex; align-items: center; gap: 8px; font-family: var(--font-head); font-size: 18px; font-weight: 700; }
+.room-tab .rt-key { margin-left: auto; font-family: var(--font); font-size: 11px; color: var(--dim); border: 1px solid var(--line-strong); border-radius: 5px; padding: 0 5px; }
+.room-tab .rt-title { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-tab .rt-meta { display: flex; gap: 8px; align-items: center; font-size: 12px; font-weight: 700; color: var(--muted); }
+.room-tab .rt-alert { color: var(--red); }
+.room-tab .rt-demo { font-size: 10px; font-weight: 800; letter-spacing: .08em; color: var(--on-color); background: var(--yellow); border-radius: 4px; padding: 0 5px; }
+.talk-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.talk-pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--dim); }
+.talk-pill[data-status="live"] { color: var(--red); }
+.talk-pill[data-status="live"]::before { background: var(--red); animation: live-dot 1.6s ease-in-out infinite; }
+.talk-pill[data-status="ended"]::before { border-radius: 2px; background: var(--muted); }
+.d-session { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: -4px 0 8px; font-size: 13px; }
+.d-session-btns { margin-left: auto; display: flex; gap: 8px; }
+.d-links { display: flex; gap: 16px; margin: 0 0 12px; font-size: 14px; font-weight: 700; }
+.d-links a { color: var(--blue); }
 .drawer { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
 .drawer-head { display: flex; justify-content: space-between; align-items: center; }
 .drawer h2 { margin: 0; font-family: var(--font-head); font-size: 26px; }

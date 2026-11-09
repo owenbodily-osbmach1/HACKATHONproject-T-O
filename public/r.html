@@ -37,6 +37,15 @@
     <section class="group group-watch" aria-labelledby="gWatch">
       <div class="group-head"><span class="bar blue" aria-hidden="true"></span><h2 id="gWatch">Watch</h2><span class="group-sub">slides or live captions</span></div>
 
+      <div class="talk-state" id="talkState" role="status" hidden>
+        <p class="ts-title"><span class="ts-dot" aria-hidden="true"></span><span id="tsTitle">This talk has ended</span></p>
+        <p class="ts-sub" id="tsSub">Live captions stopped. The full transcript is saved.</p>
+        <p class="ts-links">
+          <a class="pill" id="tsTranscript" href="#">Read the transcript</a>
+          <a class="ts-dl" id="tsDownload" href="#">Download .txt</a>
+        </p>
+      </div>
+
       <nav class="modes" id="modes" aria-label="What to show">
         <button type="button" data-mode="slides">Slides</button>
         <button type="button" data-mode="captions" aria-pressed="true">Captions</button>
