@@ -11,7 +11,7 @@ Rules:
 - Every change goes through a pull request reviewed by Gitar; the other teammate merges. No pushes to `main`.
 - Ownership: `public/` = Owen (UI); `server/`, `scripts/`, `deploy/`, `k8s/`, `Dockerfile` = Ty (backend). `CONTRACT.md`, `.gitar/`, `docs/`, `tools/`, `AGENTS.md` = both.
 - Keep `replicas: 1`: rooms, sockets and vote windows live in memory.
-- Attendee pages must never call `getUserMedia`; only `/mic/:room` may use the microphone.
+- Attendee pages must never call `getUserMedia`; only `/mic/:room` and `/go/:room` may use the microphone.
 - No secrets in git: keys go in `.env` (ignored) or the Kubernetes Secret.
 - Hackathon rule: disclose AI assistance in each PR's "AI assistance" section.
 - After testing something, add a dated entry to `docs/test-log.md`.
