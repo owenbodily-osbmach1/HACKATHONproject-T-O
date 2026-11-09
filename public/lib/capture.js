@@ -52,13 +52,18 @@ export async function startStreaming({ stream, room, speakerKey, onLevel, onFram
     if (stopped) return;
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const q = new URLSearchParams({ room, key: speakerKey });
-    ws = new WebSocket(`${proto}//${location.host}/ws/audio-in?${q}`);
-    ws.binaryType = 'arraybuffer';
-    ws.onopen = () => { retry = 0; onSocket?.('live'); };
-    ws.onclose = (ev) => {
-      if (stopped) return;
-      onSocket?.(ev.code === 4401 ? 'unauthorized' : 'reconnecting');
-      if (ev.code === 4401) return;
+    const sock = new WebSocket(`${proto}//${location.host}/ws/audio-in?${q}`);
+    ws = sock;
+    sock.binaryType = 'arraybuffer';
+    // Events from a socket we've already replaced (takeOver) are ignored.
+    sock.onopen = () => { if (ws !== sock) return; retry = 0; onSocket?.('live'); };
+    sock.onclose = (ev) => {
+      if (stopped || ws !== sock) return;
+      if (ev.code === 4401) { onSocket?.('unauthorized'); return; }
+      // 4409: another sender (podium mic or AV pre-show feed) took over this room.
+      // Don't reconnect on our own, or the two would keep knocking each other off.
+      if (ev.code === 4409) { onSocket?.('replaced'); return; }
+      onSocket?.('reconnecting');
       retryTimer = setTimeout(open, [1000, 2000, 4000, 8000, 10000][Math.min(retry++, 4)]);
     };
   }
@@ -83,6 +88,15 @@ export async function startStreaming({ stream, room, speakerKey, onLevel, onFram
   if (ctx.state === 'suspended') await ctx.resume();
 
   return {
+    // Take the room's audio back after being replaced (closes the other sender with 4409).
+    takeOver() {
+      retry = 0;
+      clearTimeout(retryTimer);
+      const old = ws;
+      ws = null; // its close event is now ignored
+      try { old?.close(); } catch { /* ignore */ }
+      open();
+    },
     stop() {
       stopped = true;
       clearInterval(meter);
