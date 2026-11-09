@@ -7,6 +7,7 @@
   <meta name="theme-color" content="#000000">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/tech-metrics.css">
 </head>
 <body class="techpage">
   <h1 class="sr-only">AV tech console</h1>
@@ -81,6 +82,23 @@
         <button type="button" class="ghost" id="listenPodium" aria-pressed="false">Listen to podium</button>
         <span class="level"><span id="dLevel"></span></span>
       </div>
+
+      <details class="metrics" id="metrics" open>
+        <summary><h3 class="h-blue">Dash0 metrics</h3></summary>
+        <p class="mx-status" id="mxStatus" data-state="wait">Loading metrics…</p>
+        <ul class="mx-grid" id="mxGrid" aria-label="Service metrics for this room"></ul>
+        <p class="mx-foot">
+          <a class="mx-link" id="mxLink" href="#" target="_blank" rel="noopener noreferrer" hidden>Open in Dash0 ↗</a>
+          <span class="mx-note">These are the series this pod exports. They are not read back from Dash0.</span>
+        </p>
+        <details class="mx-all" id="mxAll">
+          <summary>All series</summary>
+          <table class="mx-table">
+            <thead><tr><th scope="col">Series</th><th scope="col">This room</th><th scope="col">All rooms</th></tr></thead>
+            <tbody id="mxRows"></tbody>
+          </table>
+        </details>
+      </details>
 
       <h3 class="h-blue">Last captions</h3>
       <ol class="d-captions" id="dCaptions"><li class="muted">Nothing yet.</li></ol>

@@ -275,6 +275,7 @@ document.addEventListener('keydown', (e) => {
   if (e.target.closest('input:not([type=checkbox]), textarea, select') || e.ctrlKey || e.metaKey || e.altKey) return;
   const ids = roomIds();
   if (/^[1-9]$/.test(e.key) && ids[Number(e.key) - 1]) select(ids[Number(e.key) - 1]);
+  if (e.key === 'm' || e.key === 'M') $('metrics').open = !$('metrics').open;
   if (e.key === '[' || e.key === ']') {
     const i = ids.indexOf(selected);
     select(ids[(i + (e.key === ']' ? 1 : ids.length - 1)) % ids.length]);
@@ -452,6 +453,7 @@ function select(room) {
   history.replaceState(null, '', `#room=${encodeURIComponent(room)}`);
   render();
   renderDrawer();
+  metricsRoomChanged();
   // render() rebuilt the board; put keyboard users back on the card they selected.
   if (wasCardFocus) {
     const card = [...document.querySelectorAll('.block')].find((el) => String(tickets.get(el.dataset.id)?.room) === room);
@@ -689,6 +691,249 @@ $('demoRestartBtn').onclick = async () => {
     flash($('demoRestartBtn').closest('.d-session'), 'Demo talk restarted');
   } catch { /* warned */ }
 };
+
+// ---------- Dash0 metrics: the series this pod exports (GET /api/metrics, polled while visible) ----------
+const MX_POLL_MS = 5000;
+const MX_KEEP = 60; // sparkline samples per tile and room (5 min)
+const mxHistory = new Map(); // `${room}|${tile}` -> number[]
+const mx = { seq: 0, inflight: false, inView: true, room: null, fails: 0 };
+
+const fmtNum = (v) => {
+  if (!Number.isFinite(v)) return '—';
+  const a = Math.abs(v);
+  return String(a >= 100 ? Math.round(v) : a >= 10 ? Math.round(v * 10) / 10 : Math.round(v * 100) / 100);
+};
+const fmtDur = (sec) => {
+  if (!Number.isFinite(sec)) return '—';
+  if (sec < 60) return `${Math.round(sec)} s`;
+  const m = Math.floor(sec / 60);
+  return m < 10 ? `${m} min ${Math.round(sec % 60)} s` : `${m} min`;
+};
+const fmtAgo = (sec) => (sec < 60 ? `${Math.max(0, Math.round(sec))} s` : `${Math.round(sec / 60)} min`);
+const level = (v, warnAt, badAt) => (v >= badAt ? 'bad' : v >= warnAt ? 'warn' : 'ok');
+const MX_BADGE = { ok: 'OK', warn: 'Watch', bad: 'Problem', off: 'Off', none: 'No data' };
+
+// Each tile: calc({by, es, st, uptime}) -> {num, text?, sub, state}. `by` maps series name -> series;
+// `.room` on a series is the selected room's slice (null when the room has no samples).
+const roomOf = (by, name) => by.get(name)?.room ?? null;
+const MX_TILES = [
+  { id: 'capLat', label: 'Caption delay p95', unit: 'ms', calc: ({ by, st }) => {
+    const r = roomOf(by, 'pulse.caption.fanout.duration');
+    if (!r || r.p95 === null) return { sub: st.simulated ? 'simulated room' : 'no captions yet' };
+    return { num: r.p95, sub: `median ${fmtNum(r.p50)} ms`, state: level(r.p95, 50, 250) };
+  } },
+  { id: 'capRate', label: 'Captions / min', unit: 'lines', calc: ({ by, st, uptime }) => {
+    const r = roomOf(by, 'pulse.caption.fanout.duration');
+    if (st.simulated) {
+      const n = (st.capTimes || []).filter((t) => Date.now() - t < 60000).length;
+      return { num: n, sub: 'simulated room', state: 'ok' };
+    }
+    const perMin = r ? r.rate * 60 : 0;
+    const quiet = talkStatus(st) === 'live' && perMin === 0 && uptime > 60;
+    return { num: perMin, sub: r ? `${r.value} sent since start` : 'none since start', state: quiet ? 'warn' : 'ok' };
+  } },
+  { id: 'phones', label: 'Phones connected', unit: 'phones', calc: ({ by, st }) => {
+    if (st.simulated && st.tele) return { num: st.tele.phones.here, sub: 'simulated room', state: 'ok' };
+    const v = roomOf(by, 'pulse.listeners')?.value ?? 0;
+    return { num: v, sub: st.stats ? `of ${st.stats.capacity} seats` : '', state: 'ok' };
+  } },
+  { id: 'listening', label: 'Listening in', unit: 'phones', calc: ({ by, st }) => {
+    if (st.simulated && st.tele) return { num: st.tele.listen.listening, sub: 'simulated room', state: 'ok' };
+    return { num: roomOf(by, 'pulse.audio.listeners')?.value ?? 0, sub: 'audio sockets', state: 'ok' };
+  } },
+  { id: 'drops', label: 'Audio drops / min', unit: 'frames', calc: ({ by }) => {
+    const r = roomOf(by, 'pulse.audio.dropped_frames');
+    const perMin = r ? r.rate * 60 : 0;
+    return { num: perMin, sub: `${r ? r.value : 0} dropped since start`, state: level(perMin, 10, 60) };
+  } },
+  { id: 'votes', label: 'Votes / min', unit: 'votes', calc: ({ by }) => {
+    const s = by.get('pulse.votes');
+    const part = s && (s.perRoom ? s.room : s);
+    return { num: part ? part.rate * 60 : 0, sub: `${part ? part.value : 0} since start${s && !s.perRoom ? ' · all rooms' : ''}`, state: 'ok' };
+  } },
+  { id: 'tickets', label: 'Open tickets', unit: 'tickets', calc: ({ by }) => {
+    const open = roomOf(by, 'pulse.tickets.open')?.value ?? 0;
+    const fix = roomOf(by, 'pulse.ticket.time_to_fix');
+    return { num: open, sub: fix && fix.p50 !== null ? `median fix ${fmtDur(fix.p50)}` : 'no fixes yet', state: level(open, 1, 3) };
+  } },
+  { id: 'es', label: 'Elasticsearch', unit: '', calc: ({ es }) => {
+    if (!es || !es.enabled) return { text: 'Off', sub: 'not configured', state: 'off' };
+    const recentError = es.lastErrorAt && Date.now() - es.lastErrorAt < 60000;
+    const state = es.dropped > 0 || recentError ? 'bad' : es.writeErrors > 0 ? 'warn' : 'ok';
+    const text = state === 'ok' ? 'Healthy' : state === 'warn' ? 'Had errors' : 'Failing';
+    return { text, sub: `${es.writes ?? 0} writes · ${es.writeErrors ?? 0} errors${es.queued ? ` · ${es.queued} queued` : ''}`, state };
+  } },
+  { id: 'loop', label: 'Event loop lag p99', unit: 'ms', calc: ({ by }) => {
+    const v = by.get('nodejs.eventloop.delay.p99')?.value;
+    return typeof v === 'number' ? { num: v * 1000, sub: 'last 5 s', state: level(v * 1000, 50, 200) } : { sub: 'measuring…' };
+  } },
+  { id: 'mem', label: 'Memory (RSS)', unit: 'MB', calc: ({ by }) => {
+    const v = by.get('process.memory.usage')?.value;
+    if (typeof v !== 'number') return {};
+    const heap = by.get('v8js.memory.heap.used')?.value;
+    const mb = v / 1048576;
+    return { num: mb, sub: typeof heap === 'number' ? `heap ${fmtNum(heap / 1048576)} MB` : '', state: level(mb, 512, 1024) };
+  } },
+];
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function buildTile(def) {
+  const mk = (tag, cls, text = '') => Object.assign(document.createElement(tag), { className: cls, textContent: text });
+  const li = mk('li', 'mx-tile');
+  li.dataset.state = 'none';
+  const head = mk('div', 'mx-head');
+  def.el = { li, badge: mk('span', 'mx-badge', MX_BADGE.none), num: mk('b', 'mx-num', '—'), unit: mk('span', 'mx-unit', def.unit), sub: mk('span', 'mx-sub') };
+  head.append(mk('span', 'mx-label', def.label), def.el.badge);
+  const val = mk('div', 'mx-val');
+  val.append(def.el.num, def.el.unit);
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', 'mx-spark');
+  svg.setAttribute('viewBox', '0 0 60 16');
+  svg.setAttribute('preserveAspectRatio', 'none');
+  svg.setAttribute('aria-hidden', 'true');
+  const line = document.createElementNS(SVG_NS, 'polyline');
+  svg.append(line);
+  def.el.line = line;
+  li.append(head, val, def.el.sub, svg);
+  return li;
+}
+$('mxGrid').replaceChildren(...MX_TILES.map(buildTile));
+
+function drawSpark(line, arr) {
+  if (arr.length < 2) { line.setAttribute('points', ''); return; }
+  const lo = Math.min(...arr);
+  const hi = Math.max(...arr);
+  const span = hi - lo || 1;
+  line.setAttribute('points', arr.map((v, i) => `${((i / (arr.length - 1)) * 60).toFixed(1)},${(14 - ((v - lo) / span) * 12).toFixed(1)}`).join(' '));
+}
+
+function setTile(def, r, room) {
+  const state = r.state || (r.num === undefined && r.text === undefined ? 'none' : 'ok');
+  def.el.li.dataset.state = state;
+  def.el.badge.textContent = MX_BADGE[state];
+  def.el.num.textContent = r.text !== undefined ? r.text : r.num === undefined ? '—' : fmtNum(r.num);
+  def.el.unit.textContent = r.text !== undefined || r.num === undefined ? '' : def.unit;
+  def.el.sub.textContent = r.sub || '';
+  const k = `${room}|${def.id}`;
+  let arr = mxHistory.get(k);
+  if (!arr) mxHistory.set(k, (arr = []));
+  if (typeof r.num === 'number' && Number.isFinite(r.num)) { arr.push(r.num); if (arr.length > MX_KEEP) arr.shift(); }
+  drawSpark(def.el.line, arr);
+}
+
+function unitText(u) { return String(u || '').replace(/[{}]/g, ''); }
+function fmtSeriesCell(s, part) {
+  if (!part) return '—';
+  if (s.kind === 'gauge') {
+    if (part.value === null) return '—';
+    if (s.unit === 'By') return `${fmtNum(part.value / 1048576)} MB`;
+    if (s.unit === 's') return `${fmtNum(part.value * 1000)} ms`;
+    return `${fmtNum(part.value)} ${unitText(s.unit)}`.trim();
+  }
+  const rate = typeof part.rate === 'number' ? ` · ${fmtNum(part.rate * 60)}/min` : '';
+  if (s.kind === 'counter') return `${fmtNum(part.value)} ${unitText(s.unit)}${rate}`.trim();
+  return part.p95 === null || part.p95 === undefined ? `${part.value} samples${rate}` : `p50 ${fmtNum(part.p50)} · p95 ${fmtNum(part.p95)} ${s.unit} · ${part.value} samples`;
+}
+function renderSeriesTable(d) {
+  const cell = (text) => Object.assign(document.createElement('td'), { textContent: text });
+  const rows = [...d.series].sort((a, b) => a.name.localeCompare(b.name)).map((s) => {
+    const tr = document.createElement('tr');
+    const name = Object.assign(document.createElement('th'), { scope: 'row', textContent: s.name });
+    name.title = s.description || '';
+    tr.append(name, cell(fmtSeriesCell(s, s.room)), cell(fmtSeriesCell(s, s)));
+    return tr;
+  });
+  $('mxRows').replaceChildren(...rows);
+}
+
+function setMxStatus(state, text) {
+  $('mxStatus').dataset.state = state; // ok | wait | bad | off
+  $('mxStatus').textContent = text;
+}
+function renderMxStatus(d) {
+  const x = d.dash0 || {};
+  if (x.enabled) {
+    const host = x.endpointHost || 'OTLP endpoint';
+    const age = x.lastExportAt ? (d.at - x.lastExportAt) / 1000 : null;
+    if (x.lastExportOk === false) setMxStatus('bad', `Dash0 export failing · ${host} · last attempt ${fmtAgo(age ?? 0)} ago`);
+    else if (age === null) setMxStatus('wait', `Exporting to Dash0 · ${host} · first export pending`);
+    else setMxStatus(age > 45 ? 'wait' : 'ok', `Exporting to Dash0 · ${host} · last export ${fmtAgo(age)} ago`);
+  } else if (x.endpointHost) setMxStatus('bad', 'Dash0 export failed to start · showing local values');
+  else setMxStatus('off', 'Dash0 export off (no OTLP endpoint) · showing local values');
+  const link = $('mxLink');
+  const url = typeof x.url === 'string' && /^https?:\/\//i.test(x.url) ? x.url : '';
+  link.hidden = !url;
+  if (url) link.href = url;
+}
+
+function renderMetrics(d, room) {
+  const by = new Map((d.series || []).map((s) => [s.name, s]));
+  const st = rooms.get(room);
+  if (!st) return;
+  const env = { by, es: d.es, st, uptime: d.service?.uptimeSec || 0 };
+  for (const def of MX_TILES) {
+    let r;
+    try { r = def.calc(env); } catch { r = {}; }
+    setTile(def, r, room);
+  }
+  $('mxGrid').dataset.stale = 'false';
+  renderMxStatus(d);
+  if ($('mxAll').open) renderSeriesTable(d);
+}
+
+function mxFailed(status) {
+  mx.fails += 1;
+  $('mxGrid').dataset.stale = 'true';
+  setMxStatus('bad', status === 401 ? 'Metrics unavailable · the server rejected the tech key' : 'Metrics unavailable · retrying every 5 s');
+}
+
+async function pollMetrics(force = false) {
+  if (mx.inflight && !force) return;
+  const room = selected;
+  const seq = ++mx.seq;
+  mx.inflight = true;
+  mx.room = room;
+  try {
+    const res = await fetch(`/api/metrics?room=${encodeURIComponent(room)}`, {
+      headers: { 'x-pulse-key': key },
+      cache: 'no-store',
+      signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
+    });
+    if (!res.ok) throw Object.assign(new Error('metrics'), { status: res.status });
+    const d = await res.json();
+    if (seq !== mx.seq) return;
+    mx.fails = 0;
+    renderMetrics(d, room);
+  } catch (e) {
+    if (seq === mx.seq) mxFailed(e && e.status);
+  } finally {
+    if (seq === mx.seq) mx.inflight = false;
+  }
+}
+
+const mxActive = () => !document.hidden && $('metrics').open && mx.inView;
+function metricsRoomChanged() {
+  if (mx.room === selected) return;
+  for (const def of MX_TILES) setTile(def, {}, selected);
+  setMxStatus('wait', 'Loading metrics…');
+  if (mxActive()) pollMetrics(true);
+  else mx.room = null;
+}
+$('metrics').open = store.get('pulse.techMetricsOpen', true) !== false;
+$('metrics').addEventListener('toggle', () => {
+  store.set('pulse.techMetricsOpen', $('metrics').open);
+  if (mxActive()) pollMetrics();
+});
+$('mxAll').addEventListener('toggle', () => { if ($('mxAll').open && mx.room === selected) pollMetrics(true); });
+document.addEventListener('visibilitychange', () => { if (mxActive()) pollMetrics(); });
+if ('IntersectionObserver' in window) {
+  new IntersectionObserver(([entry]) => {
+    mx.inView = entry.isIntersecting;
+    if (mxActive()) pollMetrics();
+  }).observe($('metrics'));
+}
+setInterval(() => { if (mxActive()) pollMetrics(); }, MX_POLL_MS);
+if (mxActive()) pollMetrics();
 
 // ---------- one socket per room ----------
 for (const room of roomList) connect(room);
