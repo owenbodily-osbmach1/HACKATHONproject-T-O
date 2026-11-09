@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pulse · AV tech</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="techpage">
+  <header class="tech-top">
+    <div class="counters" role="status" aria-live="polite">
+      <span class="ctr red"><b id="cRed">0</b> need fixing</span>
+      <span class="ctr amber"><b id="cAmber">0</b> claimed</span>
+      <span class="ctr green"><b id="cGreen">0</b> OK</span>
+    </div>
+    <div class="tech-tools">
+      <button type="button" class="sound-btn" id="soundBtn" aria-pressed="false">🔕 Turn on sound</button>
+      <label class="limit">Alert at
+        <select id="limitSel"><option value="1">1 vote</option><option value="2">2 votes</option><option value="3" selected>3 votes</option><option value="5">5 votes</option></select>
+      </label>
+      <label class="who">I'm <input id="techName" maxlength="20" placeholder="Tech"></label>
+    </div>
+  </header>
+
+  <p class="warn tech-warn" id="warn" role="alert" hidden></p>
+
+  <main class="tech-main">
+    <section class="board" aria-label="Rooms">
+      <div class="blocks" id="blocks" aria-live="polite"></div>
+      <div class="ok-tiles" id="okTiles"></div>
+    </section>
+
+    <aside class="drawer" id="drawer" aria-label="Room details">
+      <header class="drawer-head">
+        <h2 id="dRoom">Room —</h2>
+        <span class="conn" id="dConn"><span class="dot"></span><span class="conn-word">Connecting…</span></span>
+      </header>
+      <p class="d-talk" id="dTalk">No talk running</p>
+
+      <div class="d-stats">
+        <div><span class="k">Phones connected</span><b id="dListeners">—</b></div>
+        <div><span class="k">Podium mic</span><b id="dMic">—</b></div>
+        <div><span class="k">Captions</span><b id="dGap">—</b></div>
+      </div>
+      <div class="meter" aria-hidden="true"><span id="dMeter"></span><i class="meter-mark"></i></div>
+
+      <div class="d-row">
+        <button type="button" class="ghost" id="listenPodium" aria-pressed="false">🎧 Listen to podium</button>
+        <span class="level"><span id="dLevel"></span></span>
+      </div>
+
+      <h3>Last captions</h3>
+      <ol class="d-captions" id="dCaptions"><li class="muted">Nothing yet.</li></ol>
+
+      <h3>Room switches</h3>
+      <div class="switches">
+        <label><input type="checkbox" id="swCaptions" checked> Captions on phones</label>
+        <label><input type="checkbox" id="swListen" checked> Listen-in</label>
+        <label><input type="checkbox" id="swSlides" checked> Slides on phones</label>
+      </div>
+
+      <h3>Message every phone in the room</h3>
+      <form class="bcast" id="bcastForm">
+        <input id="bcastText" maxlength="140" placeholder="Audio fixed. Tell us if it's better" aria-label="Broadcast message">
+        <button type="submit">Send</button>
+      </form>
+      <div class="quick" id="quick">
+        <button type="button" class="chip">Audio fixed. Tell us if it's better</button>
+        <button type="button" class="chip">Overflow seats in Room 255</button>
+      </div>
+
+      <h3>Questions <span class="muted" id="qCount"></span></h3>
+      <ul class="questions" id="questions"><li class="muted">No questions yet.</li></ul>
+    </aside>
+  </main>
+
+  <script type="module" src="/tech.js"></script>
+</body>
+</html>
