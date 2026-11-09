@@ -61,6 +61,8 @@ Full run of show with timings: [`docs/DEMO.md`](docs/DEMO.md).
 
 **Evidence:** Each step of a ticket, open, claim, fixed, reopen, is a span tagged with the ticket id. A caption has one span for relay and fan-out. Dash0 shows the room's listener count and which rooms are alerting while the demo runs.
 
+- Dash0 as code: dash0/ holds the SLOs and dashboard, applied with node scripts/dash0-apply.js
+
 ### Radar (Skyhook)
 
 **What:** Our own kind cluster is connected to Radar Cloud, the starter's bring-your-own path. We used Radar Checks and its AI investigation of the app pod.

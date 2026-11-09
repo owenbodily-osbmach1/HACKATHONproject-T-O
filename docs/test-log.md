@@ -323,3 +323,11 @@ All passed:
 ## 3:25 PM: question snapshot cap and Dash0 telemetry fixes
 
 `question_groups` holds at most the 50 most recently active groups (a new ask moves its group to the newest end). `pulse.ticket.time_to_ack` and `time_to_fix` use seconds buckets [5, 15, 30, 45, 60, 120, 300, 600]; spans from `otel.span()` set ERROR status when the work throws or rejects. Question rate limiting is the 20 s per phone limit from #43. `npm run check` and `node scripts/smoke.js` pass (smoke asserts the 50-group cap).
+## 2026-11-09 3:07 PM: Dash0 as code (Ty)
+
+- Added `dash0/`: Perses dashboard `Pulse — Service Health` (listeners by room, rooms alerting, votes by signal type, p90 time to ack, p90 time to fix, p95 caption fan-out) and two OpenSLO SLOs: `pulse-availability` (99.9%) and `pulse-av-ack` (90% within 60 s).
+- `scripts/dash0-apply.js` applied all five objects to dataset `default` in us-west-2; every PUT returned 200 and every verify GET returned 200. A second run converged with no duplicates.
+- Dash0's SLO API is limited to a rolling 28-day `Occurrences` ratio SLI, so the literal 24-hour availability target and the 7-day ack target are check rules (`pulse-availability-24h`, `pulse-av-ack-7d`) with the same thresholds.
+- PromQL checked against the live dataset: listeners, rooms alerting, p90 ack/fix and p95 fan-out return series; availability evaluates to 99.95%. Votes has no series in the last hour.
+- `pulse.ticket.time_to_ack`/`time_to_fix` now pass explicit seconds buckets `[5,15,30,45,60,120,300,600]` so the 60 s SLO bucket exists.
+- `npm run check`: passed.
