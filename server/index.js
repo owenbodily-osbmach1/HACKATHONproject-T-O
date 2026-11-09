@@ -15,6 +15,7 @@ const tickets = require('./tickets');
 const talks = require('./talks');
 const questions = require('./questions');
 const slides = require('./slides');
+const qr = require('./qr');
 
 otel.start();
 
@@ -51,7 +52,7 @@ app.use((req, res, next) => {
 app.use(express.static(pub, { extensions: ['html'], index: false }));
 
 const ctx = { config, state, auth, es, hub, otel };
-for (const m of [tickets, talks, questions, slides]) m.register(app, ctx);
+for (const m of [tickets, talks, questions, slides, qr]) m.register(app, ctx);
 
 const server = http.createServer(app);
 hub.attach(server, ctx);
