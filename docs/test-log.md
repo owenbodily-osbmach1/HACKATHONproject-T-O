@@ -319,3 +319,7 @@ All passed:
 - 320 px: headless Chrome (Playwright, system Chrome) at 320×640 measured `document.documentElement.scrollWidth` 320 for `/tech?key=tk` and `/mic/<room>?key=sk`, including a 32-character room id, unbroken title/speaker tokens and a long `base=` URL. `/mic` measured 606 before the CSS guard.
 - Docs: README and `docs/DEMO.md` now say each ticket lifecycle step is its own span tagged with the ticket id, not one trace.
 - `.env.example` now lists `DASH0_RUM_TOKEN` and `DASH0_RUM_ENDPOINT`.
+
+## 3:25 PM: question snapshot cap and Dash0 telemetry fixes
+
+`question_groups` holds at most the 50 most recently active groups (a new ask moves its group to the newest end). `pulse.ticket.time_to_ack` and `time_to_fix` use seconds buckets [5, 15, 30, 45, 60, 120, 300, 600]; spans from `otel.span()` set ERROR status when the work throws or rejects. Question rate limiting is the 20 s per phone limit from #43. `npm run check` and `node scripts/smoke.js` pass (smoke asserts the 50-group cap).

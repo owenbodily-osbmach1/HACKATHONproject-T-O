@@ -245,6 +245,28 @@ async function main() {
     assert.equal(snap.groups.length, 0,
       `new tech console must not see question groups from an ended talk, got ${JSON.stringify(snap.groups)}`);
 
+    // The question_groups snapshot is capped at the 50 groups with the most recent activity.
+    for (let i = 0; i < 51; i++) {
+      const q = await http(base, 'POST', '/api/questions', {
+        body: { room: '3', text: `zcap${i} zword${i}`, clientId: `smoke-cap-${i}` },
+      });
+      assert.equal(q.status, 200, `question ${i} for the cap check must return 200, got ${q.status}`);
+    }
+    const reask = await http(base, 'POST', '/api/questions', {
+      body: { room: '3', text: 'zcap0 zword0', clientId: 'smoke-cap-reask' },
+    });
+    assert.equal(reask.status, 200, `a renewed ask for an older group must return 200, got ${reask.status}`);
+    const capTech = socket(`ws://${HOST}:${port}/ws?room=3&role=tech&key=tk`);
+    sockets.push(capTech);
+    await capTech.opened;
+    const snapshot = await capTech.wait((m) => m.t === 'question_groups' && Array.isArray(m.groups));
+    assert.equal(snapshot.groups.length, 50, `the snapshot must hold 50 groups, got ${snapshot.groups.length}`);
+    const reasked = snapshot.groups.find((g) => g.text === 'zcap0 zword0');
+    assert.ok(reasked, 'the snapshot must keep an older group after renewed activity');
+    assert.equal(reasked.count, 2, 'the renewed ask must increase the older group count');
+    assert.ok(!snapshot.groups.some((g) => g.text === 'zcap1 zword1'), 'the snapshot must drop the least-recently-active group');
+    assert.ok(snapshot.groups.some((g) => g.text === 'zcap50 zword50'), 'the snapshot must keep the newest group');
+
     console.log('smoke: all checks passed');
   } catch (err) {
     console.error(`smoke: FAILED — ${err.message}`);

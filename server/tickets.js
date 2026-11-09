@@ -321,8 +321,10 @@ function register(app, context) {
 
   mOpened = otel.counter('pulse.tickets.opened', 'Tickets opened', '{ticket}');
   mVotes = otel.counter('pulse.votes', 'Votes added or retracted', '{vote}');
-  mTimeToFix = otel.histogram('pulse.ticket.time_to_fix', 'Seconds from open (or reopen) to fixed', 's');
-  mTimeToAck = otel.histogram('pulse.ticket.time_to_ack', 'Seconds from open to claimed', 's');
+  // Seconds, so the ms-sized default bounds would swallow every real ack/fix interval.
+  const avBuckets = { explicitBucketBoundaries: [5, 15, 30, 45, 60, 120, 300, 600] };
+  mTimeToFix = otel.histogram('pulse.ticket.time_to_fix', 'Seconds from open (or reopen) to fixed', 's', avBuckets);
+  mTimeToAck = otel.histogram('pulse.ticket.time_to_ack', 'Seconds from open to claimed', 's', avBuckets);
 
   otel.observableGauge('pulse.listeners', 'Open attendee sockets per room', () => {
     if (!ctx || !ctx.state || !ctx.state.rooms || !ctx.hub) return [];
