@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pulse · Podium mic</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="podium">
+  <main class="podium-wrap">
+    <header class="podium-top">
+      <div>
+        <p class="eyebrow">Podium mic · never projected</p>
+        <h1 id="roomTitle">Room —</h1>
+      </div>
+      <span class="conn" id="conn" role="status"><span class="dot"></span><span class="conn-word">Connecting…</span></span>
+    </header>
+
+    <p class="warn" id="warn" role="alert" hidden></p>
+
+    <section class="card" aria-labelledby="talkH">
+      <h2 id="talkH">Talk</h2>
+      <div class="field-row">
+        <label>Title<input id="title" autocomplete="off" placeholder="Pulse: making every seat hear the talk"></label>
+        <label>Speaker<input id="speaker" autocomplete="off" placeholder="Tyler"></label>
+      </div>
+      <div class="field-row">
+        <label>Microphone<select id="micSelect"><option value="">Default microphone</option></select></label>
+      </div>
+      <div class="big-btns">
+        <button type="button" class="start" id="startBtn">● Start captions <small>(the transcript will be saved)</small></button>
+        <button type="button" class="stop" id="stopBtn" hidden>■ Stop and save</button>
+      </div>
+      <p class="status-line" id="recState">Not started.</p>
+      <p class="done" id="doneLine" hidden></p>
+    </section>
+
+    <section class="card" aria-labelledby="micH">
+      <h2 id="micH">Mic level</h2>
+      <div class="meter" aria-hidden="true"><span id="meterBar"></span><i class="meter-mark" title="-50 dBFS"></i></div>
+      <p class="status-line"><span id="dbText">— dBFS</span> · <span id="audioState">Listen-in off</span></p>
+      <dl class="stats">
+        <div><dt>Words captioned</dt><dd id="statWords">0</dd></div>
+        <div><dt>Phones connected</dt><dd id="statListeners">—</dd></div>
+        <div><dt>Transcript</dt><dd id="statSaving">Not saving</dd></div>
+      </dl>
+      <p class="last-line" id="lastLine" aria-live="off"></p>
+    </section>
+
+    <section class="card qr-card" aria-labelledby="qrH">
+      <h2 id="qrH">QR code for slide 1</h2>
+      <p class="warn" id="qrWarn" hidden>This code points at <b>localhost</b>, which phones can't open. Open this page through the public URL (team URL or tunnel), set <code>PUBLIC_BASE_URL</code>, or add <code>&amp;base=https://your-url</code>.</p>
+      <div class="qr" id="qr"></div>
+      <a class="qr-dl" id="qrDl" hidden>Download QR image</a>
+      <p><a class="qr-url" id="qrUrl" target="_blank" rel="noopener"></a></p>
+      <p class="hint-small">Right-click the code → "Copy image" and paste it into slide 1, or download it.</p>
+    </section>
+
+    <section class="card" aria-labelledby="slidesH">
+      <h2 id="slidesH">Slides on phones (manual fallback)</h2>
+      <p class="hint-small">Use these only if the deck isn't presented from <code>/present</code>.</p>
+      <div class="slide-ctl">
+        <button type="button" class="ghost big" id="prevSlide">‹ Prev</button>
+        <span id="slidePos">No deck loaded</span>
+        <button type="button" class="ghost big" id="nextSlide">Next ›</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="/vendor/qrcode.js"></script>
+  <script type="module" src="/mic.js"></script>
+</body>
+</html>
