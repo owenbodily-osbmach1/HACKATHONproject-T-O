@@ -1,0 +1,21 @@
+{
+  "id": "pulse-av-ack-7d",
+  "dataset": "default",
+  "name": "Pulse AV acknowledgement below 90% within 60 s (7d)",
+  "expression": "100 * sum(increase(pulse_ticket_time_to_ack_seconds_bucket{service_name=\"pulse\",le=\"60\"}[7d])) / sum(increase(pulse_ticket_time_to_ack_seconds_count{service_name=\"pulse\"}[7d])) < $__threshold",
+  "thresholds": {
+    "degraded": 95,
+    "failed": 90
+  },
+  "interval": "1h",
+  "for": "0m",
+  "enabled": true,
+  "labels": {
+    "service_name": "pulse",
+    "slo": "pulse-av-ack"
+  },
+  "annotations": {
+    "summary": "Fewer than 90% of Pulse tickets were acknowledged within 60 s over 7d",
+    "description": "Share of AV tickets claimed within 60 seconds, from pulse.ticket.time_to_ack, is below the 90% SLO target over the last 7 days."
+  }
+}
