@@ -7,7 +7,7 @@
 const express = require('express');
 
 const MAX_FRAMES = 150;
-const MIN_GAP_MS = 800;
+const MIN_GAP_MS = 400;
 const frames = new Map(); // talkId -> { next, items: Map<n, {buf, type, ts}> }
 const lastUpload = new Map(); // room -> epoch ms
 
