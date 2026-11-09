@@ -1,0 +1,330 @@
+{
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "pulse-service-health",
+    "dash0Extensions": {
+      "id": "pulse-service-health",
+      "dataset": "default",
+      "tags": ["pulse", "hackathon"]
+    }
+  },
+  "spec": {
+    "display": {
+      "name": "Pulse — Service Health",
+      "description": "Live room health and AV incident SLOs for the Pulse service (service.name=pulse)."
+    },
+    "duration": "1h",
+    "refreshInterval": "30s",
+    "layouts": [
+      {
+        "kind": "Grid",
+        "spec": {
+          "display": { "title": "Live rooms", "collapse": { "open": true } },
+          "items": [
+            {
+              "content": { "$ref": "#/spec/panels/listeners" },
+              "x": 0, "y": 0, "width": 12, "height": 6
+            },
+            {
+              "content": { "$ref": "#/spec/panels/alerting" },
+              "x": 12, "y": 0, "width": 12, "height": 6
+            }
+          ]
+        }
+      },
+      {
+        "kind": "Grid",
+        "spec": {
+          "display": { "title": "Attendee signals", "collapse": { "open": true } },
+          "items": [
+            {
+              "content": { "$ref": "#/spec/panels/votes" },
+              "x": 0, "y": 0, "width": 24, "height": 6
+            }
+          ]
+        }
+      },
+      {
+        "kind": "Grid",
+        "spec": {
+          "display": { "title": "SLO indicators", "collapse": { "open": true } },
+          "items": [
+            {
+              "content": { "$ref": "#/spec/panels/p90-ack" },
+              "x": 0, "y": 0, "width": 8, "height": 6
+            },
+            {
+              "content": { "$ref": "#/spec/panels/p90-fix" },
+              "x": 8, "y": 0, "width": 8, "height": 6
+            },
+            {
+              "content": { "$ref": "#/spec/panels/p95-fanout" },
+              "x": 16, "y": 0, "width": 8, "height": 6
+            }
+          ]
+        }
+      }
+    ],
+    "panels": {
+      "listeners": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Listeners by room",
+            "description": "Open attendee sockets per room (pulse.listeners)."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": { "mode": "list", "position": "top", "showLegend": true },
+              "thresholds": {},
+              "visual": {
+                "areaOpacity": 0.2,
+                "connectNulls": false,
+                "display": "line",
+                "lineWidth": 1,
+                "palette": { "mode": "auto" },
+                "pointRadius": 2.5,
+                "stack": "none"
+              },
+              "yAxis": {
+                "format": { "decimalPlaces": 0, "shortValues": false, "unit": "decimal" },
+                "min": 0,
+                "show": true
+              }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum by (pulse_room) (pulse_listeners{service_name=\"pulse\"})",
+                    "seriesNameFormat": "{{pulse_room}}"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "alerting": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Rooms alerting",
+            "description": "Rooms with an active AV ticket (pulse.rooms.alerting)."
+          },
+          "plugin": {
+            "kind": "StatChart",
+            "spec": {
+              "calculation": "last-number",
+              "format": { "decimalPlaces": 0, "shortValues": false, "unit": "decimal" },
+              "thresholds": {
+                "steps": [
+                  { "value": 0, "color": "green" },
+                  { "value": 1, "color": "red" }
+                ]
+              },
+              "valueFontSize": 31
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "max(pulse_rooms_alerting{service_name=\"pulse\"})",
+                    "seriesNameFormat": "Alerting"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "votes": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Votes by signal type",
+            "description": "Can't hear / can't see votes added per 5 minutes (pulse.votes)."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": { "mode": "list", "position": "top", "showLegend": true },
+              "thresholds": {},
+              "visual": {
+                "areaOpacity": 0.55,
+                "connectNulls": false,
+                "display": "bar",
+                "lineWidth": 1,
+                "palette": { "mode": "auto" },
+                "pointRadius": 2.5,
+                "stack": "none"
+              },
+              "yAxis": {
+                "format": { "decimalPlaces": 0, "shortValues": false, "unit": "decimal" },
+                "min": 0,
+                "show": true
+              }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "sum by (pulse_signal_type) (increase(pulse_votes{service_name=\"pulse\"}[5m]))",
+                    "seriesNameFormat": "{{pulse_signal_type}}"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "p90-ack": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "p90 time to acknowledge",
+            "description": "90th percentile seconds from ticket open to claim (pulse.ticket.time_to_ack). SLO: 90% within 60 s."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": { "mode": "list", "position": "top", "showLegend": true },
+              "thresholds": {
+                "steps": [{ "value": 60, "color": "red" }]
+              },
+              "visual": {
+                "areaOpacity": 0.1,
+                "connectNulls": false,
+                "display": "line",
+                "lineWidth": 1,
+                "palette": { "mode": "auto" },
+                "pointRadius": 2.5,
+                "stack": "none"
+              },
+              "yAxis": {
+                "format": { "decimalPlaces": 1, "shortValues": false, "unit": "seconds" },
+                "min": 0,
+                "show": true
+              }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "histogram_quantile(0.9, sum by (le) (rate(pulse_ticket_time_to_ack_seconds_bucket{service_name=\"pulse\"}[1h])))",
+                    "seriesNameFormat": "p90 ack"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "p90-fix": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "p90 time to fix",
+            "description": "90th percentile seconds from ticket open to fixed (pulse.ticket.time_to_fix)."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": { "mode": "list", "position": "top", "showLegend": true },
+              "thresholds": {},
+              "visual": {
+                "areaOpacity": 0.1,
+                "connectNulls": false,
+                "display": "line",
+                "lineWidth": 1,
+                "palette": { "mode": "auto" },
+                "pointRadius": 2.5,
+                "stack": "none"
+              },
+              "yAxis": {
+                "format": { "decimalPlaces": 1, "shortValues": false, "unit": "seconds" },
+                "min": 0,
+                "show": true
+              }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "histogram_quantile(0.9, sum by (le) (rate(pulse_ticket_time_to_fix_seconds_bucket{service_name=\"pulse\"}[1h])))",
+                    "seriesNameFormat": "p90 fix"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "p95-fanout": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "p95 caption fan-out",
+            "description": "95th percentile milliseconds to send one caption to every socket in the room (pulse.caption.fanout.duration)."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": { "mode": "list", "position": "top", "showLegend": true },
+              "thresholds": {},
+              "visual": {
+                "areaOpacity": 0.1,
+                "connectNulls": false,
+                "display": "line",
+                "lineWidth": 1,
+                "palette": { "mode": "auto" },
+                "pointRadius": 2.5,
+                "stack": "none"
+              },
+              "yAxis": {
+                "format": { "decimalPlaces": 1, "shortValues": false, "unit": "milliseconds" },
+                "min": 0,
+                "show": true
+              }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "histogram_quantile(0.95, sum by (le) (rate(pulse_caption_fanout_duration_milliseconds_bucket{service_name=\"pulse\"}[1h])))",
+                    "seriesNameFormat": "p95 fan-out"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

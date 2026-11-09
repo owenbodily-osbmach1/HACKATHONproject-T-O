@@ -1,0 +1,57 @@
+{
+  "apiVersion": "openslo.com/v1",
+  "kind": "SLO",
+  "metadata": {
+    "name": "pulse-av-ack",
+    "labels": {
+      "dash0.com/origin": "pulse-av-ack"
+    },
+    "annotations": {
+      "dash0.com/display-name": "AV acknowledgement — 90% of tickets claimed within 60 s",
+      "dash0.com/enabled": "true"
+    }
+  },
+  "spec": {
+    "description": "AV acknowledgement SLI: ticket claims with pulse.ticket.time_to_ack <= 60 s divided by all claims, service.name=pulse. Dash0 SLO evaluation is a rolling 28-day window; the same target's 7-day view is enforced by check av-ack-7d.",
+    "service": "pulse",
+    "budgetingMethod": "Occurrences",
+    "timeWindow": [
+      {
+        "duration": "28d",
+        "isRolling": true
+      }
+    ],
+    "indicator": {
+      "metadata": {
+        "name": "pulse-av-ack-ratio"
+      },
+      "spec": {
+        "ratioMetric": {
+          "counter": true,
+          "good": {
+            "metricSource": {
+              "type": "Prometheus",
+              "spec": {
+                "query": "pulse_ticket_time_to_ack_seconds_bucket{service_name=\"pulse\",le=\"60\"}"
+              }
+            }
+          },
+          "total": {
+            "metricSource": {
+              "type": "Prometheus",
+              "spec": {
+                "query": "pulse_ticket_time_to_ack_seconds_count{service_name=\"pulse\"}"
+              }
+            }
+          }
+        }
+      }
+    },
+    "objectives": [
+      {
+        "displayName": "90% acknowledged within 60 s",
+        "target": 0.9
+      }
+    ]
+  }
+}

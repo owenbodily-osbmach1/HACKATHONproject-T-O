@@ -1,0 +1,57 @@
+{
+  "apiVersion": "openslo.com/v1",
+  "kind": "SLO",
+  "metadata": {
+    "name": "pulse-availability",
+    "labels": {
+      "dash0.com/origin": "pulse-availability"
+    },
+    "annotations": {
+      "dash0.com/display-name": "Pulse availability — 99.9% of HTTP requests without 5xx",
+      "dash0.com/enabled": "true"
+    }
+  },
+  "spec": {
+    "description": "Availability SLI: HTTP requests answered with status < 500 divided by all HTTP requests, service.name=pulse. Dash0 SLO evaluation is a rolling 28-day window; the literal 24-hour target is enforced by check availability-24h.",
+    "service": "pulse",
+    "budgetingMethod": "Occurrences",
+    "timeWindow": [
+      {
+        "duration": "28d",
+        "isRolling": true
+      }
+    ],
+    "indicator": {
+      "metadata": {
+        "name": "pulse-availability-ratio"
+      },
+      "spec": {
+        "ratioMetric": {
+          "counter": true,
+          "good": {
+            "metricSource": {
+              "type": "Prometheus",
+              "spec": {
+                "query": "http_server_request_duration_seconds_count{service_name=\"pulse\",http_response_status_code!~\"5..\"}"
+              }
+            }
+          },
+          "total": {
+            "metricSource": {
+              "type": "Prometheus",
+              "spec": {
+                "query": "http_server_request_duration_seconds_count{service_name=\"pulse\"}"
+              }
+            }
+          }
+        }
+      }
+    },
+    "objectives": [
+      {
+        "displayName": "99.9% availability",
+        "target": 0.999
+      }
+    ]
+  }
+}
