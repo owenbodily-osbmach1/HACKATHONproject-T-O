@@ -321,9 +321,10 @@ button:disabled { opacity: .4; cursor: default; }
 /* audit A3 #7: minmax(0, …) stops the grid column inheriting min-content width at 320 px. */
 .podium-wrap { max-width: 880px; margin: 0 auto; padding: 20px 16px 40px; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 820px) { .podium-wrap { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); } .podium-top, .warn, .podium-wrap > .card:first-of-type { grid-column: 1 / -1; } }
+.podium-top, .podium-top > *, .podium-wrap > * { min-width: 0; }
 .podium-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
-.eyebrow { margin: 0; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
-.podium-top h1 { margin: 2px 0 0; font-size: 28px; }
+.eyebrow { margin: 0; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; overflow-wrap: anywhere; }
+.podium-top h1 { margin: 2px 0 0; font-size: 28px; overflow-wrap: anywhere; }
 .warn { margin: 0; background: #3a1513; border: 1px solid var(--red); border-radius: 12px; padding: 10px 12px; font-weight: 600; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
 .card h2 { margin: 0 0 10px; font-size: 15px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
@@ -382,6 +383,8 @@ button:disabled { opacity: .4; cursor: default; }
 .tech-warn { margin: 12px 18px 0; }
 /* audit A3 #6: minmax(0, …) stops the board/drawer columns inheriting min-content width at 320 px. */
 .tech-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px 18px 40px; }
+.tech-main > *, .block, .b-head > *, .b-actions > * { min-width: 0; }
+.b-room, .b-cause, .b-steps, .d-talk, .q-text { overflow-wrap: anywhere; }
 @media (min-width: 980px) { .tech-main { grid-template-columns: minmax(0, 1fr) 400px; align-items: start; } .drawer { position: sticky; top: 76px; max-height: calc(100vh - 92px); overflow-y: auto; } }
 
 .blocks { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
@@ -460,6 +463,20 @@ button:disabled { opacity: .4; cursor: default; }
   .blocks { grid-template-columns: 1fr; }
   .b-room { font-size: 28px; }
   .d-stats { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+/* ---------- narrow phones (320 px) ----------
+   Same content, tighter padding so a console card never forces a horizontal scroll. */
+@media (max-width: 360px) {
+  .tech-top { padding-left: 10px; padding-right: 10px; }
+  .tech-main { padding-left: 10px; padding-right: 10px; }
+  .drawer, .card { padding: 12px; }
+  .band, .b-head, .b-cause, .b-actions { padding-left: 12px; padding-right: 12px; }
+  .b-steps { padding-left: 26px; padding-right: 12px; }
+  .podium-wrap { padding-left: 10px; padding-right: 10px; }
+  .podium-top h1 { font-size: 24px; }
+  .field-row label { flex-basis: 100%; }
+  .stats div, .d-stats div { padding-left: 6px; padding-right: 6px; }
 }
 
 /* ---------- slide relay /relay/:room ---------- */

@@ -59,7 +59,7 @@ Full run of show with timings: [`docs/DEMO.md`](docs/DEMO.md).
 
 **Where:** Setup and exporters in `server/otel.js`. Counters, gauges and spans in `server/tickets.js`, `server/hub.js` and `server/audio.js`.
 
-**Evidence:** A ticket has a trace from open through claim and fix. A caption has one span for relay and fan-out. Dash0 shows the room's listener count and which rooms are alerting while the demo runs.
+**Evidence:** Each step of a ticket, open, claim, fixed, reopen, is a span tagged with the ticket id. A caption has one span for relay and fan-out. Dash0 shows the room's listener count and which rooms are alerting while the demo runs.
 
 ### Radar (Skyhook)
 
