@@ -1,0 +1,21 @@
+{
+  "id": "pulse-availability-24h",
+  "dataset": "default",
+  "name": "Pulse availability below 99.9% (24h)",
+  "expression": "(1 - (sum(increase(http_server_request_duration_seconds_count{service_name=\"pulse\",http_response_status_code=~\"5..\"}[24h])) / sum(increase(http_server_request_duration_seconds_count{service_name=\"pulse\"}[24h])))) * 100 < $__threshold",
+  "thresholds": {
+    "degraded": 99.95,
+    "failed": 99.9
+  },
+  "interval": "10m",
+  "for": "0m",
+  "enabled": true,
+  "labels": {
+    "service_name": "pulse",
+    "slo": "pulse-availability"
+  },
+  "annotations": {
+    "summary": "Pulse availability is below 99.9% over 24h",
+    "description": "Percentage of service.name=pulse HTTP requests without a 5xx response over the last 24 hours is below the 99.9% SLO target."
+  }
+}
