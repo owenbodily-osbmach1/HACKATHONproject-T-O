@@ -196,7 +196,8 @@ function createTicket(room, talkId, type, people, now) {
 // Creation/reopening only happens when a vote was added.
 function refreshTicket(room, talkId, type, allowCreate) {
   const now = Date.now();
-  const people = countFor(room, null, type, now, windowMs());
+  const people = countFor(room, null, type, now, VOTE_TTL_MS); // everyone with an active vote
+  const recent = countFor(room, null, type, now, windowMs()); // threshold uses the alert window
   const active = activeTicket(room, type);
   if (active) {
     if (active.people !== people) {
@@ -205,7 +206,7 @@ function refreshTicket(room, talkId, type, allowCreate) {
     }
     return active;
   }
-  if (!allowCreate || people < alertThreshold) return null;
+  if (!allowCreate || recent < alertThreshold) return null;
 
   const prior = recentFixed(room, type, now);
   if (prior) {
