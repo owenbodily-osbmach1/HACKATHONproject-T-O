@@ -363,7 +363,8 @@ function onTicketStatus({ ticketId, type, status }) {
       betterReturnFocus = document.activeElement;
       $('better').hidden = false;
       hideHint();
-      $('betterYes').focus({ preventScroll: true });
+      const typing = betterReturnFocus?.matches?.('input, textarea, select, [contenteditable]');
+      if (!typing) $('betterYes').focus({ preventScroll: true });
       $('better').scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' });
     }
   }

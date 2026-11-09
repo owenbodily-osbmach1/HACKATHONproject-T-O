@@ -11,6 +11,16 @@ What has been tested, how, what broke and what is still open. Newest first. Add 
 | Repository syntax checks and `booths-check`, `find-check`, `relay-check`, `tickets-check` | passed |
 | Smoke checks | passed |
 | Focused mock-Elasticsearch question-answer check: update persists `answeredSeq` alongside `hidden` and `answered` | passed |
+## 2026-11-09: attendee focus and listen-in lifecycle fixes, automated (Gitar)
+
+**Setup:** `mise x node@22.23.4 -- npm ci`, `mise x node@22.23.4 -- npm run check`, plus a mocked AudioContext check for a stale `onstatechange` callback after stop/restart.
+
+| Check | Result |
+| --- | --- |
+| JavaScript syntax checks and `booths-check`, `find-check`, `relay-check`, `tickets-check` | passed |
+| Player stale-context callback after stop/restart does not throw or resume the stale/current context | passed |
+
+The attendee prompt's focus behavior was not exercised in a browser or on a real device.
 
 ## 2026-11-09: venue-local schedule times and past-event find check, automated (Gitar)
 

@@ -34,8 +34,10 @@ export function createPlayer({ room, onLevel, onState }) {
     ctx.resume?.();
 
     // Safari reports 'interrupted' after the phone locks or another app takes the audio.
-    ctx.onstatechange = () => {
-      if (ctx.state === 'interrupted' || ctx.state === 'suspended') resumeAudio();
+    const ac = ctx;
+    ac.onstatechange = () => {
+      if (ac !== ctx) return;
+      if (ac.state === 'interrupted' || ac.state === 'suspended') resumeAudio();
     };
     document.addEventListener('visibilitychange', onVisible);
 
