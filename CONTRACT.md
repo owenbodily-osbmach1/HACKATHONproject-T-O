@@ -34,7 +34,7 @@ Every change goes in as a pull request. Gitar reviews it; merge only after Gitar
 | GET | `/api/find/next?clientId=&limit=` | — | `[{id, title, start, location, because}]` |
 | GET / POST | `/api/config` | `{alertThreshold}` | `{alertThreshold, nudgeThreshold, publicBaseUrl}` (`publicBaseUrl` = `PUBLIC_BASE_URL`; the mic page builds the QR code from it) |
 | POST | `/api/rooms/:room/slide-frame` | raw `image/jpeg`, `image/png` or `image/webp` (≤ 1.5 MB), `SPEAKER_KEY` | `{n, url}` (slide relay; server then sends `slide` with `total: 0`) |
-| GET | `/slides/live/:talkId/:n.jpg` | — | the captured slide image (JPEG, PNG or WebP; response `Content-Type` matches the image format; `Cache-Control: public, max-age=31536000, immutable`) |
+| GET | `/slides/live/:bucket/:n-:token.jpg` | — (signed in to the slide's room, or `x-pulse-key` / `?key=` SPEAKER_KEY or TECH_KEY) | the captured slide image (JPEG, PNG or WebP; `Content-Type` matches the image format; `Cache-Control: private, no-store`). `token` is 16 random hex per frame; a wrong or missing token is `404`; a phone not signed in to that room is `403` (with `SIGNIN=off` any phone may view). |
 | GET | `/qr/:room.gif` | — | QR code image for `<public base>/r/:room` (insert the join code into a deck by URL) |
 | GET | `/healthz` | — | `ok` |
 | GET | `/rum-config.js` | — | `window.PULSE_RUM = {serviceName, endpoint, token}` for browser RUM, or `null` when `DASH0_RUM_TOKEN` is unset (`Cache-Control: no-store`) |
@@ -143,6 +143,9 @@ Audio uses its own binary-only sockets:
 
 Set `inference_id` explicitly from `ES_INFERENCE_ID`. If inference isn't available, fall back to a plain `match` query.
 
+- Device ids: the `clientId` field of `pulse-signals` and `pulse-questions` holds a salted hash per talk, and of `pulse-checkins` a salted hash per booth (`server/device-id.js`, secret `DEVICE_HASH_SECRET`, else `VISITOR_SECRET`, else random per start). Distinct counts within a talk or booth stay exact; the phone's own id is never written to Elasticsearch.
+- Retention: documents in `pulse-signals`, `pulse-questions` and `pulse-checkins` are deleted once older than `RETENTION_DAYS` (default 30, `0` keeps them) by `_delete_by_query` on `ts` (`server/es-retention.js`: an hour after start, then every 6 h; `node scripts/es-setup.js --retention` runs it once). Serverless has no classic ILM for plain indices, so this is a job, not a policy.
+
 ## Sign-in (before joining)
 
 `SIGNIN=on` (default) | `off`. While on, a phone signs in once before it gets the room:
@@ -183,6 +186,7 @@ Public page `/privacy` (`public/privacy.html`, no key) and `GET /api/privacy`. T
 
 - Every index Pulse writes is listed. Fields are read live from `GET /<index>/_mapping` when Elasticsearch is enabled. When it is disabled, or a mapping cannot be read, fields come from `scripts/es-setup.js` (`mappings`), so the list cannot drift.
 - `source`: `elasticsearch` when every mapping was read live, `mixed` when only some were, `static` when none were (including Elasticsearch disabled).
+- Browser monitoring (`public/rum.js`, only when `DASH0_RUM_TOKEN` is set): on the phone, before export, every URL is reduced to scheme + host + a path template (ids become `:id`; no query string, fragment or `?key=`), the SDK sees a coarse browser name instead of the user agent, and no headers are captured. `scripts/rum-check.js` asserts this in a real browser.
 - `personalData` is `true` while `SIGNIN` is on (the default) and `false` with `SIGNIN=off`.
 - The response must not contain a field named `name`, `email`, `phone` or `ip`; `scripts/extras-check.js` asserts this.
 
@@ -207,7 +211,7 @@ OTLP (Dash0): marking a booth request done records histogram `pulse.booth.reques
 
 Kubernetes Secret (entered in the Radar UI) or local `.env`. **Never committed.** See `.env.example`.
 
-`PORT` · `BOOTH_KEY` · `MOCK_ROOM=255` · `ROOM_CAPACITY=120` · `SIGNIN=on` · `AUTO_END_MIN=10` · `VISITOR_SECRET` · `PUBLIC_BASE_URL` · `SPEAKER_KEY` · `TECH_KEY` · `ALERT_THRESHOLD=3` · `ALERT_WINDOW_SEC=60` · `CAPTIONS_DEFAULT=on` · `ELASTIC_URL` · `ELASTIC_API_KEY` · `ES_INFERENCE_ID` · `OTEL_SERVICE_NAME=pulse` · `OTEL_EXPORTER_OTLP_ENDPOINT` · `OTEL_EXPORTER_OTLP_HEADERS` · `DASH0_RUM_TOKEN` (public, ingest-only) · `DASH0_RUM_ENDPOINT=https://ingress.us-west-2.aws.dash0.com`
+`PORT` · `BOOTH_KEY` · `RETENTION_DAYS=30` · `DEVICE_HASH_SECRET` · `MOCK_ROOM=255` · `ROOM_CAPACITY=120` · `SIGNIN=on` · `AUTO_END_MIN=10` · `VISITOR_SECRET` · `PUBLIC_BASE_URL` · `SPEAKER_KEY` · `TECH_KEY` · `ALERT_THRESHOLD=3` · `ALERT_WINDOW_SEC=60` · `CAPTIONS_DEFAULT=on` · `ELASTIC_URL` · `ELASTIC_API_KEY` · `ES_INFERENCE_ID` · `OTEL_SERVICE_NAME=pulse` · `OTEL_EXPORTER_OTLP_ENDPOINT` · `OTEL_EXPORTER_OTLP_HEADERS` · `DASH0_RUM_TOKEN` (public, ingest-only) · `DASH0_RUM_ENDPOINT=https://ingress.us-west-2.aws.dash0.com`
 
 ## Booths (expo floor)
 

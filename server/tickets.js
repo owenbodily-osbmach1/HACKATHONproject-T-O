@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const audio = require('./audio');
 const otel = require('./otel');
 const log = require('./log');
+const { hashDevice } = require('./device-id');
 
 const VOTE_TTL_MS = 10 * 60 * 1000;
 const REOPEN_MS = 2 * 60 * 1000;
@@ -168,7 +169,7 @@ function indexSignal(vote, on, now) {
     talkId: vote.talkId,
     room: vote.room,
     type: vote.type,
-    clientId: vote.clientId,
+    clientId: hashDevice(`talk:${vote.talkId}`, vote.clientId), // salted per talk, never the phone's id (device-id.js)
     on,
     ts: new Date(now).toISOString(),
     minute: minuteFor(vote.talkId, now),

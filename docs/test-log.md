@@ -2,6 +2,17 @@
 
 What has been tested, how, what broke and what is still open. Newest first. Add to it when you test something.
 
+## 2026-11-09 16:30: medium privacy findings from the data map (Claude)
+
+| Check | Result |
+| --- | --- |
+| `scripts/privacy-check.js` (new): a fake Elasticsearch captures every write; a vote, a question and a booth check-in with clientId `rawphoneid12345` | ✅ written to `pulse-signals` / `-questions` / `-checkins` as 24-hex salted hashes; the raw id appears in no request (the same check fails on `main`) |
+| Retention job | ✅ `POST /pulse-signals,pulse-questions,pulse-checkins/_delete_by_query` with `ts < now-30d` |
+| Captured slide: signed in to the room / tech key / signed out / another room's phone / guessed url / wrong token | ✅ 200 / 200 / 403 / 403 / 404 / 404; always `Cache-Control: private, no-store` |
+| Same in headless Chrome: a signed-in phone shows the slide; a separate browser context that never signed in | ✅ image loaded / `403 private, no-store` |
+| `scripts/rum-check.js` (new, real Chrome): RUM on, page opened with `?key=` and a search in the URL and fragment, a search request, then page hide; a local sink stands in for Dash0 | ✅ no search term, key, talk id from the path or full user agent; URLs reported as `/t/:id`. With the old `rum.js` all four leaked |
+| `npm run smoke` and every `scripts/*-check.js` (incl. telemetry, privacy, rum) | ✅ |
+
 ## 2026-11-09 16:10: privacy fixes from the data map (Claude)
 
 | Check | Result |
