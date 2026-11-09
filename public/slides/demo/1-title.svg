@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-labelledby="slideTitle">
+  <title id="slideTitle">Pulse — every seat hears the talk</title>
+  <defs>
+    <radialGradient id="glow" cx="82%" cy="12%" r="72%">
+      <stop offset="0" stop-color="#4cc2ff" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#4cc2ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="wave" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4cc2ff" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#4cc2ff" stop-opacity="0.05"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="#0b0d10"/>
+  <rect width="1600" height="900" fill="url(#glow)"/>
+
+  <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+    <circle cx="108" cy="88" r="9" fill="#4cc2ff"/>
+    <text x="132" y="96" font-size="22" font-weight="800" letter-spacing="7" fill="#f4f6f8">PULSE</text>
+
+    <g fill="#4cc2ff">
+      <rect x="1120" y="742" width="10" height="46" rx="5" opacity="0.35"/>
+      <rect x="1146" y="718" width="10" height="70" rx="5" opacity="0.5"/>
+      <rect x="1172" y="686" width="10" height="102" rx="5" opacity="0.7"/>
+      <rect x="1198" y="650" width="10" height="138" rx="5" opacity="0.9"/>
+      <rect x="1224" y="690" width="10" height="98" rx="5" opacity="0.7"/>
+      <rect x="1250" y="722" width="10" height="66" rx="5" opacity="0.5"/>
+      <rect x="1276" y="750" width="10" height="38" rx="5" opacity="0.35"/>
+    </g>
+
+    <text x="100" y="382" font-size="112" font-weight="800" letter-spacing="-2" fill="#f4f6f8">Every seat</text>
+    <text x="100" y="502" font-size="112" font-weight="800" letter-spacing="-2" fill="#4cc2ff">hears the talk.</text>
+
+    <text x="100" y="592" font-size="30" fill="#a7b0bc">Live captions, listen-in audio and a direct line</text>
+    <text x="100" y="636" font-size="30" fill="#a7b0bc">to the room crew — from any phone.</text>
+
+    <g font-size="22" font-weight="600" fill="#f4f6f8">
+      <rect x="100" y="716" width="236" height="58" rx="29" fill="#151920" stroke="#2a313c" stroke-width="2"/>
+      <text x="218" y="753" text-anchor="middle">Scan to join</text>
+      <rect x="354" y="716" width="246" height="58" rx="29" fill="#151920" stroke="#2a313c" stroke-width="2"/>
+      <text x="477" y="753" text-anchor="middle">No app install</text>
+      <rect x="618" y="716" width="236" height="58" rx="29" fill="#151920" stroke="#2a313c" stroke-width="2"/>
+      <text x="736" y="753" text-anchor="middle">Earbuds ready</text>
+    </g>
+
+    <rect x="100" y="828" width="1400" height="2" fill="#2a313c"/>
+    <text x="100" y="866" font-size="20" fill="#6f7a88">Pulse · hackathon demo</text>
+    <text x="1500" y="866" text-anchor="end" font-size="20" fill="#6f7a88">01 / 06</text>
+  </g>
+</svg>

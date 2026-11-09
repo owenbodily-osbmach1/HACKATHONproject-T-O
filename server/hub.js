@@ -7,14 +7,17 @@
 //   listeners(room)                     number of open attendee sockets in room
 //   on(t, fn)                           subscribe to inbound messages: fn(msg, {room, role, clientId})
 const { WebSocketServer } = require('ws');
+const otel = require('./otel');
 
 const ROLES = new Set(['attendee', 'viewer', 'mic', 'present', 'tech', 'org']);
 const wss = new WebSocketServer({ noServer: true });
 const rooms = new Map(); // room -> Set<{ws, role, clientId, alive}>
 const handlers = new Map(); // t -> Set<fn>
+const heardRooms = new Map(); // attendee clientId -> Set(room) joined while connected
 
 let ctx = null;
 let pingTimer = null;
+let captionFanout = null;
 
 function closeQuietly(ws, code, reason) {
   try { ws.close(code, reason); } catch {}
@@ -92,7 +95,18 @@ function onCaption(rec, msg) {
   if (room.captions.length > 50) room.captions.splice(0, room.captions.length - 50);
   room.lastCaptionTs = Date.now();
 
-  send(rec.room, { t: 'caption', talkId, seq, text, ts }, ['attendee', 'viewer', 'tech']);
+  let roomListeners = 0;
+  const roomSet = rooms.get(rec.room);
+  if (roomSet) for (const other of roomSet) if (other.role === 'attendee') roomListeners += 1;
+  const started = captionFanout ? performance.now() : 0;
+  otel.span(
+    'pulse.caption.relay',
+    { 'pulse.room': rec.room, 'pulse.listeners': roomListeners },
+    () => send(rec.room, { t: 'caption', talkId, seq, text, ts }, ['attendee', 'viewer', 'tech'])
+  );
+  if (captionFanout) {
+    captionFanout.record(performance.now() - started, { 'pulse.room': rec.room });
+  }
   esIndex('pulse-captions', {
     talkId, room: rec.room, seq, text, ts, minute: talkMinute(talkId, ts),
   });
@@ -157,11 +171,18 @@ function join(ws, room, role, clientId) {
   if (!set) rooms.set(room, (set = new Set()));
   set.add(rec);
 
+  if (role === 'attendee' && clientId) {
+    let heard = heardRooms.get(clientId);
+    if (!heard) heardRooms.set(clientId, (heard = new Set()));
+    heard.add(room);
+  }
+
   const state = ctx.state.room(room);
   if (role === 'attendee' || role === 'viewer' || role === 'tech') {
     sendJson(ws, { t: 'caption_backlog', lines: state.captions.slice(-50) });
   }
   sendJson(ws, { t: 'room_settings', ...state.settings });
+  sendJson(ws, ctx.state.talkMessage(room));
   if (state.slide) sendJson(ws, { t: 'slide', ...state.slide });
   if (role === 'tech' || role === 'org') {
     // Lazy require: tickets/questions require the hub too.
@@ -183,6 +204,12 @@ function join(ws, room, role, clientId) {
 module.exports = {
   attach(server, c) {
     ctx = c;
+    ctx.state.heardRooms = heardRooms;
+    captionFanout = otel.histogram(
+      'pulse.caption.fanout.duration',
+      'Milliseconds to send one caption to every socket in the room',
+      'ms'
+    );
     wss.on('error', () => {});
     if (pingTimer) return;
     pingTimer = setInterval(() => {
@@ -235,6 +262,11 @@ module.exports = {
     let n = 0;
     for (const rec of set) if (rec.role === 'attendee') n++;
     return n;
+  },
+
+  roomsJoined(clientId) {
+    const set = heardRooms.get(String(clientId));
+    return set ? [...set] : [];
   },
 
   on(t, fn) {

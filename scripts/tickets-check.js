@@ -4,7 +4,10 @@ const tickets = require('../server/tickets');
 
 const { countDistinct, VOTE_TTL_MS } = tickets._test;
 
-const rooms = new Map([['151', { room: '151', lastCaptionTs: Date.now() - 5000 }]]);
+const talks = new Map([
+  ['talk-1', { talkId: 'talk-1', room: '151', start: Date.now() - 60000, end: null }],
+]);
+const rooms = new Map([['151', { room: '151', talkId: 'talk-1', lastCaptionTs: Date.now() - 5000 }]]);
 const sent = [];
 const docs = [];
 const routes = [];
@@ -15,7 +18,7 @@ for (const method of ['get', 'post', 'put']) {
 
 const ctx = {
   config: { ALERT_THRESHOLD: 3, ALERT_WINDOW_SEC: 60 },
-  state: { rooms, talks: new Map() },
+  state: { rooms, talks },
   auth: {
     api: () => (req, res, next) =>
       req.get('x-pulse-key') === 'tech' ? next() : res.status(401).json({ error: 'unauthorized' }),

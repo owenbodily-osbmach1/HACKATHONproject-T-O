@@ -29,12 +29,12 @@ function warn(slot, err) {
 
 // Raw request: throws on any HTTP or network failure. Only es-setup and the search
 // retriever path use this; live writes go through index().
-async function raw(method, path, body) {
+async function raw(method, path, body, timeoutMs = 3000) {
   const res = await fetch(base + path, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(3000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const text = await res.text();
   if (!res.ok) {
@@ -48,7 +48,9 @@ async function raw(method, path, body) {
 // Fire-and-forget write. Never throws, never awaited.
 function index(name, doc) {
   if (!enabled) return;
-  raw('POST', `/${name}/_doc`, doc).catch((err) => warn('write', err));
+  // Writes run ELSER inference for semantic_text fields; a cold model can take several seconds.
+  // Fire-and-forget, so a longer timeout never touches the live path (Radar investigation found 3 s too short).
+  raw('POST', `/${name}/_doc`, doc, 15000).catch((err) => warn('write', err));
 }
 
 async function search(name, body) {
