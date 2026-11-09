@@ -2,7 +2,23 @@
 
 What has been tested, how, what broke and what is still open. Newest first. Add to it when you test something.
 
-Builds tested: `poc/one-room` @ `4593204` = `ty/backend` @ `19c5573` (#7) + `ui/tech-console` (#8). Not tested yet: Ty's later backend commits (`4af33f5` demo simulator, `b5910df` question grouping) and the B&W attendee redesign (#10).
+Builds tested: `poc/one-room` @ `4593204` = `ty/backend` @ `19c5573` (#7) + `ui/tech-console` (#8). Not tested yet: Ty's later backend commits (`4af33f5` demo simulator, `b5910df` question grouping), and the B&W redesign (#10) on real phones (headless checks are below).
+
+## 2026-11-09 12:10–12:40: design pass across screen sizes, fake data (Claude)
+
+**Setup:** branch `ui/bw-design-preview` (#10) merged with `main` @ `6635fa0`, `python3 -m http.server` in `public/`, headless Chrome (Playwright), `?mock=1` on every page.
+
+| Check | Result |
+| --- | --- |
+| Attendee page at 320×568, 393×852, 852×393 (phone sideways) | ✅ no overlap; blocks stack; page scrolls |
+| Attendee "Both" mode at 393×852 | ✅ slide + about 4 caption lines (was a sliver before this fix) |
+| Attendee computer view at 820×1180, 1366×768, 1920×1080 | ✅ WATCH left, controls right at 900 px+; iPad portrait stays one column |
+| `/tech` at 1366×768, 820×1180, 393×852 with rooms 151 + 255 | ✅ red open block, yellow claimed block, drawer, questions |
+| Loop across frames: phone Speak up → tech block 3 → 4 votes → Claim → Mark fixed → phone "Better now?" | ✅ |
+| Phone question → tech Questions list → tech Reply → phone shows the reply | ✅ |
+| `/mic.html` with the new palette | ✅ no undefined CSS variables, no page errors |
+| Page errors / 4xx responses on all of the above | ✅ none |
+| Real phones on the new design | not checked yet |
 
 ## 2026-11-09 11:45–11:56: real devices, one room (Owen)
 
