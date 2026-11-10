@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server/index.js",
+    "demo": "node scripts/start.js",
     "dev": "node --watch --env-file-if-exists=.env server/index.js",
     "check": "set -e; find server scripts public -name \"*.js\" -not -path \"*/vendor/*\" -print0 | xargs -0 -n1 node --check; for f in scripts/*-check.js; do node \"$f\"; done",
     "smoke": "node scripts/smoke.js"

@@ -391,3 +391,10 @@ All passed:
 - **Fix:** `public/lib/relay-worker.js` also accepts a frame that is the screen shrunk evenly (same shape within 0.6%, not larger than the screen). Checked against frame sizes: 2560×1600, 1920×1200, 1920×1199 and 1280×800 pass; a normal tab (1920×1035), a maximized window (2560×1528) and a 16:9 frame (1920×1080) do not. `scripts/relay-check.js` passes.
 - **Also:** the deck's three QR codes and the join link text still pointed at the previous tunnel after a restart; replaced with this start's link.
 - **Not verified:** a real screen share after the fix (rule tested against sizes only). Audience path checked headless on the live server in a scratch room: sign in, `slide` on join, image `200` with the visitor cookie, `403` without.
+
+## 2026-11-09 5:05 PM: one-command start for a fresh clone (`npm run demo`)
+
+- Fresh checkout of `main`, `npm ci`, `node scripts/start.js --no-open --port 8201` on Windows (Node 26): prints the links, `/healthz` 200, and Go live, AV tech, `/r/151`, `/r/255`, `/org` and `/qr/151.gif` all answer 200 with the generated keys. `publicBaseUrl` is the Wi-Fi address (a Tailscale address is skipped). Ctrl+C / kill stops the server.
+- Without `node_modules` it stops with "Run npm ci first".
+- `scripts/*-check.js` and `npm run smoke` pass.
+- **Not verified:** macOS and Linux (browser opening uses `open` / `xdg-open`), the `--phones` tunnel path, and Node 20.
