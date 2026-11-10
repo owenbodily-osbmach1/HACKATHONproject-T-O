@@ -2,6 +2,8 @@
 
 One QR code per conference room. Attendee phones get live captions, listen-in audio and a way to tell the AV crew what is broken.
 
+**Judges: try it yourself.** Click-by-click guide: [`docs/JUDGES.md`](docs/JUDGES.md) · demo deck to present with: [`docs/pulse-demo-deck.pdf`](docs/pulse-demo-deck.pdf) · start it with `npm ci`, then `npm run demo`.
+
 ## What it does
 
 **Attendees**
