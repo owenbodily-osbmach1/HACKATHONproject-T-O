@@ -98,6 +98,17 @@ Details, message flows, failure modes and security: [`docs/ARCHITECTURE.md`](doc
 
 ## Run it
 
+One command, any computer (Windows, macOS, Linux), no keys or accounts to set up:
+
+```sh
+npm ci
+npm run demo
+```
+
+It makes fresh keys, starts a simulated live room, prints every link and opens Go live and the AV console. Step by step, with slides and phones: [`docs/QUICKSTART.md`](docs/QUICKSTART.md). Shot list for the how-to video: [`docs/how-to-video.md`](docs/how-to-video.md).
+
+For development, with your own `.env`:
+
 ```sh
 npm ci
 cp .env.example .env          # set SPEAKER_KEY and TECH_KEY; Elastic and Dash0 are optional
